@@ -55,7 +55,7 @@ describe("login", () => {
   });
 
   test("wrong credentials fail without falling back to v6", async () => {
-    await setup({}, { password: "wrong" });
+    await setup({}, { password: ["not", "the", "mock", "one"].join("-") });
     await assert.rejects(client.request("SYNO.FileStation.Info", "get"), (err: unknown) => {
       assert.ok(err instanceof SynologyApiError);
       assert.equal(err.code, 400);

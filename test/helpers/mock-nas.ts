@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import noise from "noise-protocol";
@@ -69,7 +70,7 @@ export class MockNas {
 
   constructor(private readonly opts: MockNasOptions = {}) {
     this.username = opts.username ?? "tester";
-    this.password = opts.password ?? "secret";
+    this.password = opts.password ?? `mock-${randomUUID()}`;
     this.server = createServer((req, res) => {
       this.handle(req, res).catch((err) => {
         res.writeHead(500, { "content-type": "text/plain" });

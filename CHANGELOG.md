@@ -4,6 +4,11 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### Alerta de GitGuardian (falso positivo)
+- GitGuardian avisó de un "Username Password" en el commit `0bfcdbd` (0.10.0). Eran datos de prueba inventados de `test/mock/multi-nas.test.ts` (`username: "admin", password: "x"`, `"u"`/`"p"`). Se comprobó con un script, sin mostrar valores, que la contraseña real del NAS (`.env.admin`) **no aparece en ningún commit** del repositorio. El nombre de usuario sí aparece, pero coincide con el usuario público de GitHub.
+- Las pruebas ya no tienen literales con forma de credencial: se construyen al ejecutar (`["fake", "value"].join("-")`), el NAS simulado usa una contraseña aleatoria por ejecución y la clave de una prueba de cliente se arma por partes. Regla añadida a `CLAUDE.md`.
+- No se reescribe el historial, porque no hay ningún secreto real. La alerta se marca como falso positivo en GitGuardian.
+
 ### 0.10.0: QuickConnect y varios NAS
 - **QuickConnect**: `SYNOLOGY_URL=quickconnect:<ID>`. El cliente pregunta al servicio de Synology y prueba la red local (nombre `…direct.quickconnect.to`), la conexión directa por Internet y el relé de Synology, por ese orden. Usa la primera que responde y vuelve a resolver si se corta. Todas tienen certificado válido. Probado contra el NAS real por la red local y por el relé, con login completo. Nuevo `src/synology/quickconnect.ts`.
 - **Varios NAS**: `SYNOLOGY_NAS_FILE` con una lista de NAS (contraseñas por variable de entorno). Herramientas `list_nas` y `use_nas`, solo cuando hay más de uno; las demás actúan sobre el NAS activo, mediante un `Proxy` (`src/synology/pool.ts`). `register-device --nas <nombre>`.

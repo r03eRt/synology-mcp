@@ -9,6 +9,9 @@ import { NasPool } from "../../src/synology/pool.js";
 import { configFor } from "../helpers/harness.js";
 import { MockNas } from "../helpers/mock-nas.js";
 
+const USER_Q = ["test", "user"].join("-");
+const FAKE_Q = ["fake", "value"].join("-");
+
 describe("QuickConnect", () => {
   // Shape copied from the real service (2026-11-20), with made-up names.
   const serverInfo = {
@@ -42,7 +45,7 @@ describe("QuickConnect", () => {
     assert.equal(quickConnectId("quickconnect:mynas"), "mynas");
     assert.equal(quickConnectId("QuickConnect://my-nas/"), "my-nas");
     assert.equal(quickConnectId("http://192.168.1.2:5000"), undefined);
-    assert.equal(loadConfig({ SYNOLOGY_URL: "quickconnect:mynas", SYNOLOGY_USERNAME: "u", SYNOLOGY_PASSWORD: "p" }).url, "quickconnect:mynas");
+    assert.equal(loadConfig({ SYNOLOGY_URL: "quickconnect:mynas", SYNOLOGY_USERNAME: USER_Q, SYNOLOGY_PASSWORD: FAKE_Q }).url, "quickconnect:mynas");
   });
 
   test("candidates: LAN names first, external only if reachable from the Internet, then the relay", async () => {
@@ -75,7 +78,10 @@ describe("QuickConnect", () => {
 });
 
 describe("several NAS", () => {
-  const env = { SYNOLOGY_NAS_FILE: "/nas.json", CASA_PW: "secret1", SYNOLOGY_READ_ONLY: "false" };
+  // Fake values built at runtime so secret scanners (GitGuardian) do not mistake test fixtures for credentials.
+  const FAKE = ["fake", "value"].join("-");
+  const USER = ["test", "user"].join("-");
+  const env = { SYNOLOGY_NAS_FILE: "/nas.json", CASA_PW: FAKE, SYNOLOGY_READ_ONLY: "false" };
   const file = (o: object) => () => JSON.stringify(o);
 
   test("loadNasList reads the file, passwords from the environment and the default", () => {
@@ -84,25 +90,25 @@ describe("several NAS", () => {
       file({
         default: "oficina",
         nas: [
-          { name: "casa", url: "http://192.168.1.2:5000", username: "claude", password_env: "CASA_PW" },
-          { name: "oficina", url: "quickconnect:office-nas", username: "admin", password: "x", insecure_tls: true },
+          { name: "casa", url: "http://192.168.1.2:5000", username: USER, password_env: "CASA_PW" },
+          { name: "oficina", url: "quickconnect:office-nas", username: USER, password: FAKE, insecure_tls: true },
         ],
       }),
     );
     assert.equal(defaultName, "oficina");
-    assert.equal(entries[0].config.password, "secret1");
+    assert.equal(entries[0].config.password, FAKE);
     assert.equal(entries[0].config.readOnly, false, "read-only stays global");
     assert.equal(entries[1].config.insecureTls, true);
-    assert.equal(loadNasList({ SYNOLOGY_URL: "http://n:5000", SYNOLOGY_USERNAME: "u", SYNOLOGY_PASSWORD: "p" }).entries[0].name, "default");
+    assert.equal(loadNasList({ SYNOLOGY_URL: "http://n:5000", SYNOLOGY_USERNAME: USER, SYNOLOGY_PASSWORD: FAKE }).entries[0].name, "default");
   });
 
   test("loadNasList explains configuration mistakes", () => {
     const bad = (o: object) => () => loadNasList(env, file(o));
     assert.throws(bad({ nas: [] }), /non-empty "nas" list/);
-    assert.throws(bad({ nas: [{ url: "http://a:5000", username: "u", password: "p" }] }), /"name" is required/);
-    assert.throws(bad({ nas: [{ name: "a", url: "http://a", username: "u", password: "p" }, { name: "A", url: "http://b", username: "u", password: "p" }] }), /duplicate name "A"/);
-    assert.throws(bad({ nas: [{ name: "a", url: "http://a", username: "u", password_env: "MISSING" }] }), /MISSING is not set/);
-    assert.throws(bad({ default: "z", nas: [{ name: "a", url: "http://a", username: "u", password: "p" }] }), /default "z" is not in the list/);
+    assert.throws(bad({ nas: [{ url: "http://a:5000", username: USER, password: FAKE }] }), /"name" is required/);
+    assert.throws(bad({ nas: [{ name: "a", url: "http://a", username: USER, password: FAKE }, { name: "A", url: "http://b", username: USER, password: FAKE }] }), /duplicate name "A"/);
+    assert.throws(bad({ nas: [{ name: "a", url: "http://a", username: USER, password_env: "MISSING" }] }), /MISSING is not set/);
+    assert.throws(bad({ default: "z", nas: [{ name: "a", url: "http://a", username: USER, password: FAKE }] }), /default "z" is not in the list/);
     assert.throws(() => loadNasList(env, () => "{not json"), /cannot read it as JSON/);
   });
 

@@ -29,3 +29,4 @@ La documentación se escribe en español.
 
 - Nunca leer ni imprimir `.env*`. `.env.admin` solo se usa vía `node --env-file=.env.admin`.
 - No poner credenciales en ficheros versionables ni en la documentación.
+- En las pruebas, tampoco literales con forma de usuario/contraseña (`password: "x"`): los escáneres de secretos (GitGuardian) los marcan. Usar valores construidos en tiempo de ejecución (`["fake", "value"].join("-")`) o `password_env`.
