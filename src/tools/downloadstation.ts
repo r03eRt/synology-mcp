@@ -4,6 +4,7 @@ import { stat } from "node:fs/promises";
 import { json, type SynologyClient } from "../synology/client.js";
 import { describeError, SynologyApiError } from "../synology/errors.js";
 import { humanSize, ok, safe } from "./format.js";
+import { adminOnly } from "./system.js";
 
 /**
  * Download Station tools. Mostly the documented classic API (SYNO.DownloadStation.*,
@@ -20,6 +21,13 @@ const TASK2_V = 2;
 const BT_FILE = "SYNO.DownloadStation2.Task.BT.File";
 const RSS_FEED = "SYNO.DownloadStation2.RSS.Feed";
 const RSS_ITEM = "SYNO.DownloadStation2.RSS.Item";
+/** Settings panels of the web UI (v1, "get" / "set" with only the changed fields). */
+const SCHEDULER = "SYNO.DownloadStation2.Settings.Scheduler";
+const SETTINGS_BT = "SYNO.DownloadStation2.Settings.BT";
+const SETTINGS_FTP_HTTP = "SYNO.DownloadStation2.Settings.FtpHttp";
+const SETTINGS_NZB = "SYNO.DownloadStation2.Settings.Nzb";
+/** Torrent search: start → poll list until is_running is false → stop. */
+const BT_SEARCH = "SYNO.DownloadStation2.BTSearch";
 
 interface BtFile {
   index: number;
@@ -271,6 +279,106 @@ function simplifyTask(t: DsTask, withFiles = false) {
   };
 }
 
+// ------------------------------------------------------------------ schedule
+
+/**
+ * Download Station's schedule (SYNO.DownloadStation2.Settings.Scheduler) is a
+ * 168-character string: index = day * 24 + hour, day 0 = Sunday (SYNO.ux.ScheduleTable
+ * in scripts/ext-3/ux/ux-all.js). Each character: 0 = no downloads, 1 = full speed,
+ * 2 = limited to the scheduler's download_rate / upload_rate (KB/s).
+ */
+export const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+export type Day = (typeof DAYS)[number];
+export const SCHEDULE_MODES = ["full", "limited", "off"] as const;
+export type ScheduleMode = (typeof SCHEDULE_MODES)[number];
+const MODE_CHAR: Record<ScheduleMode, string> = { off: "0", full: "1", limited: "2" };
+const CHAR_MODE: Record<string, ScheduleMode> = { "0": "off", "1": "full", "2": "limited" };
+const DAY_GROUPS: Record<string, Day[]> = {
+  all: [...DAYS],
+  weekdays: ["mon", "tue", "wed", "thu", "fri"],
+  weekend: ["sat", "sun"],
+};
+
+export interface ScheduleRule {
+  days: (Day | "all" | "weekdays" | "weekend")[];
+  /** First hour, 0–23. */
+  from: number;
+  /** Hour it ends, 1–24 (exclusive). to <= from wraps past midnight into the next day. */
+  to: number;
+  mode: ScheduleMode;
+}
+
+const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+/** Per day, the hour ranges and their mode, e.g. "00:00-08:00 full, 08:00-24:00 off"; one line if every day is the same. */
+export function summarizeSchedule(schedule: string): Record<string, string> {
+  if (schedule.length !== 168) return { raw: schedule };
+  const perDay = DAYS.map((_, d) => {
+    const hours = schedule.slice(d * 24, d * 24 + 24);
+    const parts: string[] = [];
+    let start = 0;
+    for (let h = 1; h <= 24; h++) {
+      if (h === 24 || hours[h] !== hours[start]) {
+        parts.push(`${hh(start)}-${hh(h)} ${CHAR_MODE[hours[start]] ?? hours[start]}`);
+        start = h;
+      }
+    }
+    return parts.join(", ");
+  });
+  if (perDay.every((p) => p === perDay[0])) return { every_day: perDay[0] };
+  return Object.fromEntries(DAYS.map((d, i) => [d, perDay[i]]));
+}
+
+/** Apply rules in order on top of a schedule string; later rules win. */
+export function applyScheduleRules(base: string, rules: ScheduleRule[]): string {
+  const cells = base.split("");
+  if (cells.length !== 168) throw new Error(`Unexpected schedule length ${cells.length}`);
+  for (const r of rules) {
+    if (r.from < 0 || r.from > 23 || r.to < 1 || r.to > 24) throw new Error("from is 0–23 and to is 1–24");
+    const days = new Set(r.days.flatMap((d) => DAY_GROUPS[d] ?? [d as Day]));
+    const span = r.to > r.from ? r.to - r.from : 24 - r.from + r.to;
+    for (const day of days) {
+      const d = DAYS.indexOf(day);
+      for (let i = 0; i < span; i++) cells[(d * 24 + r.from + i) % 168] = MODE_CHAR[r.mode];
+    }
+  }
+  return cells.join("");
+}
+
+interface SchedulerSettings {
+  enable_schedule: boolean;
+  schedule: string;
+  download_rate: number;
+  upload_rate: number;
+  max_tasks: number;
+  max_tasks_limit?: number;
+  order: string;
+}
+
+function describeScheduler(s: SchedulerSettings) {
+  return {
+    enabled: s.enable_schedule,
+    ...(s.enable_schedule && { plan: summarizeSchedule(s.schedule) }),
+    // KB/s, 0 = unlimited; used in the "limited" hours.
+    limited_kbps: { down: s.download_rate, up: s.upload_rate },
+  };
+}
+
+/** BTSearch result as SYNO.DownloadStation2.BTSearch list returns it. */
+interface BtSearchResult {
+  title: string;
+  size?: number | string;
+  date?: string;
+  seeds?: number;
+  peers?: number;
+  provider?: string;
+  category?: string;
+  dlurl?: string;
+  page?: string;
+}
+
+const sizeOf = (v?: number | string) => (v === undefined || v === "" ? undefined : /^\d+$/.test(String(v)) ? humanSize(Number(v)) : String(v));
+
 /** Turn per-id action results into "done" and "failed" lists with readable errors. */
 function actionSummary(results: ActionResult) {
   const done = results.filter((r) => r.error === 0).map((r) => r.id);
@@ -278,7 +386,8 @@ function actionSummary(results: ActionResult) {
   return { done, ...(failed.length && { failed }) };
 }
 
-export function registerDownloadStationTools(server: McpServer, client: SynologyClient, opts: { readOnly: boolean }) {
+export function registerDownloadStationTools(server: McpServer, client: SynologyClient, opts: { readOnly: boolean; searchPollMs?: number }) {
+  const searchPollMs = opts.searchPollMs ?? 2000;
   const READ = { readOnlyHint: true, openWorldHint: false } as const;
   const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
   const listTasks = (additional: string) => client.request<{ total: number; tasks: DsTask[] }>(TASK, "list", { additional });
@@ -291,14 +400,16 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
     {
       title: "Download Station: status and settings",
       description:
-        "Download Station version, whether the user manages it, default destination folder, speed limits and the current total download/upload speed.",
+        "Download Station version, whether the user manages it, default destination folder, speed limits, the current total download/upload speed, the queue (max simultaneous tasks) and the speed schedule (hours at full speed, limited or paused).",
       annotations: READ,
     },
     safe(async () => {
-      const [info, config, stats] = await Promise.all([
+      const [info, config, stats, scheduler] = await Promise.all([
         client.request<{ version_string: string; is_manager: boolean }>("SYNO.DownloadStation.Info", "getinfo"),
         client.request<Record<string, unknown>>("SYNO.DownloadStation.Info", "getconfig"),
         client.request<{ speed_download: number; speed_upload: number }>("SYNO.DownloadStation.Statistic", "getinfo"),
+        // Only Download Station managers can read it; others just do not get these fields.
+        client.request<SchedulerSettings>(SCHEDULER, "get", {}, 1).catch(() => undefined),
       ]);
       return ok({
         version: info.version_string,
@@ -316,7 +427,71 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
         },
         emule_enabled: config.emule_enabled,
         auto_extract: config.unzip_service_enabled,
+        ...(scheduler && {
+          queue: { max_active_tasks: scheduler.max_tasks, max_allowed: scheduler.max_tasks_limit, order: scheduler.order === "request" ? "as added" : "by user" },
+          schedule: describeScheduler(scheduler),
+        }),
       });
+    }),
+  );
+
+  server.registerTool(
+    "downloads_search",
+    {
+      title: "Download Station: search torrents",
+      description:
+        "Search torrents with Download Station's BT search engines (the ones enabled in Download Station > Settings > BT Search). Waits for the engines to finish (up to wait_seconds) and returns the results sorted by seeds: title, size, date, seeds, peers, engine, category and the download URL to pass to downloads_add. The NAS contacts the torrent sites, not this computer.",
+      inputSchema: {
+        keyword: z.string().min(1).describe("Search text, e.g. \"ubuntu 24.04\""),
+        category: z.string().optional().describe("Only results in this category (as returned in `categories`)"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20)"),
+        wait_seconds: z.number().int().min(5).max(120).optional().describe("How long to wait for the engines (default 30)"),
+      },
+      annotations: { ...READ, openWorldHint: true },
+    },
+    safe(async ({ keyword, category, limit, wait_seconds }) => {
+      const { id } = await client.request<{ id: string }>(BT_SEARCH, "start", { action: json("search"), keyword: json(keyword) }, 1);
+      try {
+        const deadline = Date.now() + (wait_seconds ?? 30) * 1000;
+        const fetch = () =>
+          client.request<{ is_running: boolean; total: number; results: BtSearchResult[] }>(
+            BT_SEARCH,
+            "list",
+            { id: json(id), offset: 0, limit: 1000, sort_by: json("seeds"), order: json("DESC") },
+            1,
+          );
+        let r = await fetch();
+        while (r.is_running && Date.now() < deadline) {
+          await new Promise((res) => setTimeout(res, searchPollMs));
+          r = await fetch();
+        }
+        const { categories } = await client
+          .request<{ categories?: string[] }>(BT_SEARCH, "list_category", { id: json(id) }, 1)
+          .catch(() => ({ categories: undefined }));
+        const matched = r.results.filter((x) => !category || x.category?.toLowerCase() === category.toLowerCase());
+        matched.sort((a, b) => (b.seeds ?? 0) - (a.seeds ?? 0));
+        return ok({
+          keyword,
+          ...(r.is_running && { note: "Some engines were still searching; there may be more results if you search again with a longer wait_seconds." }),
+          total: r.total,
+          matched: matched.length,
+          ...(categories?.length && { categories }),
+          results: matched.slice(0, limit ?? 20).map((x) => ({
+            title: x.title,
+            size: sizeOf(x.size),
+            date: x.date,
+            seeds: x.seeds,
+            peers: x.peers,
+            engine: x.provider,
+            category: x.category,
+            url: redactUrl(x.dlurl),
+            ...(x.page && { page: x.page }),
+          })),
+        });
+      } finally {
+        // Free the search on the NAS, as the web UI does when the tab is closed.
+        await client.request(BT_SEARCH, "stop", { id: json(id) }, 1).catch(() => undefined);
+      }
     }),
   );
 
@@ -647,5 +822,100 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
       await client.request(RSS_FEED, "delete", { id: json(ids) }, 1);
       return ok({ deleted: ids });
     }),
+  );
+
+  const kbps = (what: string) => z.number().int().min(0).max(999999).optional().describe(`${what} in KB/s; 0 = unlimited`);
+
+  server.registerTool(
+    "downloads_set_limits",
+    {
+      title: "Download Station: speed limits and queue",
+      description:
+        "Change Download Station's global speed limits (KB/s, 0 = unlimited) per protocol and how many tasks download at the same time. Only the values given change. Needs a Download Station manager (DSM administrator).",
+      inputSchema: {
+        bt_down: kbps("BitTorrent download"),
+        bt_up: kbps("BitTorrent upload"),
+        http_down: kbps("HTTP/FTP download"),
+        nzb_down: kbps("NZB download"),
+        max_active_tasks: z.number().int().min(1).max(80).optional().describe("Tasks downloading at the same time (the rest wait)"),
+      },
+      annotations: { ...WRITE, idempotentHint: true },
+    },
+    safe(async ({ bt_down, bt_up, http_down, nzb_down, max_active_tasks }) =>
+      adminOnly(async () => {
+        if ([bt_down, bt_up, http_down, nzb_down, max_active_tasks].every((v) => v === undefined)) throw new Error("Give at least one limit to change");
+        if (max_active_tasks !== undefined) {
+          const s = await client.request<SchedulerSettings>(SCHEDULER, "get", {}, 1);
+          if (s.max_tasks_limit && max_active_tasks > s.max_tasks_limit) throw new Error(`This NAS allows at most ${s.max_tasks_limit} active tasks`);
+          await client.request(SCHEDULER, "set", { max_tasks: max_active_tasks }, 1);
+        }
+        if (bt_down !== undefined || bt_up !== undefined) {
+          await client.request(SETTINGS_BT, "set", { ...(bt_down !== undefined && { max_download_rate: bt_down }), ...(bt_up !== undefined && { max_upload_rate: bt_up }) }, 1);
+        }
+        if (http_down !== undefined) await client.request(SETTINGS_FTP_HTTP, "set", { ftp_http_max_download_rate: http_down }, 1);
+        if (nzb_down !== undefined) await client.request(SETTINGS_NZB, "set", { max_download_rate: nzb_down }, 1);
+        // Read back what the NAS now has.
+        const [bt, ftp, sched] = await Promise.all([
+          client.request<{ max_download_rate: number; max_upload_rate: number }>(SETTINGS_BT, "get", {}, 1),
+          client.request<{ ftp_http_max_download_rate: number }>(SETTINGS_FTP_HTTP, "get", {}, 1),
+          client.request<SchedulerSettings>(SCHEDULER, "get", {}, 1),
+        ]);
+        return ok({
+          limits_kbps: { bt_down: bt.max_download_rate, bt_up: bt.max_upload_rate, http_down: ftp.ftp_http_max_download_rate, ...(nzb_down !== undefined && { nzb_down }) },
+          max_active_tasks: sched.max_tasks,
+        });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "downloads_set_schedule",
+    {
+      title: "Download Station: speed schedule",
+      description:
+        "Turn Download Station's weekly schedule on or off and set, per day and hour, whether it downloads at full speed, at the limited speed or not at all (e.g. only at night). Rules apply in order on top of the current plan (or of `start_from`); later rules win. `to` <= `from` wraps past midnight into the next day. Needs a Download Station manager (DSM administrator).",
+      inputSchema: {
+        enabled: z.boolean().optional().describe("Use the schedule (false = always download at the normal limits)"),
+        start_from: z.enum(SCHEDULE_MODES).optional().describe("Reset the whole week to this mode before applying rules"),
+        rules: z
+          .array(
+            z.object({
+              days: z.array(z.enum([...DAYS, "all", "weekdays", "weekend"])).min(1),
+              from: z.number().int().min(0).max(23).describe("First hour, 0–23"),
+              to: z.number().int().min(1).max(24).describe("Hour it ends, 1–24 (exclusive)"),
+              mode: z.enum(SCHEDULE_MODES),
+            }),
+          )
+          .optional(),
+        limited_down: kbps("Download speed in the limited hours"),
+        limited_up: kbps("Upload speed in the limited hours"),
+      },
+      annotations: { ...WRITE, idempotentHint: true },
+    },
+    safe(async ({ enabled, start_from, rules, limited_down, limited_up }) =>
+      adminOnly(async () => {
+        if (enabled === undefined && !start_from && !rules?.length && limited_down === undefined && limited_up === undefined) {
+          throw new Error("Give enabled, rules, start_from or a limited speed");
+        }
+        const current = await client.request<SchedulerSettings>(SCHEDULER, "get", {}, 1);
+        const params: Record<string, string | number | boolean> = {};
+        if (start_from || rules?.length) {
+          const base = start_from ? MODE_CHAR[start_from].repeat(168) : current.schedule;
+          const schedule = applyScheduleRules(base, rules ?? []);
+          if (schedule !== current.schedule) params.schedule = json(schedule);
+        }
+        if (enabled !== undefined) params.enable_schedule = enabled;
+        if (limited_down !== undefined) params.download_rate = limited_down;
+        if (limited_up !== undefined) params.upload_rate = limited_up;
+        if (Object.keys(params).length) await client.request(SCHEDULER, "set", params, 1);
+        const after = await client.request<SchedulerSettings>(SCHEDULER, "get", {}, 1);
+        return ok({
+          ...describeScheduler(after),
+          // Show the plan even when the schedule is off, so the change can be checked.
+          plan: summarizeSchedule(after.schedule),
+          ...(!after.enable_schedule && { note: "The schedule is off: the plan is saved but not used until enabled is true." }),
+        });
+      }),
+    ),
   );
 }

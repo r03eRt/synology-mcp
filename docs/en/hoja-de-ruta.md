@@ -73,12 +73,12 @@ Needed before anyone else uses it.
 - 2.3: `synology-nas` skill inside the plugin.
 - 2.4: `npm run pack:mcpb` generates the extension, which passes `mcpb validate`. Installing it in Claude Desktop and checking its Node version is missing.
 - 2.5: the README has been rewritten for whoever installs it: DSM user, installation by the three methods, configuration and examples. It's in Spanish; the English version depends on the decision to publish.
-- 2.6: GitHub Actions; it hasn't run because there's no remote yet.
+- 2.6: GitHub Actions; it runs on every push to the GitHub repository and passes (checked on 2026-11-20).
 - Fixed along the way: the Node minimum is 22.19 (required by undici 8), not 20.
 
 ## Phase 3: completing what already exists
 
-- [~] **3.1 Download Station** (M). In 0.9.0: choosing files, extraction password, RSS and stalled downloads. Pending: limits and schedule, and BTSearch.
+- [x] **3.1 Download Station** (M). In 0.9.0: choosing files, extraction password, RSS and stalled downloads. In 0.12.0: speed limits, queue and schedule (`downloads_set_limits`, `downloads_set_schedule`) and torrent search (`downloads_search`).
   - choose which files of a torrent to download;
   - extraction password with the new API;
   - speed limits and schedule;
@@ -102,7 +102,7 @@ Ordered by likely usefulness.
 - [ ] **4.1 Synology Photos** (L). Albums, search by date, person or place, and creating albums and adding photos. There's no official specification: it has to be extracted from the Photos web UI.
 - [x] **4.2 Container Manager (Docker)** (M). List containers, start, stop and restart, and view logs. Done in 0.8.0, together with images.
 - [ ] **4.3 Hyper Backup** (M). Status of the backups and of the last run, and start a backup.
-- [x] **4.4 DSM administration** (L). Done in 0.11.0: reading users, groups, folders and permissions, tasks and services (with warnings); enabling or running tasks and changing permissions. No creating or deleting users or folders.
+- [x] **4.4 DSM administration** (L). Done in 0.11.0: reading users, groups, folders and permissions, tasks and services (with warnings); enabling or running tasks and changing permissions. In 0.12.0: creating, changing (disable, groups, password) and deleting users. No creating or deleting groups or shared folders.
 - [ ] **4.5 Surveillance Station** (L). Cameras, recordings and snapshots. Only if someone uses it.
 - [x] **4.6 QuickConnect** (M). Done in 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, with local network, direct connection or relay.
 - [x] **4.7 Several NAS** (M). Done in 0.10.0 with `SYNOLOGY_NAS_FILE`, `list_nas` and `use_nas` (active NAS, instead of a parameter on every tool). Pending: configuring it from the plugin.
@@ -116,8 +116,8 @@ Discarded for now: MailPlus and Calendar (not installed on this NAS) and Spreads
 3. 2.4 (Claude Desktop) and 2.6 (CI).
 4. Phases 3 and 4 according to interest, each new tool with its test in `test/mock/` and its documentation.
 
-## Decisions pending from the user
+## User decisions (settled)
 
-- How credentials are stored (1.3).
-- Whether it's published on npm and GitHub as public, or stays private.
-- Language of the public README (Spanish, English or both).
+- Credentials (1.3): through environment variables, the plugin's form or the Claude Desktop extension's form.
+- Publishing: public repository on GitHub; npm waiting for `npm publish`, which the user does.
+- Language: both. The GitHub and npm README in English, `README.es.md` in Spanish, and all documentation in both languages.

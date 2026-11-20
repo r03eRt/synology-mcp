@@ -232,6 +232,27 @@ Fuente: `webman/modules/AdminCenter/admin_center.js` (2,1 MB), buscando `api:"SY
   - `Core.Web.DSM get` → puertos, `enable_https_redirect` (desactivado en el NAS de pruebas) y `enable_hsts`.
 - `Core.Security.Firewall.Rules` respondió 120 con `load` y 103 con `list`, así que no se usa.
 
+## Límites, horario y búsqueda de Download Station; usuarios (0.12.0)
+
+Fuentes: `webman/3rdparty/DownloadStation/download.js` (420 KB), `webman/modules/AdminCenter/admin_center.js` y, para el formato del horario, `scripts/ext-3/ux/ux-all.js` (`SYNO.ux.ScheduleTable`). Se descargaron con un script que lee la URL de `.env.admin` sin imprimirla. Probado contra el NAS real el 2026-11-20.
+
+- **Ajustes de Download Station**: cada panel de ajustes de la web es una API `SYNO.DownloadStation2.Settings.<Panel>` v1 con `get` y `set`, y `set` lleva solo los campos que cambian.
+  - `Scheduler`: `enable_schedule`, `schedule`, `download_rate`/`upload_rate` (velocidad "limitada", KB/s), `max_tasks`, `max_tasks_limit` (80 en este NAS) y `order` (`request` = por orden de llegada).
+  - `BT`: `max_download_rate`, `max_upload_rate`, además de puertos, DHT y ratio. `FtpHttp`: `ftp_http_max_download_rate`. `Nzb`: `max_download_rate`, pero su `get` devuelve también el usuario y la contraseña del servidor de noticias, así que el MCP no lo lee.
+  - Para comprobar el formato se escribieron los mismos valores que había (`max_tasks=8`, límites 0, el mismo `schedule` con `enable_schedule=false`): las cuatro llamadas respondieron `{}` y los ajustes quedaron igual.
+- **Horario**: 168 caracteres. Hipótesis inicial: lunes como primer día. Descartada al leer `SYNO.ux.ScheduleTable`: `DAY_STRING_SHORT` empieza en domingo, y `getIndexesByDay(d)` da `24*d … 24*d+23`, así que índice = día × 24 + hora con el domingo = 0. Los valores salen de `CLASS_LIST` (`no-download`, `full-speed`, `alt-speed`) y del mapeo de botones de Download Station (`{0:1, 1:2, 2:0}`): `0` = no descargar, `1` = toda velocidad, `2` = limitada.
+- **Búsqueda de torrents** (`SYNO.DownloadStation2.BTSearch`, v1):
+  - `start` con `action="search"` y `keyword` (JSON) devuelve un `id`. La web pide `list` + `list_category` cada 5 s hasta que `is_running` es `false` (máximo 120 veces) y al cerrar la pestaña llama a `stop`.
+  - `list` acepta `offset`, `limit`, `sort_by` y `order` (el `paramNames` del store: `start→offset`, `sort→sort_by`, `dir→order`) y devuelve `results` con `title`, `size`, `date`, `seeds`, `peers`, `provider`, `category`, `dlurl` y `page`.
+  - `list_plugin_status` y `Settings.BTSearch get` piden un `id` o `plugin_name` (120 sin ellos). Los motores se listan con `Settings.BTSearch list`: en este NAS, 1337x, un espejo, The Pirate Bay y EZTV, todos activos.
+  - Buscando "ubuntu 24.04", a los 5 s ya estaba terminada, con 2 resultados, todos de The Pirate Bay. "debian 12 netinst" terminó sin resultados. Cada búsqueda tarda unos 11 s con el MCP.
+- **Usuarios** (Panel de control):
+  - No hay ningún `api:"SYNO.Core.User",method:"create"` literal: el asistente de alta reutiliza `serializeInformationTab`, que llama al método `set` o, si el usuario es nuevo, a `create`. Los parámetros son `name`, `description`, `email`, `cannot_chg_passwd`, `expired` (`normal`, `now` o una fecha), `password` y `notify_by_email`. Los grupos van aparte, con `SYNO.Core.User.Group join` (`name`, `join_group`, `leave_group`).
+  - Borrar: `SYNO.Core.User delete` con `name` = lista de nombres y un `timeout` de 10 min en la web.
+  - Cambiar la contraseña: `Core.User set` solo con `name` y `password`. La web la manda con `encryption: ["password"]` (RSA en el navegador). El MCP la manda sin ese cifrado y DSM la acepta: se comprobó entrando con ella.
+  - Lecturas probadas: `Core.User get` (`action="get"`) devuelve `{users:[{name, uid}]}`, o **3106** si el usuario no existe. `Core.User.PasswordPolicy check` responde `{}` si la contraseña vale y **3121** si no. La política de este NAS es una longitud mínima de 6 y que no contenga el nombre de usuario. `Core.User.UsernamePolicy list` es la lista de nombres comunes que DSM desaconseja (`admin`, `test`, `pi`, `ubuntu`…). `Core.User.Group get` devuelve `{groups:[…]}`.
+  - Prueba en el NAS real con un usuario desechable (`mcptest<base36>`): `create` con contraseña generada → entra; `set` con una contraseña nueva → la antigua da **400** ("No such account or incorrect password") y la nueva entra; `set` con `expired="now"` → **401** ("Account disabled") y `dsm_users` lo muestra `disabled`; `delete` → desaparece de la lista (17 usuarios otra vez). Un usuario nuevo puede entrar en File Station sin más permisos, porque en este NAS el grupo `users` tiene la aplicación permitida.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

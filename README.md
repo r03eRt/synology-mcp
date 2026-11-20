@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">78 tools</a> ·
+  <a href="#6-tools">84 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -49,11 +49,11 @@ Every answer comes from this server's tools running against your real NAS. Actio
 |---|---|---|
 | 📁 | **Files** | Search by name, type, size or date · read documents and images · upload and download · move, compress · share with a link |
 | ☁️ | **Synology Drive** | Recent, starred, labels, shared · convert to Synology Office |
-| ⬇️ | **Downloads** | URLs, magnets and `.torrent` · pick files · RSS · detect dead downloads |
+| ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
 | 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · clean up images |
 | 🩺 | **Health** | SMART for each disk · pending updates · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
-| 🛠️ | **Administration** | Users, groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
+| 🛠️ | **Administration** | Users (create, disable, delete), groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
 | 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
 
 ## Quick install
@@ -230,7 +230,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
   - emptying recycle bins: `empty_recycle_bin`;
   - removing downloads or feeds: `downloads_delete`, `downloads_rss_delete`;
   - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
-  - administration: `dsm_run_task` (runs a script) and `dsm_set_share_access` (changes who sees what);
+  - administration: `dsm_run_task` (runs a script), `dsm_set_share_access` (changes who sees what), `dsm_update_user` and `dsm_delete_user` (deleting a user also deletes their home folder);
   - others: `delete_sharing_links`, `drive_delete_label`.
 - **Secrets it never returns**, even if the NAS API provides them:
   - the **values** of container environment variables (database passwords, API keys); it only gives their names;
@@ -310,13 +310,14 @@ To find what else is taking up space, use `get_storage_status`, `get_dir_size`, 
 | `drive_delete_label` | **D** | Delete a label (files stay) |
 | `drive_convert_to_office` | E | Convert Word, Excel, PowerPoint or CSV to Synology Office |
 
-### Downloads (Download Station): 14
+### Downloads (Download Station): 18
 
 A regular user sees and manages their own downloads; an administrator, everyone's.
 
 | Tool | Type | What it does |
 |---|---|---|
-| `downloads_info` | L | Version, default folder, limits and current speed |
+| `downloads_info` | L | Version, default folder, limits, current speed, queue and speed schedule |
+| `downloads_search` | L | Search torrents with Download Station's search engines; results sorted by seeds, ready for `downloads_add` |
 | `downloads_list` | L | Downloads with status, progress and speed. Filters by status, type, text or **dead downloads** (`stalled`: active but with no speed or peers for over an hour, usually torrents removed from the tracker) |
 | `downloads_get` | L | Details: source, files, peers and trackers |
 | `downloads_files` | L | Files in a torrent with their index, progress, priority and whether they're being downloaded |
@@ -326,6 +327,8 @@ A regular user sees and manages their own downloads; an administrator, everyone'
 | `downloads_set_destination` | E | Change the destination folder |
 | `downloads_set_files` | E | Choose which files of a torrent to download and their priority |
 | `downloads_rss_add` / `downloads_rss_refresh` | E | Subscribe to a feed / refresh feeds |
+| `downloads_set_limits` | E | Speed limits per protocol (KB/s) and how many downloads run at once |
+| `downloads_set_schedule` | E | Weekly schedule: hours at full speed, limited or paused (e.g. only at night) |
 | `downloads_delete` | **D** | Remove downloads. What's already complete is kept; with `move_incomplete`, incomplete data too |
 | `downloads_rss_delete` | **D** | Remove RSS subscriptions |
 
@@ -345,7 +348,7 @@ All require an administrator account: DSM doesn't let other users use Container 
 | `docker_stop` / `docker_restart` | **D** | Stop or restart. Their service goes down (DNS, password manager…) |
 | `docker_remove_images` | **D** | Delete images no container uses (images in use are rejected) |
 
-### DSM administration: 9
+### DSM administration: 12
 
 All require an administrator account.
 
@@ -360,6 +363,9 @@ All require an administrator account.
 | `dsm_set_task_enabled` | E | Enable or disable scheduled tasks |
 | `dsm_run_task` | **D** | Run a task now (runs its script, often as root) |
 | `dsm_set_share_access` | **D** | Grant or remove folder access for a user or group: read/write, read-only, deny or none |
+| `dsm_create_user` | E | Create a user with groups; without a password it generates one and shows it once |
+| `dsm_update_user` | **D** | Change description, groups or password, or disable/enable the account. Won't lock out the MCP's own account |
+| `dsm_delete_user` | **D** | Delete users and their home folder. Won't delete itself, `admin` or `guest` |
 
 ### Multiple NAS: 2 (only if more than one is configured)
 
@@ -392,12 +398,15 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 - "From the series torrent, download only episodes 1 to 3."
 - "Which downloads are dead? Remove them."
 - "Subscribe to this RSS feed and tell me what's new."
+- "Search for the Ubuntu 24.04 ISO torrent and add the one with the most seeds."
+- "Only download at night on weekdays, and cap uploads at 200 KB/s."
 
 **Administration**
 - "Who can see the photo folder?"
 - "Is any insecure service enabled?"
 - "Which scheduled tasks failed last time?"
 - "Remove marta's access to Documents."
+- "Create a user for Lucía with read-only access to photo."
 
 **Docker**
 - "Which containers are stopped? Show me pihole's latest errors."
@@ -459,7 +468,7 @@ src/
   tools/health.ts          SMART, updates, notifications and logs
   tools/space.ts           recycle bins
   tools/drive.ts           Synology Drive
-  tools/downloadstation.ts Download Station (tasks, torrent files, RSS)
+  tools/downloadstation.ts Download Station (tasks, torrent files, RSS, search, limits, schedule)
   tools/docker.ts          Container Manager
   tools/nas.ts             list_nas and use_nas (with multiple NAS)
   tools/admin.ts           DSM administration (dsm_*)
@@ -487,4 +496,4 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 - **Multiple NAS** only in the manual install (`SYNOLOGY_NAS_FILE`); the plugin and the extension configure one.
 - **npm**: the package isn't published yet.
 - **Not tested in practice**: 2FA (tested only with the simulated NAS) and the installed Claude Desktop extension.
-- **Not included**: Synology Photos, Hyper Backup, creating or deleting users and shared folders, changing passwords or services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).
+- **Not included**: Synology Photos, Hyper Backup, creating or deleting groups and shared folders, changing services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).

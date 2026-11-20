@@ -17,14 +17,14 @@ const file = (path: string, extra: Record<string, unknown> = {}) => ({
 });
 
 describe("tool registration", () => {
-  test("78 tools in normal mode, 46 in read-only mode", async () => {
+  test("84 tools in normal mode, 47 in read-only mode", async () => {
     const normal = await withMockNas();
     const ro = await withMockNas({ config: { readOnly: true } });
     try {
       const all = (await normal.mcp.listTools()).tools;
       const readOnly = (await ro.mcp.listTools()).tools;
-      assert.equal(all.length, 78);
-      assert.equal(readOnly.length, 46);
+      assert.equal(all.length, 84);
+      assert.equal(readOnly.length, 47);
       assert.ok(readOnly.every((t) => t.annotations?.readOnlyHint === true), "read-only mode only exposes read tools");
       for (const name of ["delete", "write_text_file", "drive_label", "get_storage_status", "get_system_utilization"]) {
         assert.equal(all.some((t) => t.name === name), true, name);
@@ -53,8 +53,10 @@ describe("tool registration", () => {
         "downloads_delete",
         "downloads_rss_delete",
         "drive_delete_label",
+        "dsm_delete_user",
         "dsm_run_task",
         "dsm_set_share_access",
+        "dsm_update_user",
         "empty_recycle_bin",
         "extract",
         "upload_file",

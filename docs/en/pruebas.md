@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-78 tests, ~6 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+137 tests, ~8 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -122,6 +122,14 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-20, version 0.12.0 (Download Station limits, schedule and search; users)
+
+- `npm test`: 137/137. New: `test/mock/downloads-settings.test.ts` (schedule: indexes, Sunday as day 0, rules past midnight, Saturday → Sunday; limits; queue above the maximum; user without permission; search with waiting, sorting by seeds, category filter and `stop`) and `test/mock/users.test.ts` (generated password, a given one is not returned, common name, existing user, weak password, disabling and groups, not locking out the MCP's account, not deleting itself or `admin`, unknown user deleting nothing, read-only mode).
+- `test:real`: 8/8.
+- Against the real NAS, with the built server in read-only mode: `downloads_info` (queue 8 of 80, schedule off) and `downloads_search` ("ubuntu 24.04": 2 results from The Pirate Bay in 11 s; "debian 12 netinst" with `wait_seconds: 10`: 0 results).
+- Download Station writes on the real NAS: only the existing values, to check the format (see [api-synology.md](api-synology.md)). A real schedule has not been tested.
+- Users on the real NAS (with the user's permission): Tested on the real NAS on 2026-11-20 with a throwaway user: creating it with a generated password, signing in with it, changing it (the old one gives 400 and the new one signs in), disabling it (signing in gives 401, "Account disabled") and deleting it. It was also checked that it refuses to delete the MCP's account. The built server was used outside read-only mode. The generated password was never printed and the deletion ran in a `finally`. At the end there were 17 users, as before.
 
 ### Result 2026-11-20, version 0.11.0 (DSM administration)
 

@@ -112,6 +112,12 @@ const RECYCLE_BIN: Record<number, string> = {
   5801: "No such shared folder",
 };
 
+/** SYNO.Core.User* codes seen on the real NAS (2026-11-20). */
+const CORE_USER: Record<number, string> = {
+  3106: "No such user",
+  3121: "The password does not meet the DSM password policy",
+};
+
 /** DSM packages behind each API family, to explain 102 (not installed) and 105 (no application privilege). */
 const PACKAGES: [RegExp, string][] = [
   [/^SYNO\.SynologyDrive\./, "Synology Drive Server"],
@@ -143,6 +149,7 @@ export function describeError(code: number, api: string): string {
   if (/^SYNO\.DownloadStation2?\./.test(api) && DOWNLOAD_STATION[code]) return DOWNLOAD_STATION[code];
   if (api.startsWith("SYNO.Docker.") && DOCKER[code]) return DOCKER[code];
   if (api === "SYNO.Core.RecycleBin" && RECYCLE_BIN[code]) return RECYCLE_BIN[code];
+  if (api.startsWith("SYNO.Core.User") && CORE_USER[code]) return CORE_USER[code];
   // Other APIs (DSM, Drive, ...) have their own undocumented code tables.
   return `Error code ${code} of ${api}`;
 }

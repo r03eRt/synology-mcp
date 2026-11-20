@@ -6,6 +6,25 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-20
 
+### 0.12.0: Download Station limits, schedule and search; user management
+- **Download Station** (closes roadmap item 3.1):
+  - `downloads_search`: searches torrents with Download Station's search engines, waits for them to finish and returns the results sorted by seeds, with the URL for `downloads_add`. It always stops the search on the NAS afterwards;
+  - `downloads_set_limits`: BitTorrent, HTTP/FTP and NZB speed limits, and how many tasks run at once;
+  - `downloads_set_schedule`: weekly schedule by rules (days, hours, `full`/`limited`/`off`), without handling DSM's 168-character string;
+  - `downloads_info` also shows the queue and the schedule.
+- **Users** (left out on purpose before; the user asked for them):
+  - `dsm_create_user`: with groups, and with a generated password if none is given (returned only once);
+  - `dsm_update_user`: description, disable or enable, groups and password;
+  - `dsm_delete_user`: also deletes the home folder.
+  - Safeguards: it won't disable the MCP's own account, remove it from `administrators` or delete it, nor delete `admin`, `guest` or `root`. Passwords are checked against the NAS's policy first.
+- The APIs were taken from the DSM web UI's JavaScript. The schedule's day order (Sunday first) was confirmed in `SYNO.ux.ScheduleTable`, after ruling out Monday first. Details in `docs/en/api-synology.md`.
+- Against the real NAS: search and reads tested; Download Station writes only with the existing values. Users tested with a throwaway user: create, sign in, change the password, disable and delete. DSM accepts the password without the RSA encryption the web UI uses.
+- New error codes: 3106 (no such user) and 3121 (the password does not meet the policy).
+- 84 tools (47 in read-only mode). Tests: 137; real suite: 8/8.
+- Documentation brought up to date:
+  - roadmap: item 2.6 no longer says CI hasn't run, and the user decisions are marked as settled;
+  - README: the "Not included" item no longer lists users and passwords.
+
 ### Documentation in English and Spanish
 - **`README.md` is now in English**, which is what GitHub and npm show. The Spanish version moves to `README.es.md`. Each links to the other at the top and has its own banner (`banner.svg` in English, `banner-es.svg` in Spanish).
 - **`docs/en/`**: English translation of all the technical documentation, with the same file names, plus `CHANGELOG.en.md`. Every file starts with the language switcher.

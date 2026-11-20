@@ -107,6 +107,11 @@ export class SynologyClient {
     return (await this.resolved).url;
   }
 
+  /** DSM account this client signs in as (tools use it to refuse locking themselves out). */
+  accountName(): string {
+    return this.config.username;
+  }
+
   /** Where the client is talking to: the URL, and for QuickConnect how it was reached. */
   async connection(): Promise<{ url: string; via?: Candidate["kind"]; quickconnect_id?: string }> {
     const id = quickConnectId(this.config.url);

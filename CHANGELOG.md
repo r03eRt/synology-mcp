@@ -6,6 +6,25 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.12.0: límites, horario y búsqueda en Download Station; gestión de usuarios
+- **Download Station** (cierra el punto 3.1 de la hoja de ruta):
+  - `downloads_search`: busca torrents con los motores de búsqueda de Download Station, espera a que terminen y devuelve los resultados ordenados por semillas, con la URL para `downloads_add`. Siempre para la búsqueda en el NAS al acabar;
+  - `downloads_set_limits`: límites de velocidad de BitTorrent, HTTP/FTP y NZB, y cuántas tareas van a la vez;
+  - `downloads_set_schedule`: horario semanal por reglas (días, horas, `full`/`limited`/`off`), sin manejar la cadena de 168 caracteres de DSM;
+  - `downloads_info` enseña además la cola y el horario.
+- **Usuarios** (antes fuera a propósito; los pidió el usuario):
+  - `dsm_create_user`: con grupos, y con contraseña generada si no se da (se devuelve una sola vez);
+  - `dsm_update_user`: descripción, desactivar o activar, grupos y contraseña;
+  - `dsm_delete_user`: borra también la carpeta personal.
+  - Salvaguardas: no deja desactivar ni quitar de `administrators` la cuenta del propio MCP, ni borrarla, ni borrar `admin`, `guest` o `root`. La contraseña se comprueba antes con la política del NAS.
+- Las APIs se sacaron del JavaScript de la web de DSM. El orden de días del horario (domingo primero) se confirmó en `SYNO.ux.ScheduleTable`, tras descartar que empezara en lunes. Detalle en `docs/api-synology.md`.
+- Contra el NAS real: búsqueda y lecturas probadas; escrituras de Download Station solo con los mismos valores que había. Usuarios probados con un usuario desechable: crear, entrar, cambiar la contraseña, desactivar y borrar. DSM acepta la contraseña sin el cifrado RSA que usa la web.
+- Nuevos códigos de error: 3106 (no existe el usuario) y 3121 (la contraseña no cumple la política).
+- 84 herramientas (47 en solo lectura). Pruebas: 137; suite real: 8/8.
+- Documentación al día:
+  - hoja de ruta: el punto 2.6 ya no dice que el CI no se ha ejecutado, y las decisiones del usuario figuran como resueltas;
+  - README: el apartado "No incluido" ya no lista los usuarios ni las contraseñas.
+
 ### Documentación en inglés y castellano
 - **`README.md` pasa a estar en inglés**, que es lo que muestran GitHub y npm. El castellano queda en `README.es.md`. Cada uno lleva arriba un enlace al otro y tiene su banner (`banner.svg` en inglés, `banner-es.svg` en castellano).
 - **`docs/en/`**: traducción de toda la documentación técnica, con los mismos nombres de fichero, y `CHANGELOG.en.md`. Todos los ficheros empiezan con el selector de idioma.

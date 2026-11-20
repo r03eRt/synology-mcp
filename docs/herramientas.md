@@ -2,7 +2,7 @@
 
 # Herramientas
 
-78 herramientas en siete grupos (80 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14), Container Manager (8) y administración de DSM (9). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 + 6 = 46); con `SYNOLOGY_READ_ONLY=false` registra las 78. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
+84 herramientas en siete grupos (86 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (18), Container Manager (8) y administración de DSM (12). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 6 + 4 + 6 = 47); con `SYNOLOGY_READ_ONLY=false` registra las 84. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -298,17 +298,18 @@ De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y b
 
 # Download Station
 
-Código: [src/tools/downloadstation.ts](../src/tools/downloadstation.ts). Casi todo usa la API clásica documentada en la guía oficial *Download Station Web API* (`SYNO.DownloadStation.Info`, `.Statistic` y `.Task` v3, por `DownloadStation/*.cgi`) con la misma sesión que File Station. **`downloads_add`, los ficheros de un torrent y RSS usan la API nueva `SYNO.DownloadStation2.*`** (por `entry.cgi`), sin documentar, la que usa la web de DSM: `Task create` devuelve los ids de las tareas creadas y es la única que acepta subir un `.torrent` (ver [api-synology.md](api-synology.md#download-station)).
+Código: [src/tools/downloadstation.ts](../src/tools/downloadstation.ts). Casi todo usa la API clásica documentada en la guía oficial *Download Station Web API* (`SYNO.DownloadStation.Info`, `.Statistic` y `.Task` v3, por `DownloadStation/*.cgi`) con la misma sesión que File Station. **`downloads_add`, los ficheros de un torrent, RSS, la búsqueda de torrents y los ajustes (límites y horario) usan la API nueva `SYNO.DownloadStation2.*`** (por `entry.cgi`), sin documentar, la que usa la web de DSM: `Task create` devuelve los ids de las tareas creadas y es la única que acepta subir un `.torrent` (ver [api-synology.md](api-synology.md#download-station)).
 
 **Destinos**: el MCP usa rutas del NAS (`/home/Descargas`). Download Station las quiere sin la barra inicial (`home/Descargas`); la conversión es automática en las dos direcciones. La carpeta tiene que existir.
 
 **Permisos**: el usuario necesita acceso a la aplicación Download Station (*Panel de control → Privilegios de aplicaciones*). Un administrador ve y gestiona las tareas de todos los usuarios (`is_manager: true`); un usuario normal, solo las suyas.
 
-## Lectura (5)
+## Lectura (6)
 
 | Herramienta | API | Parámetros | Qué hace |
 |---|---|---|---|
-| `downloads_info` | `Info getinfo` + `Info getconfig` + `Statistic getinfo` | — | Versión, `is_manager`, destino por defecto, límites de velocidad (KB/s, 0 = sin límite), velocidad total actual, eMule y extracción automática |
+| `downloads_info` | `Info getinfo` + `Info getconfig` + `Statistic getinfo` + `DownloadStation2.Settings.Scheduler get` (desde 0.12.0) | — | Versión, `is_manager`, destino por defecto, límites de velocidad (KB/s, 0 = sin límite), velocidad total actual, eMule y extracción automática. Para los gestores de Download Station, además `queue` (`max_active_tasks`, `max_allowed`, `order`) y `schedule` (`enabled`, `plan` por días si está activo, `limited_kbps`). Si el usuario no puede leer el horario, esos dos campos no salen |
+| `downloads_search` | `DownloadStation2.BTSearch start` → `list` (cada 2 s) + `list_category` → `stop` | `keyword`, `category`, `limit` (20, máx. 100), `wait_seconds` (30, máx. 120) | Busca torrents con los motores de búsqueda activos en Download Station (*Ajustes → Búsqueda BT*). Espera a que terminen o a `wait_seconds` y devuelve los resultados ordenados por semillas: `title`, `size`, `date`, `seeds`, `peers`, `engine`, `category`, `url` (para `downloads_add`) y `page`. Siempre para la búsqueda en el NAS al acabar. *Open world*: el NAS consulta las webs de torrents |
 | `downloads_list` | `Task list` (`additional=detail,transfer`) | `status` (lista), `type`, `query` (texto en el título), `stalled`, `offset`, `limit` (50 por defecto) | Tareas con estado, progreso, tamaño, bajado/subido, velocidades, destino y fechas. Devuelve también `by_status` (cuántas hay en cada estado) y `stalled` (cuántas están muertas). Cada tarea muerta lleva `stalled: true` |
 | `downloads_get` | `Task getinfo` (`detail,transfer,file,tracker`) | `ids` | Detalle completo: URL de origen, propietario, pares, ficheros del torrent y trackers. Las claves privadas de las URL se ocultan (`<redacted>`) |
 | `downloads_files` | `DownloadStation2.Task.BT.File list` v2 | `id`, `offset`, `limit` (200) | Ficheros de un torrent con `index`, `name`, `size`, `progress_pct`, `priority` y `wanted` |
@@ -320,7 +321,7 @@ Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_chec
 
 `downloads_list` descarga la lista entera y filtra y pagina en el MCP, porque la API no filtra por estado ni por texto y su `total` paginado no da el número real de tareas. Con 300 tareas tarda menos de un segundo.
 
-## Escritura (9)
+## Escritura (11)
 
 | Herramienta | API | Parámetros | Qué hace |
 |---|---|---|---|
@@ -333,6 +334,8 @@ Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_chec
 | `downloads_rss_add` | `DownloadStation2.RSS.Feed add` | `url` | Suscribirse a un feed; devuelve su `id`. El NAS lo descarga al momento. *Open world* |
 | `downloads_rss_refresh` | `RSS.Feed update` (`id`) / `updateall` | `ids` (opcional) | Volver a leer los feeds indicados o todos |
 | `downloads_rss_delete` | `RSS.Feed delete` | `ids` | Quitar suscripciones. Las descargas ya añadidas desde ellas no se tocan. Destructiva |
+| `downloads_set_limits` | `DownloadStation2.Settings.BT set` (`max_download_rate`, `max_upload_rate`), `.FtpHttp set` (`ftp_http_max_download_rate`), `.Nzb set` (`max_download_rate`), `.Scheduler set` (`max_tasks`) | `bt_down`, `bt_up`, `http_down`, `nzb_down` (KB/s, 0 = sin límite), `max_active_tasks` (1–80, o el máximo del NAS) | Cambia solo lo que se da y devuelve los valores que quedan en el NAS. Necesita un gestor de Download Station (administrador). Idempotente |
+| `downloads_set_schedule` | `DownloadStation2.Settings.Scheduler get` + `set` (`enable_schedule`, `schedule`, `download_rate`, `upload_rate`) | `enabled`, `start_from` (`full`/`limited`/`off`: rellena toda la semana), `rules` (`[{days, from, to, mode}]`), `limited_down`, `limited_up` (KB/s) | Horario semanal: en qué horas descarga a toda velocidad, a la velocidad limitada o nada. Las reglas se aplican en orden sobre el horario actual (o sobre `start_from`) y gana la última. `days` admite `sun`…`sat`, `weekdays`, `weekend` y `all`; `to` es exclusivo y si `to` <= `from` sigue al día siguiente (22 → 6). Devuelve el horario resultante por días. Idempotente |
 
 `downloads_add`:
 - Las URL van en una sola llamada (`type="url"`, `url=[...]`). Cada `.torrent` va en su propia llamada multipart, con el fichero en una parte llamada `torrent` y `file=["torrent"]`.
@@ -354,7 +357,11 @@ Los nombres de fichero no se tocan.
 
 Pausar, reanudar y borrar devuelven `{ done: [ids], failed: [{ id, error }] }`: la API responde por cada id, y un id inexistente no hace fallar a los demás.
 
-No incluido (por ahora): búsqueda de torrents (`BTSearch`), filtros RSS de descarga automática, límites de velocidad y horario.
+**Horario**: `Settings.Scheduler` guarda la semana como 168 caracteres, uno por hora: índice = día × 24 + hora, con el domingo como día 0. `0` = no descargar, `1` = toda velocidad, `2` = limitada a `download_rate`/`upload_rate`. El MCP no expone la cadena: la convierte en reglas al escribir (`applyScheduleRules`) y en rangos por día al leer (`summarizeSchedule`, una sola línea `every_day` si todos los días son iguales).
+
+**Búsqueda**: los resultados dependen de los motores instalados en Download Station. En el NAS de pruebas hay cuatro (1337x, un espejo de 1337x, The Pirate Bay y EZTV), pero el 2026-11-20 solo respondía The Pirate Bay. Las URL magnet pasan por `redactUrl` como las demás.
+
+No incluido (por ahora): filtros RSS de descarga automática, instalar o activar motores de búsqueda, eMule y los ajustes de BitTorrent que no son de velocidad (puertos, DHT, ratio de compartición).
 
 # Container Manager (Docker)
 
@@ -405,17 +412,22 @@ Código: [src/tools/admin.ts](../src/tools/admin.ts), desde 0.11.0. Todas necesi
 | `dsm_scheduled_tasks` | `Core.TaskScheduler list` v3 + `get_history_status_list` por tarea | — | `id`, `name`, `type`, `owner` (`real_owner`), `enabled`, `next_run`, `last_run` (inicio, fin, `exit_code` y `ok`/`failed`) y, en los scripts, `command_preview` sin secretos |
 | `dsm_services` | `get` de `Core.FileServ.SMB`, `.AFP`, `.NFS`, `.FTP`, `Core.Terminal` y `Core.Web.DSM` | — | Estado de SMB (con versión mínima), AFP, NFS, FTP/FTPS, SSH (con puerto), Telnet y DSM web (puertos, redirección a HTTPS y HSTS). Además, `warnings` cuando: se permite SMB1 (`smb_min_protocol=0`), hay FTP sin cifrar, Telnet está activo, no hay redirección a HTTPS o SSH usa el puerto 22 |
 
-## Escritura (3)
+## Escritura (6)
 
-Solo con `SYNOLOGY_READ_ONLY=false`. **No probadas contra el NAS real**, porque cambian permisos o ejecutan scripts. Se probaron con el NAS simulado y con los mismos parámetros que manda la web.
+Solo con `SYNOLOGY_READ_ONLY=false`. **No probadas contra el NAS real**, porque cambian permisos, cuentas o ejecutan scripts. Se probaron con el NAS simulado y con los mismos parámetros que manda la web. Excepción: las de usuarios (`dsm_create_user`, `dsm_update_user`, `dsm_delete_user`). Probadas en el NAS real el 2026-11-20 con un usuario desechable: crearlo con contraseña generada, entrar con ella, cambiarla (la antigua da 400 y la nueva entra), desactivarlo (al entrar da 401, "Account disabled") y borrarlo. También se comprobó que se niega a borrar la cuenta del MCP. No se probó en el NAS real añadir o quitar grupos.
 
 | Herramienta | API | Parámetros | Notas |
 |---|---|---|---|
 | `dsm_set_task_enabled` | `Core.TaskScheduler set_enable` v2 (`status=[{id, real_owner, enable}]`) | `ids`, `enabled` | Idempotente. Da error si algún id no existe |
 | `dsm_run_task` | `Core.TaskScheduler run` v2 (`tasks=[{id, real_owner}]`) | `ids` | **Destructiva**: ejecuta el script, a menudo como root. Rechaza las tareas con `can_run: false` (las de sistema). No incluye las tareas por evento (`EventScheduler`) |
 | `dsm_set_share_access` | `Core.Share.Permission set_by_user_group` (`name`, `user_group_type=local_user` o `local_group`, `permissions=[{name: carpeta, is_writable, is_readonly, is_deny, is_custom: false}]`) | `name`, `type` (`user`/`group`), `shares`, `access` (`read-write`/`read-only`/`deny`/`none`) | **Destructiva**: cambia quién ve qué. `none` quita el permiso explícito |
+| `dsm_create_user` (0.12.0) | `Core.User get` (¿existe? 3106 = no) + `Core.User.PasswordPolicy check` + `Core.User create` (`name`, `password`, `description`, `email`, `cannot_chg_passwd`, `expired="normal"`, `notify_by_email=false`) + `Core.User.Group join` (`join_group`, `leave_group`) + `Core.User.UsernamePolicy list` | `name`, `password` (opcional), `description`, `email`, `groups`, `cannot_change_password` | Crea un usuario local, siempre en `users` y en los grupos que se den. Sin `password`, genera una de 20 caracteres y la devuelve **una sola vez** (`generated_password`); la que se da no se devuelve. Avisa si el nombre está en la lista de nombres comunes de DSM (`admin`, `test`, `pi`…). No da acceso a carpetas: eso es `dsm_set_share_access` |
+| `dsm_update_user` (0.12.0) | `Core.User set` (solo los campos que cambian: `description`, `expired="now"`/`"normal"`, `password`) + `Core.User.Group join` | `name`, `description`, `disabled`, `add_groups`, `remove_groups`, `password` o `generate_password` | **Destructiva** (puede dejar a alguien sin acceso). Rechaza desactivar la cuenta del propio MCP o quitarla de `administrators`, y quitar a nadie de `users` |
+| `dsm_delete_user` (0.12.0) | `Core.User get` por usuario + `Core.User delete` (`name=[...]`, hasta 10 min como la web) | `names` | **Destructiva**: DSM borra también la carpeta personal (`/homes/<nombre>`). Rechaza la cuenta del propio MCP, `admin`, `guest` y `root`, y los usuarios que no existen (sin borrar ninguno) |
 
-No incluido: crear, borrar o editar usuarios y grupos, contraseñas, crear o borrar carpetas compartidas, cuotas, cifrado y cambiar los servicios. Son cambios de mucho riesgo; para eso está el Panel de control.
+Contraseñas: las comprueba antes `Core.User.PasswordPolicy check` (3121 = no cumple la política del NAS). La web de DSM las cifra en el navegador (`encryption: ["password"]`); el MCP las manda dentro de la conexión HTTPS o QuickConnect, sin ese cifrado extra, y DSM las acepta (comprobado entrando con la contraseña creada).
+
+No incluido: crear, borrar o editar grupos, renombrar usuarios, cuotas y límites de ancho de banda por usuario, crear o borrar carpetas compartidas, cifrado y cambiar los servicios. Son cambios de mucho riesgo; para eso está el Panel de control.
 
 # Varios NAS
 

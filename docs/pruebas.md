@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-78 pruebas, ~6 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+137 pruebas, ~8 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -122,6 +122,14 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-20, versión 0.12.0 (límites, horario y búsqueda de Download Station; usuarios)
+
+- `npm test`: 137/137. Nuevas: `test/mock/downloads-settings.test.ts` (horario: índices, domingo como día 0, reglas que pasan de medianoche, sábado → domingo; límites; cola por encima del máximo; usuario sin permisos; búsqueda con espera, orden por semillas, filtro por categoría y `stop`) y `test/mock/users.test.ts` (contraseña generada, la dada no se devuelve, nombre común, usuario existente, contraseña débil, desactivar y grupos, no bloquear la cuenta del MCP, no borrarse a sí mismo ni `admin`, usuario inexistente sin borrar nada, solo lectura).
+- `test:real`: 8/8.
+- Contra el NAS real, con el servidor compilado en solo lectura: `downloads_info` (cola 8 de 80, horario desactivado) y `downloads_search` ("ubuntu 24.04": 2 resultados de The Pirate Bay en 11 s; "debian 12 netinst" con `wait_seconds: 10`: 0 resultados).
+- Escrituras de Download Station en el NAS real: solo los mismos valores que había, para comprobar el formato (ver [api-synology.md](api-synology.md)). Un horario de verdad no se ha probado.
+- Usuarios en el NAS real (con permiso del usuario): Probadas en el NAS real el 2026-11-20 con un usuario desechable: crearlo con contraseña generada, entrar con ella, cambiarla (la antigua da 400 y la nueva entra), desactivarlo (al entrar da 401, "Account disabled") y borrarlo. También se comprobó que se niega a borrar la cuenta del MCP. Se usó el servidor compilado sin solo lectura. La contraseña generada nunca se imprimió y el borrado iba en un `finally`. Al final había 17 usuarios, como antes.
 
 ### Resultado 2026-11-20, versión 0.11.0 (administración de DSM)
 

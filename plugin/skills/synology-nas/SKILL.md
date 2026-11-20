@@ -43,12 +43,15 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Share a file with someone | `create_sharing_link` (optional password and expiry). Drive sharing is read-only here: `drive_list_permissions` |
 | Docker containers: what is running, why one is down, its logs | `docker_list`, then `docker_get` (ports, volumes, last health check) and `docker_logs` (admin only). `docker_get` shows only the names of environment variables; never try to obtain their values |
 | Users, groups, who can access what | `dsm_users`, `dsm_groups`, `dsm_shared_folders` (with `share` for its permissions), `dsm_user_access` (admin only) |
+| Create, change or remove a user | `dsm_create_user` (then `dsm_set_share_access` for its folders), `dsm_update_user` (disable, groups, new password), `dsm_delete_user`; confirm first |
 | Is anything insecure? | `dsm_services` (its `warnings`), plus `get_notifications` and `check_updates` |
 | Scheduled tasks | `dsm_scheduled_tasks`; `dsm_set_task_enabled`; `dsm_run_task` only after confirming, since it runs the script (often as root) |
 | Free space | `get_storage_status` (which volume), then `recycle_bins`, `docker_images` (`in_use: false`), `get_dir_size` and `search_files` with `size_from`. Propose; delete only after confirmation with `empty_recycle_bin`, `docker_remove_images` or `delete` |
 | Dead downloads | `downloads_list` with `stalled: true`; remove with `downloads_delete` after confirmation |
 | Only some files of a torrent | `downloads_files`, then `downloads_set_files` with the indexes (`wanted: false` to skip) |
 | RSS feeds | `downloads_rss` (feeds, or a feed's items), `downloads_rss_add`, `downloads_rss_refresh`; add an item with `downloads_add` using its `url` |
+| Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |
+| Download speed, only at night | `downloads_info` shows limits, queue and schedule; `downloads_set_limits`, `downloads_set_schedule` (rules per day and hour: full, limited, off) |
 | Downloads, torrents, magnet links | `downloads_list` / `downloads_get` to look; `downloads_add` (URLs, magnets or local `.torrent` files) to add |
 
 Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `search_files`) wait up to a timeout. If they return `finished: false` and a `taskid`, check again later with `get_task_status` instead of starting the operation again.
@@ -58,6 +61,8 @@ Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `
 - **Read-only mode is the default.** If write tools (`delete`, `copy_move`, `create_folder`, `downloads_add`…) are missing, the server runs read-only. Tell the user to set `SYNOLOGY_READ_ONLY=false` in the server configuration. Don't try to work around it.
 - Before anything destructive, say exactly what will change and wait for the user's go-ahead. Destructive means `delete`, `copy_move` with `move: true` or `on_conflict: "overwrite"`, `overwrite: true` on uploads, writes or extracts, `delete_sharing_links`, `downloads_delete` and `drive_delete_label`. List the paths. For many files, give a count and a sample.
 - `dsm_set_share_access` changes who can see or modify data. State the exact change (user, folders, before → after) and wait for confirmation. Never remove access from the account this server uses or from the only active administrator.
+- Users: before `dsm_create_user` confirm the name, groups and folder access; adding to `administrators` gives full control of the NAS. A generated password is returned once: pass it to the user and do not repeat it later. `dsm_delete_user` also deletes the user's home folder and cannot be undone; offer `dsm_update_user` with `disabled: true` as the reversible option and wait for an explicit yes.
+- `downloads_search` finds what the user asks for; do not add results to Download Station without the user choosing one.
 - `empty_recycle_bin` is permanent: say which bins and how much (from `recycle_bins`) before emptying.
 - `delete` on the NAS may bypass the recycle bin, depending on the share's settings. Treat it as permanent.
 - Prefer moving things into a folder the user can review (for example `/home/to-delete`) over deleting, when the user is unsure.

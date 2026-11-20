@@ -1,6 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { json, type SynologyClient } from "../synology/client.js";
+import { SynologyApiError } from "../synology/errors.js";
 import { redactUrl } from "./downloadstation.js";
 import { humanSize, ok, safe } from "./format.js";
 import { adminOnly } from "./system.js";
@@ -371,4 +373,158 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
       }),
     ),
   );
+
+  // ------------------------------------------------------------------ users
+
+  const userExists = async (name: string) => {
+    try {
+      await client.request("SYNO.Core.User", "get", { action: json("get"), name: json(name) }, 1);
+      return true;
+    } catch (err) {
+      if (err instanceof SynologyApiError && err.code === 3106) return false;
+      throw err;
+    }
+  };
+  const checkPassword = (name: string, description: string, password: string) =>
+    client.request("SYNO.Core.User.PasswordPolicy", "check", { name: json(name), description: json(description), password: json(password) }, 1);
+  const changeGroups = async (name: string, join: string[], leave: string[]) => {
+    if (join.length || leave.length) await client.request("SYNO.Core.User.Group", "join", { name: json(name), join_group: json(join), leave_group: json(leave) }, 1);
+    return (await client.request<{ groups: string[] }>("SYNO.Core.User.Group", "get", { name: json(name) }, 1)).groups;
+  };
+  const self = () => client.accountName().toLowerCase();
+  const BUILT_IN = new Set(["admin", "guest", "root"]);
+  const passwordNote = "Shown only once: give it to the user and ask them to change it at their first sign-in.";
+
+  server.registerTool(
+    "dsm_create_user",
+    {
+      title: "Create a DSM user",
+      description:
+        "Create a local DSM user, optionally adding it to groups (it is always in `users`). Without password, a strong random one is generated and returned once. It gets no explicit access to shared folders: grant it with dsm_set_share_access. Confirm the name, groups and access with the user first. Adding to `administrators` gives full control of the NAS. Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1).max(64).regex(/^[^\s/\\:*?"<>|@+=;,[\]]+$/, "no spaces or / \\ : * ? \" < > | @ + = ; , [ ]").describe("User name"),
+        password: z.string().min(1).max(127).optional().describe("Initial password; omit to generate one"),
+        description: z.string().max(64).optional(),
+        email: z.string().email().optional(),
+        groups: z.array(z.string().min(1)).optional().describe("Extra groups, e.g. [\"family\"]"),
+        cannot_change_password: z.boolean().optional().describe("Forbid the user from changing their password (default false)"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ name, password, description, email, groups, cannot_change_password }) =>
+      adminOnly(async () => {
+        if (await userExists(name)) throw new Error(`User ${name} already exists`);
+        const pass = password ?? generatePassword();
+        await checkPassword(name, description ?? "", pass);
+        await client.request(
+          "SYNO.Core.User",
+          "create",
+          {
+            name: json(name),
+            password: json(pass),
+            description: json(description ?? ""),
+            email: json(email ?? ""),
+            cannot_chg_passwd: cannot_change_password ?? false,
+            expired: json("normal"),
+            notify_by_email: false,
+          },
+          1,
+        );
+        const now = await changeGroups(name, (groups ?? []).filter((g) => g !== "users"), []);
+        const common = await client.request<string[]>("SYNO.Core.User.UsernamePolicy", "list", {}, 1).catch(() => [] as string[]);
+        return ok({
+          created: name,
+          groups: now,
+          ...(!password && { generated_password: pass, note: passwordNote }),
+          ...(common.includes(name.toLowerCase()) && { warning: `"${name}" is a common user name that bots try first; consider a less obvious one.` }),
+        });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_update_user",
+    {
+      title: "Change a DSM user",
+      description:
+        "Change a local DSM user: description, disable or enable the account, add or remove groups, or set a new password (given, or generated and returned once). Refuses to disable this MCP's own account or remove it from administrators. State the exact change and wait for confirmation. Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1).describe("User name"),
+        description: z.string().max(64).optional(),
+        disabled: z.boolean().optional().describe("true disables the account now (it can no longer sign in); false enables it"),
+        add_groups: z.array(z.string().min(1)).optional(),
+        remove_groups: z.array(z.string().min(1)).optional(),
+        password: z.string().min(1).max(127).optional().describe("New password"),
+        generate_password: z.boolean().optional().describe("Generate a new random password and return it once"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ name, description, disabled, add_groups = [], remove_groups = [], password, generate_password }) =>
+      adminOnly(async () => {
+        if (description === undefined && disabled === undefined && !add_groups.length && !remove_groups.length && !password && !generate_password) {
+          throw new Error("Nothing to change");
+        }
+        if (password && generate_password) throw new Error("Give password or generate_password, not both");
+        const isSelf = name.toLowerCase() === self();
+        if (isSelf && disabled) throw new Error(`${name} is the account this MCP signs in with; disabling it would lock the MCP out`);
+        if (isSelf && remove_groups.includes("administrators")) throw new Error(`${name} is the account this MCP signs in with; removing it from administrators would lock the admin tools out`);
+        if (remove_groups.includes("users")) throw new Error("Every user is in the users group; it cannot be removed");
+        if (!(await userExists(name))) throw new Error(`No user ${name}; see dsm_users`);
+        const pass = generate_password ? generatePassword() : password;
+        if (pass) await checkPassword(name, description ?? "", pass);
+        const params: Record<string, string | boolean> = {};
+        if (description !== undefined) params.description = json(description);
+        if (disabled !== undefined) params.expired = json(disabled ? "now" : "normal");
+        if (pass) params.password = json(pass);
+        if (Object.keys(params).length) await client.request("SYNO.Core.User", "set", { name: json(name), ...params }, 1);
+        const groups = await changeGroups(name, add_groups, remove_groups);
+        return ok({
+          user: name,
+          ...(description !== undefined && { description }),
+          ...(disabled !== undefined && { status: disabled ? "disabled" : "active" }),
+          groups,
+          ...(pass && { password_changed: true }),
+          ...(generate_password && { generated_password: pass, note: passwordNote }),
+        });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_delete_user",
+    {
+      title: "Delete DSM users",
+      description:
+        "Delete local DSM users. DSM also deletes their home folder (/homes/<name>) and everything in it, and it cannot be undone: list what will be lost and wait for explicit confirmation. Disabling (dsm_update_user disabled: true) is the reversible alternative. Refuses this MCP's own account and the built-in admin and guest. Needs a DSM administrator account.",
+      inputSchema: { names: z.array(z.string().min(1)).min(1).describe("User names") },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ names }) =>
+      adminOnly(async () => {
+        const own = names.find((n) => n.toLowerCase() === self());
+        if (own) throw new Error(`${own} is the account this MCP signs in with; it cannot delete itself`);
+        const builtIn = names.filter((n) => BUILT_IN.has(n.toLowerCase()));
+        if (builtIn.length) throw new Error(`Built-in accounts cannot be deleted: ${builtIn.join(", ")} (disable them instead)`);
+        const missing: string[] = [];
+        for (const n of names) if (!(await userExists(n))) missing.push(n);
+        if (missing.length) throw new Error(`No such user: ${missing.join(", ")}; see dsm_users`);
+        // The web UI allows up to 10 minutes: deleting removes the home folders.
+        await client.request("SYNO.Core.User", "delete", { name: json(names) }, 1, { timeoutMs: 600_000 });
+        return ok({ deleted: names });
+      }),
+    ),
+  );
+}
+
+/** 20 random characters with upper, lower, digits and symbols (meets any DSM strong-password policy). */
+export function generatePassword(length = 20): string {
+  const sets = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz", "23456789", "!#%+-.:=?_"];
+  const all = sets.join("");
+  const chars = sets.map((s) => s[randomInt(s.length)]);
+  while (chars.length < length) chars.push(all[randomInt(all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
 }

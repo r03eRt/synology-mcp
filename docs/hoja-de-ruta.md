@@ -73,12 +73,12 @@ Necesaria antes de que lo use nadie más.
 - 2.3: skill `synology-nas` dentro del plugin.
 - 2.4: `npm run pack:mcpb` genera la extensión, que pasa `mcpb validate`. Falta instalarla en Claude Desktop y comprobar su versión de Node.
 - 2.5: el README se ha reescrito para quien instala: usuario de DSM, instalación por las tres vías, configuración y ejemplos. Está en español; la versión en inglés depende de la decisión de publicarlo.
-- 2.6: GitHub Actions; no se ha ejecutado porque aún no hay remoto.
+- 2.6: GitHub Actions; se ejecuta en cada *push* al repositorio de GitHub y pasa (comprobado el 2026-11-20).
 - Corregido de paso: el mínimo de Node es 22.19 (lo exige undici 8), no 20.
 
 ## Fase 3: completar lo que ya existe
 
-- [~] **3.1 Download Station** (M). En 0.9.0: elegir ficheros, contraseña de extracción, RSS y descargas muertas. Pendiente: límites y horario, y BTSearch.
+- [x] **3.1 Download Station** (M). En 0.9.0: elegir ficheros, contraseña de extracción, RSS y descargas muertas. En 0.12.0: límites de velocidad, cola y horario (`downloads_set_limits`, `downloads_set_schedule`) y búsqueda de torrents (`downloads_search`).
   - elegir qué ficheros de un torrent bajar;
   - contraseña de extracción con la API nueva;
   - límites de velocidad y horario;
@@ -102,7 +102,7 @@ Ordenadas por utilidad probable.
 - [ ] **4.1 Synology Photos** (L). Álbumes, búsqueda por fecha, persona o lugar, y crear álbumes y añadir fotos. No hay especificación oficial: hay que sacarla de la web de Photos.
 - [x] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros. Hecho en 0.8.0, junto con las imágenes.
 - [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia.
-- [x] **4.4 Administración de DSM** (L). Hecho en 0.11.0: lectura de usuarios, grupos, carpetas y permisos, tareas y servicios (con avisos); activar o ejecutar tareas y cambiar permisos. Sin crear ni borrar usuarios o carpetas.
+- [x] **4.4 Administración de DSM** (L). Hecho en 0.11.0: lectura de usuarios, grupos, carpetas y permisos, tareas y servicios (con avisos); activar o ejecutar tareas y cambiar permisos. En 0.12.0: crear, cambiar (desactivar, grupos, contraseña) y borrar usuarios. Sin crear ni borrar grupos o carpetas compartidas.
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.
 - [x] **4.6 QuickConnect** (M). Hecho en 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, con red local, conexión directa o relé.
 - [x] **4.7 Varios NAS** (M). Hecho en 0.10.0 con `SYNOLOGY_NAS_FILE`, `list_nas` y `use_nas` (NAS activo, en vez de un parámetro en cada herramienta). Pendiente: configurarlo desde el plugin.
@@ -116,8 +116,8 @@ Descartados por ahora: MailPlus y Calendar (no instalados en este NAS) y Spreads
 3. 2.4 (Claude Desktop) y 2.6 (CI).
 4. Fases 3 y 4 según interés, cada herramienta nueva con su prueba en `test/mock/` y su documentación.
 
-## Decisiones pendientes del usuario
+## Decisiones del usuario (resueltas)
 
-- Cómo se guardan las credenciales (1.3).
-- Si se publica en npm y GitHub como público, o se queda privado.
-- Idioma del README público (español, inglés o los dos).
+- Credenciales (1.3): por variables de entorno, el formulario del plugin o el de la extensión de Claude Desktop.
+- Publicación: repositorio público en GitHub; npm pendiente de `npm publish`, que hace el usuario.
+- Idioma: los dos. El README de GitHub y npm en inglés, `README.es.md` en castellano, y toda la documentación en los dos idiomas.
