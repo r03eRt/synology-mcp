@@ -4,6 +4,18 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.7.0: salud del NAS
+- 4 herramientas nuevas en `src/tools/health.ts`, de solo lectura y solo para administradores:
+  - `get_disk_health`: SMART por disco, con la tendencia de los sectores defectuosos y los atributos clave o que fallan.
+  - `check_updates`: actualización de DSM (y si es de seguridad) y paquetes con versión nueva.
+  - `get_notifications`: notificaciones del escritorio de DSM.
+  - `get_system_logs`: registros del sistema o de conexiones, con filtros.
+- `get_system_info` devuelve `health`, el veredicto del widget "Salud del sistema" de DSM.
+- Las APIs se sacaron del JavaScript de la web de DSM servido por el NAS. Hallazgos en `docs/api-synology.md`: SMART pide la ruta del dispositivo (`/dev/sda`), `smartInfo` va dentro de `healthInfo`, y el `total` de los registros no respeta el nivel.
+- La skill orienta a Claude sobre cuándo usarlas y cómo leer los sectores defectuosos.
+- 53 herramientas (33 en solo lectura). Pruebas: 88.
+- Visto en el NAS: actualización de seguridad DSM 7.4.1 Update 2 pendiente; 3 paquetes por actualizar (WordPress 6.1 → 6.8); el Disco 1 tiene 8 sectores reasignados, estables; la renovación del certificado falla según el registro.
+
 ### 0.6.2: tabla de estados de Download Station corregida
 - La 0.6.1 traducía los estados numéricos por el orden de la guía, y era incorrecto: 8 es `seeding`, no `filehosting_waiting`. Se vio al usar el MCP tras reiniciar Claude, con una descarga que se estaba compartiendo.
 - Ahora se usa la tabla `TASK_STATUS_INT` de la web de Download Station: 1–15 son estados (incluye `pre_seeding` y otros internos) y 101–134 errores, que se devuelven como `error` con su causa. `downloads_list` admite filtrar por los estados nuevos.

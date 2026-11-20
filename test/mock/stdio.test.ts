@@ -32,7 +32,7 @@ describe("stdio entry point", () => {
     const client = await start();
     try {
       const tools = (await client.listTools()).tools;
-      assert.equal(tools.length, 29);
+      assert.equal(tools.length, 33);
       assert.ok(tools.every((t) => t.annotations?.readOnlyHint === true));
     } finally {
       await client.close();
@@ -43,7 +43,7 @@ describe("stdio entry point", () => {
     const client = await start({ SYNOLOGY_READ_ONLY: "false" });
     try {
       assert.equal(client.getServerVersion()?.name, "synology");
-      assert.equal((await client.listTools()).tools.length, 49);
+      assert.equal((await client.listTools()).tools.length, 53);
       const r = await client.callTool({ name: "get_info", arguments: {} });
       assert.match((r.content as Array<{ text: string }>)[0].text, /mock-nas/);
     } finally {

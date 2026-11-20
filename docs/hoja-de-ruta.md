@@ -86,7 +86,7 @@ Necesaria antes de que lo use nadie más.
   - cambiar permisos de compartición;
   - crear enlaces de Drive;
   - *file requests*.
-- [ ] **3.3 Estado del sistema** (M):
+- [x] **3.3 Estado del sistema** (M) — hecho en 0.7.0 salvo reiniciar y apagar, que se dejan fuera a propósito: son acciones con mucho impacto y la web de DSM ya las hace con confirmación.:
   - notificaciones y registros del NAS;
   - estado SMART por disco;
   - actualizaciones de DSM y de paquetes disponibles;

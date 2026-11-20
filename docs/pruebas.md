@@ -25,6 +25,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 | `test/mock/downloadstation.test.ts` | `get_system_info` detecta Download Station; `downloads_info`; `downloads_list` (recuento por estado, filtro por estado, tipo y texto, paginación, progreso y error); `downloads_get` (ficheros, pares, 404); `downloads_add` (API nueva v2: varias URL en una llamada con parámetros JSON, destino sin barra, destino por defecto si no se da, `.torrent` subido en la parte `torrent`, validación de ficheros, error 403 legible, destino sin `/` rechazado); `downloads_set_destination` (y el 100 explicado); pausar, reanudar y borrar con resultados por id (544) y `force_complete` |
 | `test/unit/release.test.ts` | Misma versión en `package.json`, servidor, plugin y extensión; mismas variables y campos en plugin y extensión; contraseña y token sensibles; solo lectura por defecto; el marketplace apunta al plugin |
 | `test/mock/bundle.test.ts` | El servidor en un solo fichero (`plugin/server/synology-mcp.cjs`) por stdio con un entorno mínimo: 29 herramientas (solo lectura), `get_info`, login Noise v7 con `sodium-javascript` |
+| `test/mock/health.test.ts` | `compareVersions` y `decodeNotifyParams`. Con el NAS simulado: `get_disk_health` (ruta del dispositivo, o 117 como DSM; sin números de serie; tendencia estable y creciendo; atributos clave y que fallan; filtro por disco y disco inexistente), `check_updates` (DSM de seguridad; paquetes más nuevos, sin betas ni versiones más antiguas), `get_notifications` (decodificación, orden y filtro), `get_system_logs` (filtros, fechas locales, `total` por nivel) y el mensaje del 105 en las cuatro |
 | `test/mock/stdio.test.ts` | El punto de entrada real (`src/index.ts`) por stdio: sin `SYNOLOGY_READ_ONLY` expone solo las 29 de lectura; con `false` lista 49 y llama a `get_info`; `register-device <código>` contra un NAS con 2FA imprime `SYNOLOGY_DEVICE_ID=…`; sin variables de entorno sale con código 1 y el mensaje de error |
 
 **NAS simulado** (`test/helpers/mock-nas.ts`): servidor HTTP en un puerto libre de `127.0.0.1` que implementa `SYNO.API.Info`, `SYNO.API.Auth` v6 y v7 con el **lado servidor del handshake Noise IK** (usa la misma librería `noise-protocol`), sesiones y comprobación de `X-SYNO-TOKEN` (si falta o no coincide, responde 119 como DSM). Cada prueba registra las respuestas de las APIs que usa con `on(api, method, handler)`; el handler puede devolver datos, lanzar `SynoError(code, errors)` o devolver `RawBody` para descargas. Todas las llamadas quedan en `calls` para comprobar los parámetros enviados, incluidos los campos multipart de las subidas. Sustituye al simulador antiguo (puerto 5999, solo v6), que no estaba en el repositorio.
@@ -77,6 +78,15 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - Tras reiniciar Claude, el MCP 0.6.1 ocultaba bien la clave, pero daba `filehosting_waiting` para una tarea en `seeding`. La causa era la tabla de estados deducida; ver [api-synology.md](api-synology.md).
 - El NAS simulado imita ahora a DS 4.1.2: `getinfo` con varios ids da texto en la primera tarea y número en las demás.
 - `npm test`: 81/81. Contra el NAS real, `downloads_get` de seis tareas da `downloading` ×2, `hash_checking` y `seeding` ×3, igual que `Task list`.
+
+### Resultado 2026-11-20, versión 0.7.0 (salud del NAS)
+
+- `npm test`: 88/88. `test:real` con `.env.admin`: 5/5. La prueba de herramientas de administrador incluye ahora las cuatro nuevas.
+- Salida real revisada con el bundle. Al revisarla se encontraron y corrigieron dos fallos que la prueba simulada no veía porque copiaba mi suposición:
+  - `smartInfo` está dentro de `healthInfo`: salían 0 atributos;
+  - `total` de los registros no respeta `level`.
+
+  Tras el arreglo, el NAS simulado reproduce la estructura real.
 
 ## Pruebas manuales anteriores (históricas)
 

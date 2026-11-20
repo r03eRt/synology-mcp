@@ -11,7 +11,7 @@
 
 Crear un usuario específico (por ejemplo `mcp`) que:
 
-- No sea administrador. Todas las herramientas funcionan sin serlo, incluidas `compress` y `extract` (ver [autenticacion.md](autenticacion.md)), salvo `get_system_utilization` y `get_storage_status`, que devuelven un error explicativo. Usar una cuenta administradora solo para tenerlas es un compromiso: da al MCP acceso de administrador a todo el NAS.
+- No sea administrador. Todas las herramientas funcionan sin serlo, incluidas `compress` y `extract` (ver [autenticacion.md](autenticacion.md)), salvo las de estado y salud del NAS que solo puede leer un administrador (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), que devuelven un error explicativo. Usar una cuenta administradora solo para tenerlas es un compromiso: da al MCP acceso de administrador a todo el NAS.
 - Tenga permiso de lectura o lectura/escritura solo sobre las carpetas compartidas que se quieran exponer.
 
 El MCP solo puede hacer lo que DSM permita a ese usuario. Es la principal barrera de seguridad.
@@ -35,7 +35,7 @@ El resultado queda en `dist/index.js`.
 | `SYNOLOGY_USERNAME` | sí | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | sí | — | Contraseña |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` acepta un certificado HTTPS no válido (autofirmado, caducado o emitido para otro nombre). Solo en una red de confianza |
-| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 29 herramientas de lectura (12 de File Station, 3 de estado del NAS, 11 de Drive y 3 de Download Station). `false` registra también las 20 de escritura |
+| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 33 herramientas de lectura (12 de File Station, 7 de estado y salud del NAS, 11 de Drive y 3 de Download Station). `false` registra también las 20 de escritura |
 | `SYNOLOGY_DEVICE_ID` | no | — | Token de dispositivo para cuentas con 2FA (lo da `synology-mcp register-device`). Es secreto, como la contraseña |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Nombre con el que se registró el dispositivo; tiene que coincidir con el del registro |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | no | `60000` | Tiempo máximo que una herramienta espera a una tarea en segundo plano antes de devolver su `taskid` |

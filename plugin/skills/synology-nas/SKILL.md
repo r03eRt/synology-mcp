@@ -30,7 +30,10 @@ For files, call `list_shares` before guessing paths.
 | Read a document or see an image | `read_file` (text and images, up to 1 MB by default). For big or binary files use `download_file` to a local folder |
 | Put a local file on the NAS | `upload_file`. For text you generate, `write_text_file` |
 | Space used by a folder | `get_dir_size` |
-| Disk space, disk health, RAID | `get_storage_status` (admin only) |
+| Disk space, volumes, RAID | `get_storage_status` (admin only) |
+| Is a disk failing? Bad sectors, SMART | `get_disk_health` (admin only). Reallocated sectors that stay stable are usually fine; growing bad sectors or pending/uncorrectable sectors mean "back up and plan a replacement" |
+| Pending DSM or package updates | `check_updates` (admin only). Only reports; installing needs the DSM web UI |
+| What went wrong recently, failed sign-ins | `get_notifications`, then `get_system_logs` (`type: "connection"` for sign-ins), filtered by `level`, `keyword` and dates (admin only) |
 | CPU, RAM, network now | `get_system_utilization` (admin only) |
 | Recent, starred, shared-with-me files, labels | `drive_*` tools. File Station has no such metadata |
 | Share a file with someone | `create_sharing_link` (optional password and expiry). Drive sharing is read-only here: `drive_list_permissions` |
@@ -50,9 +53,15 @@ Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `
 ## Common requests
 
 - **"How is the NAS?" / "¿Cómo está el NAS?"**
-  1. Call `get_system_info`.
-  2. If the account is an admin, also call `get_storage_status` and `get_system_utilization`.
-  3. Report temperature, volume usage (warn above about 85 %), any degraded or failing disk (bad sectors, SMART), and anything abnormal in `suggestions`.
+  1. Call `get_system_info`. Its `health` field is DSM's own verdict.
+  2. If the account is an admin, also call `get_storage_status`, `get_disk_health`, `check_updates` and `get_notifications` (`level: "error"`).
+  3. Report:
+     - temperature;
+     - volume usage (warn above about 85 %);
+     - any degraded or failing disk, with the bad-sector trend;
+     - pending security updates;
+     - recent errors;
+     - anything abnormal in `suggestions`.
 - **"Free up space"**
   1. Call `get_storage_status` or `list_shares` to see which volume is full.
   2. Call `get_dir_size` on the main folders.

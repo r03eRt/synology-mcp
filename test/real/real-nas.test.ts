@@ -61,8 +61,15 @@ describe("real NAS", { skip }, () => {
   });
 
   test("admin-only tools work for admins and explain the 105 otherwise", async () => {
-    for (const name of ["get_system_utilization", "get_storage_status"]) {
-      const r = await h.call(name);
+    for (const [name, args] of [
+      ["get_system_utilization", {}],
+      ["get_storage_status", {}],
+      ["get_disk_health", {}],
+      ["check_updates", {}],
+      ["get_notifications", { limit: 3 }],
+      ["get_system_logs", { limit: 3 }],
+    ] as const) {
+      const r = await h.call(name, args);
       if (isAdmin) {
         assert.equal(r.isError, false, r.text);
         assert.doesNotMatch(r.text, /serial/i);

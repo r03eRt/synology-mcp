@@ -126,6 +126,38 @@ Se añadió con `downloads_add` un `.torrent` real (un fichero de unos 30 GB) de
 
 Un paquete no instalado no anuncia sus APIs en `SYNO.API.Info`, así que llamarlas da 102. En este NAS aparecen las de Drive (`SYNO.SynologyDrive.*`), Download Station (`SYNO.DownloadStation*`) y Photos (`SYNO.Foto.*`). `get_system_info` lo resume en `packages` y `describeError` convierte el 102 de esas familias en "¿está instalado X?". El 105 en ellas suele ser que el usuario no tiene la aplicación permitida, no un problema de la sesión.
 
+## Salud del NAS (0.7.0)
+
+Ninguna de estas APIs está documentada. Los métodos y parámetros se sacaron del JavaScript de la web de DSM, que el NAS sirve sin sesión:
+
+- `webman/modules/SystemInfoApp/SystemHealthWidget.js`
+- `webman/modules/AdminCenter/admin_center.js` (actualizaciones)
+- `webman/modules/LogCenter/synosyslog.js`
+- `webman/modules/PkgManApp/PkgManApp.js`
+- `webman/3rdparty/StorageManager/storage_panel.js` (SMART)
+
+Para saber qué ficheros cargar, se mira el `config` de cada módulo. Todo se probó contra el NAS real con la cuenta admin el 2026-11-20.
+
+- **SMART** (`SYNO.Storage.CGI.Smart get_health_info`, v1):
+  - El parámetro `device` es la **ruta del dispositivo** (`/dev/sda`, campo `device` de los discos en `load_info`). Con el id (`sda`) o con `/dev/sata1` da el error **117**; `list` no existe (121).
+  - La respuesta va dentro de `healthInfo`, con `overview` (estado, `unc` = sectores defectuosos, `poweron` en horas, `remain_life.value` = -1 si no se conoce), `history.incremental.unc`, la serie de sectores defectuosos de las últimas comprobaciones (12 en este NAS), y `smartInfo` con los atributos. `smartInfo` está **dentro** de `healthInfo`, no al lado: la primera versión lo buscaba fuera y devolvía la lista vacía.
+- **Salud del sistema**: `SYNO.Core.System.SystemHealth get` devuelve `rule.id`, por ejemplo `storage_is_attention` en este NAS por el volumen casi lleno. Devuelve también la IP y el nombre del NAS, que el MCP no expone.
+- **Actualizaciones**:
+  - `SYNO.Core.Upgrade.Server check` v3, con `user_reading`, `need_auto_smallupdate` y `need_promotion` como la web. Devuelve `update.available`, `version`, `reboot` (`now` = necesita reiniciar) y `version_details.isSecurityVersion`.
+  - Para los paquetes no hay un "hay actualizaciones": la web compara el catálogo (`SYNO.Core.Package.Server list` v2, que va a Internet) con los instalados (`SYNO.Core.Package list` v2). El MCP compara las versiones numéricamente por partes (`24.0.2-1706` < `24.0.2-1707`) e ignora las betas.
+  - En este NAS: DSM 7.4.1 Update 2 (de seguridad) y tres paquetes (Container Manager, DHCP Server y WordPress 6.1 → 6.8).
+- **Notificaciones**: `SYNO.Core.DSMNotify notify` con `action=load`.
+  - Devuelve `items` con `time` (Unix), `level` (`NOTIFICATION_INFO`/`WARN`/`ERROR`), `title` (clave del evento) y `msg`: una lista con **un JSON en texto** de variables `%NOMBRE%`, cuyos valores a veces vuelven a ir entre comillas JSON.
+  - `SYNO.Core.DSMNotify.Strings get` devuelve `{}`, así que no sirve para traducir las claves.
+- **Registros**: `SYNO.Core.SyslogClient.Log list` v1 con `target=LOCAL`, `logtype`, `level`, `keyword`, `date_from`/`date_to` (Unix), `start`, `limit` y `dir`.
+  - `logtype` admite `system` y `connection`. `package` y `fileTransfer` dan 0 resultados, y `system,connection` da error 5017.
+  - **`total` tiene en cuenta `keyword` y las fechas, pero no `level`.** Los contadores `infoCount`, `warnCount` y `errorCount` sí son los totales por nivel; el MCP usa el del nivel pedido.
+  - Las fechas sueltas se interpretan en hora local. `Date.parse("2026-11-19")` es medianoche UTC, pero `"2026-11-19T23:59:59"` es hora local; mezclarlas daba un día de 23 horas. Lo detectó la prueba simulada.
+- Lo que se vio en el NAS:
+  - el certificado: "Failed to automatically renew" en el registro del sistema, dos veces el 19 de noviembre;
+  - el Disco 1, con 8 sectores defectuosos ya reasignados (atributo 5 = 8, pendientes e incorregibles a 0) y estables en las 12 últimas comprobaciones;
+  - unas 59.500 horas encendidos los dos discos.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

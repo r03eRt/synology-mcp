@@ -14,7 +14,7 @@ Claude solo puede hacer lo que permita el usuario de DSM que configures, así qu
 2. En *Permisos*, dale acceso de lectura (o lectura y escritura) solo a las carpetas compartidas que quieras que Claude vea.
 3. En *Aplicaciones*, permítele File Station y, si los vas a usar, Synology Drive y Download Station.
 
-Con un usuario normal funciona todo salvo `get_system_utilization` y `get_storage_status`, que necesitan un administrador.
+Con un usuario normal funciona todo salvo las herramientas de estado y salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications` y `get_system_logs`), que necesitan un administrador.
 
 **Cuenta con verificación en dos pasos (2FA):** ejecuta esto una vez para registrar Claude como dispositivo de confianza. Te pedirá el código del autenticador:
 
@@ -81,6 +81,7 @@ Para no dejar la contraseña en la configuración del cliente, guárdala en un f
 ## 4. Pídele cosas a Claude
 
 - «¿Cómo está el NAS? ¿Algún disco con problemas?»
+- «¿Hay actualizaciones pendientes? ¿Qué errores ha habido esta semana?»
 - «Busca los PDF de facturas de 2024 en /home y dime cuánto ocupan.»
 - «¿Qué carpetas ocupan más en /video?»
 - «Lee /home/notas/lista.txt y resúmela.»
@@ -132,6 +133,10 @@ Las rutas del NAS empiezan siempre por una carpeta compartida: `/photo/2024/foto
 | `get_system_info` | Modelo, versión de DSM, RAM, temperatura, uptime (no requiere admin) |
 | `get_system_utilization` | CPU, RAM, red y E/S de discos en vivo (requiere admin) |
 | `get_storage_status` | Grupos de almacenamiento, volúmenes (espacio libre, avisos) y salud de los discos (requiere admin) |
+| `get_disk_health` | SMART de cada disco: sectores defectuosos y su tendencia, horas encendido, temperatura, atributos que fallan (requiere admin) |
+| `check_updates` | Actualización de DSM disponible (y si es de seguridad) y paquetes con versión nueva (requiere admin) |
+| `get_notifications` | Notificaciones de DSM: errores, avisos, descargas terminadas… (requiere admin) |
+| `get_system_logs` | Registros del sistema o de conexiones, con filtros por nivel, texto y fecha (requiere admin) |
 
 **Synology Drive** (rutas `/mydrive/...` = `/home/Drive`, `/team-folders/<nombre>/...` o `id:<file_id>`)
 
@@ -181,6 +186,7 @@ src/
   synology/noise.ts        handshake Noise del login de DSM 7.2
   tools/filestation.ts     herramientas MCP de File Station
   tools/system.ts          get_system_info, get_system_utilization, get_storage_status
+  tools/health.ts          get_disk_health, check_updates, get_notifications, get_system_logs
   tools/drive.ts           herramientas de Synology Drive
   tools/downloadstation.ts herramientas de Download Station
   tools/format.ts          formateo de respuestas

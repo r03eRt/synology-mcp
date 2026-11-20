@@ -13,7 +13,9 @@ src/
   tools/filestation.ts     registro de las herramientas MCP de File Station
   tools/system.ts          get_system_info (SYNO.DSM.Info), get_system_utilization
                            (SYNO.Core.System.Utilization), get_storage_status
-                           (SYNO.Storage.CGI.Storage)
+                           (SYNO.Storage.CGI.Storage); adminOnly()
+  tools/health.ts          get_disk_health, check_updates, get_notifications,
+                           get_system_logs (APIs de la web de DSM; usan adminOnly)
   tools/drive.ts           herramientas de Synology Drive (drive_*)
   tools/downloadstation.ts herramientas de Download Station (downloads_*)
   tools/format.ts          utilidades comunes (ok, fail, safe, simplifyFile, humanSize)

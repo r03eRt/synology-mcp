@@ -1,6 +1,6 @@
 # Herramientas
 
-49 herramientas en cuatro grupos: File Station (22), estado del NAS (3), Synology Drive (16) y Download Station (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 3 + 11 + 3); con `SYNOLOGY_READ_ONLY=false` registra las 49.
+53 herramientas en cuatro grupos: File Station (22), estado y salud del NAS (7), Synology Drive (16) y Download Station (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 11 + 3 = 33); con `SYNOLOGY_READ_ONLY=false` registra las 53.
 
 # File Station
 
@@ -196,10 +196,10 @@ API `SYNO.FileStation.Sharing delete`. Parámetro `ids`.
 
 # Estado del NAS
 
-Código: [src/tools/system.ts](../src/tools/system.ts).
+Código: [src/tools/system.ts](../src/tools/system.ts) y, desde 0.7.0, [src/tools/health.ts](../src/tools/health.ts).
 
 ### `get_system_info`
-API `SYNO.DSM.Info getinfo`. Sin parámetros. Funciona sin ser administrador. Devuelve `model`, `dsm` (versión), `ram_mb`, `temperature_c`, `temperature_warning`, `uptime` (`15d 21h 31m`), `nas_time` y `packages`: si están instalados Synology Drive, Download Station y Synology Photos (`true`/`false`). `packages` sale de `SYNO.API.Info` (las APIs que anuncia el NAS), sin llamadas extra; sirve para saber de antemano qué grupos de herramientas fallarán. No devuelve el número de serie, aunque la API lo da, para no exponerlo sin necesidad.
+API `SYNO.DSM.Info getinfo`. Sin parámetros. Funciona sin ser administrador. Devuelve `model`, `dsm` (versión), `ram_mb`, `temperature_c`, `temperature_warning`, `uptime` (`15d 21h 31m`), `nas_time` y `packages`: si están instalados Synology Drive, Download Station y Synology Photos (`true`/`false`). `packages` sale de `SYNO.API.Info` (las APIs que anuncia el NAS), sin llamadas extra; sirve para saber de antemano qué grupos de herramientas fallarán. Desde 0.7.0 devuelve también `health`, el veredicto del widget "Salud del sistema" de DSM (`SYNO.Core.System.SystemHealth get`), por ejemplo `normal` o `storage_is_attention`. Si el usuario no puede leerlo, el campo se omite. No devuelve el número de serie, aunque la API lo da, para no exponerlo sin necesidad.
 
 Las dos herramientas siguientes **necesitan una cuenta administradora**: sus APIs devuelven 105 a cualquier otro usuario. Se registran siempre (también en modo solo lectura); con un usuario normal devuelven `isError: true` con el texto `"<API>.<método> needs a DSM administrator account (code 105). …"` en vez del genérico "The logged in session does not have permission".
 
@@ -220,6 +220,17 @@ API `SYNO.Storage.CGI.Storage load_info`. Sin parámetros. Solo admin. Devuelve:
 - `disks`: `name`, `device`, `model`, `type`, `size`, `temperature_c`, `status`, `smart`, `bad_sectors` (campo `unc` de DSM) y `remaining_life_pct` si DSM lo calcula (SSD).
 
 No devuelve números de serie de los discos ni del NAS.
+
+### Salud del NAS (0.7.0)
+
+Las cuatro herramientas siguientes son de solo lectura y **necesitan una cuenta administradora**, con el mismo mensaje que las anteriores si no lo es. Usan las mismas llamadas que la web de DSM: el Administrador de almacenamiento, *Panel de control → Actualizar*, el Centro de registros y la campana de notificaciones. Los métodos y parámetros se sacaron del JavaScript que sirve el propio NAS; ver [api-synology.md](api-synology.md#salud-del-nas-070).
+
+| Herramienta | API | Parámetros | Qué devuelve |
+|---|---|---|---|
+| `get_disk_health` | `Storage.CGI.Storage load_info` + `Storage.CGI.Smart get_health_info` por disco | `disk` (id `sda` o nombre `Drive 1`), `all_attributes` | Por disco: `status`, `smart`, `last_smart_test`, `bad_sectors` y `bad_sectors_trend` (estable o creciendo, según el historial de DSM), `power_on_hours`/`power_on_years`, `remaining_life_pct` si se conoce, `temperature_c` y los atributos SMART que fallan o que importan: 5 sectores reasignados, 9 horas encendido, 187, 188, 194 temperatura, 196, 197 pendientes, 198 incorregibles y 199 errores CRC. Con `all_attributes`, todos. Sin números de serie |
+| `check_updates` | `Core.Upgrade.Server check` v3 + `Core.Package list` + `Core.Package.Server list` | — | `dsm`: si hay actualización, versión, si es de seguridad y si pide reinicio. `packages`: paquetes instalados con una versión más nueva en el Centro de paquetes (comparación numérica, sin betas). No instala nada. *Open world*: consulta los servidores de Synology |
+| `get_notifications` | `Core.DSMNotify notify` (`action=load`) | `limit` (por defecto 30), `level` (`info`/`warning`/`error`) | Notificaciones del escritorio de DSM, las más recientes primero: `time`, `level`, `event` (clave de DSM, p. ej. `DownloadCompleted`, `DSMAutoUpdateNotifyNewImportantVersion`), `app` y `details` (parámetros decodificados, sin los repetidos: nombre del NAS, sistema, fecha y hora) |
+| `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (fecha ISO; una fecha sola es el día entero en hora local), `offset`, `limit` (por defecto 50, máx. 500) | `total` coincidente, `returned` y `entries` (`time`, `level`, `who`, `message`), lo más reciente primero |
 
 # Synology Drive
 

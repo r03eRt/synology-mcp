@@ -16,7 +16,7 @@ interface DsmInfo {
 
 
 /** Turn the 105 an admin-only API gives to normal users into an actionable message. */
-async function adminOnly<T>(call: () => Promise<T>): Promise<T> {
+export async function adminOnly<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch (err) {
@@ -149,6 +149,11 @@ export function registerSystemTools(server: McpServer, client: SynologyClient) {
     safe(async () => {
       const i = await client.request<DsmInfo>("SYNO.DSM.Info", "getinfo");
       const apis = await client.getApiInfo();
+      // Same summary as the DSM "System Health" widget; tolerate users that cannot read it.
+      const health = await client
+        .request<{ rule?: { id?: string; type?: number } }>("SYNO.Core.System.SystemHealth", "get", {}, 1)
+        .then((h) => h.rule?.id)
+        .catch(() => undefined);
       const has = (prefix: string) => Object.keys(apis).some((name) => name.startsWith(prefix));
       return ok({
         model: i.model,
@@ -158,6 +163,8 @@ export function registerSystemTools(server: McpServer, client: SynologyClient) {
         temperature_warning: i.temperature_warn,
         uptime: i.uptime !== undefined ? formatUptime(i.uptime) : undefined,
         nas_time: i.time,
+        // e.g. "normal", "storage_is_attention": the DSM System Health widget's verdict.
+        ...(health && { health }),
         // Packages the other tool groups need; false means their tools will fail with "not installed".
         packages: {
           synology_drive: has("SYNO.SynologyDrive."),
