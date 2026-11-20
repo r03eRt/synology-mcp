@@ -35,6 +35,19 @@ describe("Download Station tools", () => {
       status_extra: { error_detail: "broken_link" },
       additional: { detail: { destination: "home", uri: "http://x/broken.zip", create_time: 1_700_000_000 }, transfer: { size_downloaded: 0, size_uploaded: 0, speed_download: 0, speed_upload: 0 } },
     },
+    {
+      // Task getinfo/list sometimes give the status as a number (6 = hash_checking) and private trackers carry a passkey.
+      id: "dbid_h",
+      type: "bt",
+      title: "Checking",
+      size: 10,
+      status: 6,
+      additional: {
+        detail: { destination: "usbshare1-2", uri: "Checking.mkv", create_time: 1 },
+        transfer: { size_downloaded: 10, size_uploaded: 0, speed_download: 0, speed_upload: 0 },
+        tracker: [{ url: "https://private.example/announce/f0b2f7cabcade369a9a0f2f0251f04e4", status: "InfoHash not found.", seeds: -1, peers: -1 }],
+      },
+    },
     ...Array.from({ length: 3 }, (_, i) => ({
       id: `dbid_s${i}`,
       type: "bt",
@@ -109,9 +122,11 @@ describe("Download Station tools", () => {
 
   test("downloads_list counts by status, filters and paginates", async () => {
     const all = await h.call("downloads_list", {});
-    assert.equal(all.json.total, 5);
-    assert.deepEqual(all.json.by_status, { downloading: 1, error: 1, seeding: 3 });
-    assert.equal(all.json.returned, 5);
+    assert.equal(all.json.total, 6);
+    assert.deepEqual(all.json.by_status, { downloading: 1, error: 1, hash_checking: 1, seeding: 3 });
+    assert.equal(all.json.returned, 6);
+    assert.equal(all.json.tasks[2].status, "hash_checking");
+    assert.equal((await h.call("downloads_list", { status: ["hash_checking"] })).json.matched, 1);
 
     const active = await h.call("downloads_list", { status: ["downloading", "error"] });
     assert.equal(active.json.matched, 2);
@@ -144,6 +159,10 @@ describe("Download Station tools", () => {
     assert.deepEqual(t.files, [{ name: "ubuntu.iso", size: "1000 B", downloaded: "250 B", priority: "normal", wanted: true }]);
     assert.equal(t.peers.total, 5);
     assert.equal(h.nas.callsTo("SYNO.DownloadStation.Task", "getinfo").at(-1)!.params.additional, "detail,transfer,file,tracker");
+
+    const [checking] = (await h.call("downloads_get", { ids: ["dbid_h"] })).json;
+    assert.equal(checking.status, "hash_checking");
+    assert.deepEqual(checking.trackers, [{ url: "https://private.example/announce/<redacted>", status: "InfoHash not found.", seeds: -1, peers: -1 }]);
 
     const missing = await h.call("downloads_get", { ids: ["dbid_404"] });
     assert.equal(missing.isError, true);

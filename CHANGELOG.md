@@ -4,6 +4,11 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.6.1: corrección de Download Station
+- **Seguridad**: `downloads_get` devolvía las URL de los trackers privados con la clave del usuario (`/announce/<passkey>`). Ahora se ocultan las claves en las URL de trackers y de origen: segmentos largos, parámetros de clave, usuario y contraseña, y los `tr` de los enlaces magnet. Encontrado al usar el MCP sobre el NAS real.
+- **Estados numéricos**: `Task getinfo` a veces da el estado como número (`6` en vez de `hash_checking`). Se traduce a nombre en `downloads_list` (también al contar y filtrar), `downloads_get` y `downloads_add`.
+- Pruebas: 81. Detalle en `docs/api-synology.md`.
+
 ### Publicación
 - Repositorio público [r03eRt/synology-mcp](https://github.com/r03eRt/synology-mcp) y release v0.6.0 con la extensión `.mcpb`. La CI pasa con Node 22 y 24.
 - Antes de publicar se quitaron de la documentación los datos privados del NAS de pruebas (usuario no administrador, IP, rutas locales, descargas personales), y el historial se juntó en un único commit con el email `noreply` de GitHub.

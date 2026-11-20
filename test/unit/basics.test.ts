@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import { loadConfig } from "../../src/config.js";
 import { describeError, SynologyApiError } from "../../src/synology/errors.js";
 import { cookieFrom, startNoiseHandshake } from "../../src/synology/noise.js";
+import { normalizeStatus, redactUrl } from "../../src/tools/downloadstation.js";
 import { humanSize, simplifyFile } from "../../src/tools/format.js";
 
 const BASE_ENV = { SYNOLOGY_URL: "http://nas:5000/", SYNOLOGY_USERNAME: "u", SYNOLOGY_PASSWORD: "p" };
@@ -115,5 +116,38 @@ describe("noise helpers", () => {
 
   test("startNoiseHandshake rejects keys that are not 32 bytes", () => {
     assert.throws(() => startNoiseHandshake(Buffer.alloc(16).toString("base64")), /Invalid _SSID/);
+  });
+});
+
+describe("Download Station helpers", () => {
+  test("normalizeStatus turns the numbers Task getinfo sometimes returns into names", () => {
+    assert.equal(normalizeStatus(6), "hash_checking");
+    assert.equal(normalizeStatus("6"), "hash_checking");
+    assert.equal(normalizeStatus(1), "waiting");
+    assert.equal(normalizeStatus(10), "error");
+    assert.equal(normalizeStatus("seeding"), "seeding");
+    assert.equal(normalizeStatus(42), "unknown_42");
+  });
+
+  test("redactUrl hides tracker passkeys and credentials", () => {
+    const key = "0123456789abcdef0123456789abcdef";
+    assert.equal(redactUrl(`https://tracker.example/announce/${key}`), "https://tracker.example/announce/<redacted>");
+    assert.equal(redactUrl(`http://tracker.example:2710/${key}/announce`), "http://tracker.example:2710/<redacted>/announce");
+    assert.equal(redactUrl(`https://t.example/announce.php?passkey=${key}&info=1`), "https://t.example/announce.php?passkey=<redacted>&info=1");
+    assert.equal(redactUrl("https://t.example/announce?pid=abc"), "https://t.example/announce?pid=<redacted>");
+    assert.equal(redactUrl("https://user:secret@files.example/a.iso"), "https://<redacted>@files.example/a.iso");
+    assert.equal(redactUrl("udp://open.tracker.example:1337/announce"), "udp://open.tracker.example:1337/announce");
+    assert.equal(redactUrl("http://example.com/ubuntu-24.04.iso"), "http://example.com/ubuntu-24.04.iso");
+  });
+
+  test("redactUrl cleans the trackers inside magnet links and leaves file names alone", () => {
+    const magnet = `magnet:?xt=urn:btih:abcdef&dn=Film&tr=${encodeURIComponent("https://tracker.example/announce/0123456789abcdef0123")}&tr=udp%3A%2F%2Fopen.example%3A80`;
+    const out = redactUrl(magnet)!;
+    assert.match(out, /^magnet:\?xt=urn:btih:abcdef&dn=Film&tr=/);
+    assert.doesNotMatch(out, /0123456789abcdef0123/);
+    assert.match(decodeURIComponent(out), /tracker\.example\/announce\/<redacted>/);
+    assert.match(decodeURIComponent(out), /udp:\/\/open\.example:80/);
+    assert.equal(redactUrl("Película (2026) [1080p].mkv"), "Película (2026) [1080p].mkv");
+    assert.equal(redactUrl(undefined), undefined);
   });
 });

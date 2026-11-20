@@ -286,7 +286,7 @@ Código: [src/tools/downloadstation.ts](../src/tools/downloadstation.ts). Casi t
 |---|---|---|---|
 | `downloads_info` | `Info getinfo` + `Info getconfig` + `Statistic getinfo` | — | Versión, `is_manager`, destino por defecto, límites de velocidad (KB/s, 0 = sin límite), velocidad total actual, eMule y extracción automática |
 | `downloads_list` | `Task list` (`additional=detail,transfer`) | `status` (lista), `type`, `query` (texto en el título), `offset`, `limit` (50 por defecto) | Tareas con estado, progreso, tamaño, bajado/subido, velocidades, destino y fechas. Devuelve también `by_status` (cuántas hay en cada estado) |
-| `downloads_get` | `Task getinfo` (`detail,transfer,file,tracker`) | `ids` | Detalle completo: URL de origen, propietario, pares, ficheros del torrent y trackers |
+| `downloads_get` | `Task getinfo` (`detail,transfer,file,tracker`) | `ids` | Detalle completo: URL de origen, propietario, pares, ficheros del torrent y trackers. Las claves privadas de las URL se ocultan (`<redacted>`) |
 
 Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_checking`, `seeding`, `filehosting_waiting`, `extracting`, `error` (con `error` = `status_extra.error_detail`).
 
@@ -309,6 +309,16 @@ Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_chec
 - Ya no admite `unzip_password` (la versión 0.4.0 sí, con la API clásica): no se ha comprobado qué nombre tiene ese parámetro en la API nueva.
 
 `downloads_set_destination` con una carpeta inexistente recibe un 100 genérico ("Unknown error"); el MCP añade que la causa probable es que la carpeta no existe.
+
+**Estados**: siempre por nombre (`waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_checking`, `seeding`, `filehosting_waiting`, `extracting`, `error`). La API a veces los da como número y el MCP los traduce (`normalizeStatus`).
+
+**Datos privados**: `downloads_get` oculta las claves de las URL de origen y de los trackers (`redactUrl`), cambiándolas por `<redacted>`:
+- segmentos de ruta de 16 caracteres o más, como `/announce/<passkey>`;
+- parámetros con nombre de clave (`passkey`, `key`, `token`, `pid`, `uk`…) o con valores largos;
+- usuario y contraseña en la URL;
+- los trackers (`tr`) dentro de los enlaces magnet.
+
+Los nombres de fichero no se tocan.
 
 Pausar, reanudar y borrar devuelven `{ done: [ids], failed: [{ id, error }] }`: la API responde por cada id, y un id inexistente no hace fallar a los demás.
 

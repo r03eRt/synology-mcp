@@ -17,7 +17,7 @@ const TASK = "SYNO.DownloadStation.Task";
 const TASK2 = "SYNO.DownloadStation2.Task";
 const TASK2_V = 2;
 const MAX_TORRENT_BYTES = 10 * 1024 * 1024;
-const STATUSES = [
+export const STATUSES = [
   "waiting",
   "downloading",
   "paused",
@@ -30,13 +30,80 @@ const STATUSES = [
   "error",
 ] as const;
 
+type Status = (typeof STATUSES)[number];
+
+/**
+ * Task status. Usually a name, but Task getinfo sometimes answers with the
+ * number (seen: 6 for a task that Task list calls "hash_checking"). The numbers
+ * follow the order of STATUSES starting at 1 (waiting = 1 … error = 10).
+ */
+export function normalizeStatus(status: string | number): string {
+  const n = typeof status === "number" ? status : /^\d+$/.test(status) ? Number(status) : NaN;
+  if (Number.isNaN(n)) return String(status);
+  return STATUSES[n - 1] ?? `unknown_${n}`;
+}
+
+const REDACTED = "<redacted>";
+const SECRET_PARAM = /pass|key|token|auth|secret|sig|^pid$|^uk$|^id$/i;
+const SECRET_SEGMENT = /^[A-Za-z0-9_-]{16,}$/;
+
+/**
+ * Hide credentials in tracker and source URLs: private trackers put the user's
+ * passkey in the announce URL (/announce/<passkey>, /<passkey>/announce, ?passkey=…),
+ * magnet links carry those URLs in `tr`, and HTTP sources may have user:password@.
+ * Anything that is not a URL (a .torrent file name) is returned unchanged.
+ */
+export function redactUrl(raw?: string): string | undefined {
+  if (!raw) return raw;
+  if (/^magnet:\?/i.test(raw)) {
+    const params = raw.slice("magnet:?".length).split("&").map((pair) => {
+      const eq = pair.indexOf("=");
+      if (eq < 0) return pair;
+      const key = pair.slice(0, eq);
+      if (!/^(tr|ws|xs|as)(\.\d+)?$/i.test(key)) return pair;
+      let value: string;
+      try {
+        value = decodeURIComponent(pair.slice(eq + 1));
+      } catch {
+        return `${key}=${REDACTED}`;
+      }
+      return `${key}=${encodeURIComponent(redactUrl(value) ?? "")}`;
+    });
+    return `magnet:?${params.join("&")}`;
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return raw;
+  }
+  if (!url.host) return raw;
+  if (url.username || url.password) {
+    url.username = REDACTED;
+    url.password = "";
+  }
+  url.pathname = url.pathname
+    .split("/")
+    .map((seg) => (SECRET_SEGMENT.test(seg) ? REDACTED : seg))
+    .join("/");
+  for (const [key, value] of [...url.searchParams]) {
+    if (SECRET_PARAM.test(key) || SECRET_SEGMENT.test(value)) url.searchParams.set(key, REDACTED);
+  }
+  const out = url.toString();
+  try {
+    return decodeURI(out); // keep "<redacted>" and accents readable
+  } catch {
+    return out;
+  }
+}
+
 interface DsTask {
   id: string;
   type: string;
   username?: string;
   title: string;
   size: number;
-  status: string;
+  status: string | number;
   status_extra?: { error_detail?: string; unzip_progress?: number };
   additional?: {
     detail?: {
@@ -75,7 +142,7 @@ function simplifyTask(t: DsTask, withFiles = false) {
     id: t.id,
     title: t.title,
     type: t.type,
-    status: t.status,
+    status: normalizeStatus(t.status),
     ...(t.status_extra?.error_detail && { error: t.status_extra.error_detail }),
     size: humanSize(t.size),
     ...(progress !== undefined && { progress_pct: progress }),
@@ -89,11 +156,11 @@ function simplifyTask(t: DsTask, withFiles = false) {
     created: iso(d?.create_time),
     completed: iso(d?.completed_time),
     ...(withFiles && {
-      uri: d?.uri,
+      uri: redactUrl(d?.uri),
       owner: t.username,
       peers: d && { total: d.total_peers, connected: d.connected_peers, seeders: d.connected_seeders, leechers: d.connected_leechers },
       files: t.additional?.file?.map((f) => ({ name: f.filename, size: humanSize(f.size), downloaded: humanSize(f.size_downloaded), priority: f.priority, wanted: f.wanted })),
-      trackers: t.additional?.tracker?.map((tr) => ({ url: tr.url, status: tr.status, seeds: tr.seeds, peers: tr.peers })),
+      trackers: t.additional?.tracker?.map((tr) => ({ url: redactUrl(tr.url), status: tr.status, seeds: tr.seeds, peers: tr.peers })),
     }),
   };
 }
@@ -166,11 +233,14 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
       // The API cannot filter, so all tasks are fetched and filtered here.
       const { tasks } = await listTasks("detail,transfer");
       const counts: Record<string, number> = {};
-      for (const t of tasks) counts[t.status] = (counts[t.status] ?? 0) + 1;
+      for (const t of tasks) {
+        const s = normalizeStatus(t.status);
+        counts[s] = (counts[s] ?? 0) + 1;
+      }
       const q = a.query?.toLowerCase();
       const matched = tasks.filter(
         (t) =>
-          (!a.status?.length || a.status.includes(t.status as (typeof STATUSES)[number])) &&
+          (!a.status?.length || a.status.includes(normalizeStatus(t.status) as Status)) &&
           (!a.type || t.type === a.type) &&
           (!q || t.title.toLowerCase().includes(q)),
       );
@@ -254,7 +324,7 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
         ? (await client.request<{ tasks: DsTask[] }>(TASK, "getinfo", { id: ids.join(","), additional: "detail" })).tasks
         : [];
       return ok({
-        added: created.map((t) => ({ id: t.id, title: t.title, type: t.type, status: t.status, size: humanSize(t.size), destination: fromDestination(t.additional?.detail?.destination) })),
+        added: created.map((t) => ({ id: t.id, title: t.title, type: t.type, status: normalizeStatus(t.status), size: humanSize(t.size), destination: fromDestination(t.additional?.detail?.destination) })),
         ...(ids.length < urls.length + torrent_files.length && { note: "The NAS returned fewer task ids than downloads requested; check downloads_list." }),
       });
     }),

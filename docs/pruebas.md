@@ -67,6 +67,11 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - `claude plugin validate` (plugin y marketplace) y `mcpb validate`: pasan. `npm run pack:mcpb`: `.mcpb` de 472 KB.
 - No probado: el plugin instalado en una sesión de Claude Code y la extensión en Claude Desktop.
 
+### Resultado 2026-11-20, versión 0.6.1
+
+- `npm test`: 81/81. Nuevas pruebas: `normalizeStatus`, `redactUrl` (rutas, parámetros, credenciales, magnet, nombres de fichero) y, en el NAS simulado, una tarea con `status: 6` y un tracker con clave (en `downloads_list` y `downloads_get`).
+- Contra el NAS real, con el bundle: `downloads_get` de una tarea atascada y de la que estaba en comprobación da `downloading` y `hash_checking`, con la URL del tracker como `…/announce/<redacted>`. `downloads_list` cuenta y filtra `hash_checking` bien.
+
 ## Pruebas manuales anteriores (históricas)
 
 ## NAS real (DS218+, DSM 7.4.1, `<IP del NAS>:5000`)

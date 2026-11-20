@@ -87,6 +87,16 @@ Más hallazgos de la API nueva:
 - Un `destination` inexistente da **403** (mismo significado que en la clásica).
 - No se probó qué pasa si se omite `destination`: el MCP siempre manda uno (el que se pide o el de `Info getconfig`).
 
+### Estados numéricos y claves de tracker (2026-11-20, 0.6.1)
+
+Al usar el MCP sobre el NAS real aparecieron dos cosas:
+
+- **El estado a veces es un número.** `Task getinfo` (con `additional=detail,transfer,file,tracker`) devolvió `"status": 6` para una tarea que `Task list` daba como `"hash_checking"`.
+  - La guía documenta los estados como cadenas, pero la numeración coincide con su orden empezando en 1 (`waiting` = 1 … `error` = 10). Así 6 es `hash_checking`, como confirma el propio `Task list`. Solo se ha observado el 6; el resto de números se deduce del orden.
+  - El MCP lo normaliza en `downloads_list` (también al contar y filtrar), en `downloads_get` y en `downloads_add`.
+- **Las URL de los trackers privados llevan la clave del usuario** (`https://<tracker>/announce/<passkey de 32 hex>`). `downloads_get` las devolvía tal cual, y esa clave permite suplantar al usuario en el tracker. Ahora se ocultan; ver `redactUrl` en [herramientas.md](herramientas.md).
+- De paso: cuatro tareas llevaban en `downloading` o `hash_checking` desde 2022, con 0 pares y el tracker respondiendo `InfoHash not found.`, porque el torrent ya no existe en el tracker. Download Station no las marca como error.
+
 ### Cambiar el destino
 
 - `Task edit` (clásica) con `id` y `destination` funciona y devuelve `[{id, error: 0}]`.
