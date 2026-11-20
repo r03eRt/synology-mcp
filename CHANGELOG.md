@@ -4,6 +4,23 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.11.0: administración de DSM y README nuevo
+- **9 herramientas `dsm_*`** en `src/tools/admin.ts`, todas solo para administradores:
+  - lectura: `dsm_users`, `dsm_groups`, `dsm_shared_folders` (con los permisos de una carpeta), `dsm_user_access` (permisos efectivos de un usuario), `dsm_scheduled_tasks` y `dsm_services` (con avisos de configuraciones inseguras);
+  - escritura: `dsm_set_task_enabled`, `dsm_run_task` (destructiva) y `dsm_set_share_access` (destructiva).
+- **Seguridad**: los scripts de las tareas programadas llevan contraseñas, así que solo se muestra un resumen con los valores ocultos (`redactCommand`). No se devuelven los emails de los usuarios.
+- Las escrituras solo se probaron con el NAS simulado, porque en el NAS real cambiarían permisos o ejecutarían scripts.
+- **README nuevo**, más atractivo:
+  - banner (`docs/assets/banner.svg`);
+  - distintivos de CI, versión, licencia, MCP, DSM y Node;
+  - una conversación de ejemplo;
+  - las funciones de un vistazo, con iconos;
+  - instalación rápida.
+
+  Debajo sigue la referencia completa, con la nueva sección de administración.
+- La skill explica cómo usar la administración y cuándo pedir confirmación.
+- 78 herramientas (46 en solo lectura). Pruebas: 119; suite real: 8/8.
+
 ### Alerta de GitGuardian (falso positivo)
 - GitGuardian avisó de un "Username Password" en el commit `0bfcdbd` (0.10.0). Eran datos de prueba inventados de `test/mock/multi-nas.test.ts` (`username: "admin", password: "x"`, `"u"`/`"p"`). Se comprobó con un script, sin mostrar valores, que la contraseña real del NAS (`.env.admin`) **no aparece en ningún commit** del repositorio. El nombre de usuario sí aparece, pero coincide con el usuario público de GitHub.
 - Las pruebas ya no tienen literales con forma de credencial: se construyen al ejecutar (`["fake", "value"].join("-")`), el NAS simulado usa una contraseña aleatoria por ejecución y la clave de una prueba de cliente se arma por partes. Regla añadida a `CLAUDE.md`.

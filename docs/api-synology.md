@@ -207,6 +207,29 @@ Protocolo sin documentar, comprobado con el servicio real el 2026-11-20. Se part
 - En DSM, `SYNO.Core.QuickConnect get` (v2, admin) devuelve `enabled`, `server_alias` (el ID), `region` y la cuenta de Synology. Lo usó la prueba real para obtener el ID sin escribirlo.
 - `dsm_portal` (http) mostró `pingpong: CONNECTED` por la IP pública y el puerto 5000: es la forma de saber, desde fuera, que DSM por HTTP es accesible desde Internet.
 
+## Administración de DSM (0.11.0)
+
+Fuente: `webman/modules/AdminCenter/admin_center.js` (2,1 MB), buscando `api:"SYNO.Core.…",method:"…"`. Las lecturas se probaron contra el NAS real el 2026-11-20.
+
+- `SYNO.Core.User list` (`type`, `offset`, `limit=-1`, `additional`): con `expired` da `normal` (activo), `now` (desactivado) o `expired` (caducado). Con `email` devuelve el email, que el MCP no pide.
+- Los grupos de un usuario se pueden pedir usuario a usuario (`Core.User.Group get`). El MCP hace en cambio una llamada por grupo (`Core.Group.Member list`): 5 llamadas en vez de 17.
+- **Permisos**:
+  - `Core.Share.Permission list` con `name=<carpeta>` y `user_group_type` (`local_user` o `local_group`) da los permisos explícitos de esa carpeta (`is_writable`, `is_readonly`, `is_deny`, `is_custom`, `is_admin`).
+  - `list_by_user` y `list_by_group` dan la vista desde el usuario o grupo. `inherit` (`rw`, `ro`, `na`, `-`) es lo que le llega por sus grupos.
+  - La web cambia permisos con `set_by_user_group`.
+- `Core.Share list` con `additional=["share_quota", "vol_path", …]`: `share_quota_used` está en **MB**.
+- **Tareas programadas**:
+  - `Core.TaskScheduler list` **v3** devuelve `action` con el **script completo** ("Run: docker run … -e WEBPASSWORD=…"). `get` da además el email de aviso.
+  - En el NAS de pruebas había 8 tareas, todas scripts de instalación de contenedores de 2022, desactivadas. Una lleva la contraseña del panel de Pi-hole y `FTLCONF_LOCAL_IPV4=192.168.0.2`: la IP antigua que explica por qué ese panel no arranca.
+  - `get_history_status_list` con `id` da las ejecuciones (`exit_code`).
+  - `run` y `set_enable` son **v2** y llevan `{id, real_owner}`.
+- **Servicios**:
+  - `Core.FileServ.SMB get` → `enable_samba` y `smb_min_protocol` (0 = SMB1 permitido; en el NAS de pruebas, 0);
+  - `Core.FileServ.FTP get` → `enable_ftp`, `enable_ftps` y `portnum`;
+  - `Core.Terminal get` → `enable_ssh`, `ssh_port` y `enable_telnet`;
+  - `Core.Web.DSM get` → puertos, `enable_https_redirect` (desactivado en el NAS de pruebas) y `enable_hsts`.
+- `Core.Security.Firewall.Rules` respondió 120 con `load` y 103 con `list`, así que no se usa.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

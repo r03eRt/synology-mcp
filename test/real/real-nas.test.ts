@@ -80,6 +80,19 @@ describe("real NAS", { skip }, () => {
     }
   });
 
+  test("DSM administration read-only tools answer without secrets", async () => {
+    for (const [name, args] of [["dsm_users", {}], ["dsm_groups", {}], ["dsm_shared_folders", {}], ["dsm_scheduled_tasks", {}], ["dsm_services", {}]] as const) {
+      const r = await h.call(name, args);
+      if (!isAdmin) {
+        assert.match(r.text, /administrator account/, name);
+        continue;
+      }
+      assert.equal(r.isError, false, `${name}: ${r.text}`);
+      assert.doesNotMatch(r.text, /@[a-z0-9-]+\.[a-z]{2,}/i, `${name} must not return e-mail addresses`);
+      assert.doesNotMatch(r.text, /\s-e [A-Z_]+=(?!<hidden>)/, `${name} must hide docker -e values`);
+    }
+  });
+
   test("space and RSS read-only tools answer", async () => {
     for (const [name, args] of [["recycle_bins", {}], ["downloads_rss", {}], ["downloads_list", { stalled: true, limit: 5 }]] as const) {
       const r = await h.call(name, args);

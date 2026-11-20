@@ -1,6 +1,6 @@
 # Herramientas
 
-69 herramientas en seis grupos (71 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14) y Container Manager (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 = 40); con `SYNOLOGY_READ_ONLY=false` registra las 69. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
+78 herramientas en siete grupos (80 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14), Container Manager (8) y administración de DSM (9). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 + 6 = 46); con `SYNOLOGY_READ_ONLY=false` registra las 78. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -385,6 +385,35 @@ Solo con `SYNOLOGY_READ_ONLY=false`. Arrancar, parar y reiniciar devuelven `{ do
 | `docker_remove_images` | `Image list` + `Container list` + `Image delete` (`images=[{repository, tags:[tag]}]`) | **destructiva** | Recibe `"repositorio:etiqueta"`, o solo el repositorio para una imagen sin etiqueta. Entiende registros con puerto (`registry.local:5000/tool:1.0`). **Rechaza las imágenes que usa algún contenedor**, aunque esté parado, diciendo cuáles. Devuelve `removed` (con el espacio liberado) y `failed`. Desde 0.9.0 |
 
 No incluido (por ahora): crear, borrar o editar contenedores, descargar imágenes, `Image prune` y proyectos Compose. `prune` no se expone porque borra de golpe sin decir qué; `docker_images` más `docker_remove_images` hacen lo mismo de forma explícita. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
+
+# Administración de DSM
+
+Código: [src/tools/admin.ts](../src/tools/admin.ts), desde 0.11.0. Todas necesitan una cuenta administradora. Las llamadas son las del Panel de control (`webman/modules/AdminCenter/admin_center.js`), con los parámetros de texto en JSON. Hallazgos en [api-synology.md](api-synology.md#administración-de-dsm-0110).
+
+**Secretos**: los scripts de las tareas programadas suelen llevar contraseñas (`docker run -e PASSWORD=…`), así que solo se devuelve `command_preview` con los valores ocultos (`redactCommand`). Tampoco se devuelven los emails de los usuarios.
+
+## Lectura (6)
+
+| Herramienta | API | Parámetros | Qué devuelve |
+|---|---|---|---|
+| `dsm_users` | `Core.User list` (`type=local`, `additional=[description, expired]`) + `Core.Group list` + `Core.Group.Member list` por grupo | — | `total`, `active`, `active_admins` y, por usuario: `name`; `status` (`active`, `disabled` o `expired`, a partir de `expired` = `normal`, `now` o `expired`); `admin` (si es miembro de `administrators`); `groups`; y `description` |
+| `dsm_groups` | `Core.Group list` + `Core.Group.Member list` | — | Grupos con `description` y `members` |
+| `dsm_shared_folders` | `Core.Share list` (`additional=[hidden, encryption, recyclebin, share_quota, vol_path]`) o `Core.Share.Permission list` (`local_user` y `local_group`) | `share` (opcional) | Sin `share`: carpetas con `path`, `description`, `used` (`share_quota_used` viene en MB), `recycle_bin`, `hidden`, `encrypted` y `usb`. Con `share`: `users` y `groups` con permiso explícito (`read-write`, `read-only` o `deny`), y cuántos usuarios no tienen permiso explícito |
+| `dsm_user_access` | `Core.Share.Permission list_by_user` | `user` | Por carpeta: `explicit`; `from_groups` (campo `inherit`: `rw`, `ro`, `na` o `-`); y `effective` (gana la denegación; si no hay, el mayor de los dos) |
+| `dsm_scheduled_tasks` | `Core.TaskScheduler list` v3 + `get_history_status_list` por tarea | — | `id`, `name`, `type`, `owner` (`real_owner`), `enabled`, `next_run`, `last_run` (inicio, fin, `exit_code` y `ok`/`failed`) y, en los scripts, `command_preview` sin secretos |
+| `dsm_services` | `get` de `Core.FileServ.SMB`, `.AFP`, `.NFS`, `.FTP`, `Core.Terminal` y `Core.Web.DSM` | — | Estado de SMB (con versión mínima), AFP, NFS, FTP/FTPS, SSH (con puerto), Telnet y DSM web (puertos, redirección a HTTPS y HSTS). Además, `warnings` cuando: se permite SMB1 (`smb_min_protocol=0`), hay FTP sin cifrar, Telnet está activo, no hay redirección a HTTPS o SSH usa el puerto 22 |
+
+## Escritura (3)
+
+Solo con `SYNOLOGY_READ_ONLY=false`. **No probadas contra el NAS real**, porque cambian permisos o ejecutan scripts. Se probaron con el NAS simulado y con los mismos parámetros que manda la web.
+
+| Herramienta | API | Parámetros | Notas |
+|---|---|---|---|
+| `dsm_set_task_enabled` | `Core.TaskScheduler set_enable` v2 (`status=[{id, real_owner, enable}]`) | `ids`, `enabled` | Idempotente. Da error si algún id no existe |
+| `dsm_run_task` | `Core.TaskScheduler run` v2 (`tasks=[{id, real_owner}]`) | `ids` | **Destructiva**: ejecuta el script, a menudo como root. Rechaza las tareas con `can_run: false` (las de sistema). No incluye las tareas por evento (`EventScheduler`) |
+| `dsm_set_share_access` | `Core.Share.Permission set_by_user_group` (`name`, `user_group_type=local_user` o `local_group`, `permissions=[{name: carpeta, is_writable, is_readonly, is_deny, is_custom: false}]`) | `name`, `type` (`user`/`group`), `shares`, `access` (`read-write`/`read-only`/`deny`/`none`) | **Destructiva**: cambia quién ve qué. `none` quita el permiso explícito |
+
+No incluido: crear, borrar o editar usuarios y grupos, contraseñas, crear o borrar carpetas compartidas, cuotas, cifrado y cambiar los servicios. Son cambios de mucho riesgo; para eso está el Panel de control.
 
 # Varios NAS
 

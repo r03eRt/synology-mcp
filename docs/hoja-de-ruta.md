@@ -100,7 +100,7 @@ Ordenadas por utilidad probable.
 - [ ] **4.1 Synology Photos** (L). Álbumes, búsqueda por fecha, persona o lugar, y crear álbumes y añadir fotos. No hay especificación oficial: hay que sacarla de la web de Photos.
 - [x] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros. Hecho en 0.8.0, junto con las imágenes.
 - [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia.
-- [ ] **4.4 Administración de DSM** (L). Usuarios y grupos, carpetas compartidas y permisos, tareas programadas. Solo admin; hay que pensar bien qué exponer.
+- [x] **4.4 Administración de DSM** (L). Hecho en 0.11.0: lectura de usuarios, grupos, carpetas y permisos, tareas y servicios (con avisos); activar o ejecutar tareas y cambiar permisos. Sin crear ni borrar usuarios o carpetas.
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.
 - [x] **4.6 QuickConnect** (M). Hecho en 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, con red local, conexión directa o relé.
 - [x] **4.7 Varios NAS** (M). Hecho en 0.10.0 con `SYNOLOGY_NAS_FILE`, `list_nas` y `use_nas` (NAS activo, en vez de un parámetro en cada herramienta). Pendiente: configurarlo desde el plugin.
