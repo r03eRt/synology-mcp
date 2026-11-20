@@ -101,6 +101,17 @@ Todas las peticiones pasan por `nasFetch` ([src/synology/client.ts](../src/synol
 
 `dist/` (tsc) es el paquete npm. `plugin/server/synology-mcp.cjs` (esbuild) es el mismo servidor en un solo fichero, para el plugin de Claude Code y la extensión de Claude Desktop, con `sodium-native` sustituido por `sodium-javascript`. Ver [distribucion.md](distribucion.md).
 
-## Punto de extensión: QuickConnect
+## QuickConnect
 
-`SynologyClient.baseUrl()` es asíncrona a propósito. Ahí se resolverá un ID de QuickConnect a una URL directa o de relay sin tocar el resto del código.
+`SynologyClient.baseUrl()` era asíncrona a propósito, y desde 0.10.0 resuelve ahí los `quickconnect:<ID>` con [src/synology/quickconnect.ts](../src/synology/quickconnect.ts), sin cambios en el resto del código:
+
+1. `quickConnectCandidates()` pregunta al servicio de Synology y devuelve las direcciones en el orden en que se probarán.
+2. `resolveQuickConnect()` las sondea con `SYNO.API.Info` y se queda con la primera que responde.
+3. El resultado se guarda en `resolved`. `fetchNas()` lo borra, junto con la sesión, si hay un error de conexión, y así la llamada siguiente vuelve a resolver.
+4. `connection()` dice la URL en uso y la vía, para `list_nas`.
+
+`quickConnectOptions` permite a las pruebas sustituir el `fetch`.
+
+## Varios NAS
+
+[src/synology/pool.ts](../src/synology/pool.ts): `NasPool` guarda las entradas (de `loadNasList()` en `config.ts`), crea un `SynologyClient` por NAS al primer uso y tiene un NAS activo. Las herramientas reciben `pool.client`, un `Proxy` que reenvía cada acceso al cliente activo, así que ninguna herramienta sabe que hay varios NAS. `use_nas` solo cambia el activo. `createServer(client, config, pool)` registra `list_nas`/`use_nas` y añade a las instrucciones la lista de NAS cuando hay más de uno. `index.ts` siempre crea el pool, aunque sea de un solo NAS.

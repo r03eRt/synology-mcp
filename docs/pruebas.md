@@ -28,6 +28,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 | `test/mock/health.test.ts` | `compareVersions` y `decodeNotifyParams`. Con el NAS simulado: `get_disk_health` (ruta del dispositivo, o 117 como DSM; sin números de serie; tendencia estable y creciendo; atributos clave y que fallan; filtro por disco y disco inexistente), `check_updates` (DSM de seguridad; paquetes más nuevos, sin betas ni versiones más antiguas), `get_notifications` (decodificación, orden y filtro), `get_system_logs` (filtros, fechas locales, `total` por nivel) y el mensaje del 105 en las cuatro |
 | `test/mock/docker.test.ts` | `cpuPercent` y `memoryUsed`. Con el NAS simulado (que, como DSM, da 117 a nombres sin codificar o inexistentes): `docker_list` (salud, inicio, proyecto, CPU y memoria, filtro), `docker_get` (nombre en JSON, **sin valores de entorno**, puertos, volúmenes, *health check*, 117 explicado), `docker_logs` (parámetros de la web, orden, fecha mal formada), `docker_images` (en uso, actualización, sin `<none>`), `docker_start`/`stop`/`restart` con resultados por contenedor |
 | `test/mock/space.test.ts` | `recycle_bins` (medida de cada papelera, orden, papeleras que aún no existen, carpetas sin papelera) y `empty_recycle_bin` (nombre exacto sin distinguir mayúsculas; inexistentes, sin papelera y rutas rechazadas) |
+| `test/mock/multi-nas.test.ts` | QuickConnect con una red falsa (respuestas copiadas del servicio real): formato `quickconnect:`; orden de las direcciones; la externa solo si `pingpong` es `CONNECTED`; red local en casa y relé fuera; ninguna responde; ID desconocido; redirección de región. Varios NAS: `loadNasList` (fichero, `password_env`, `default`, opciones globales y por NAS, seis errores de configuración) y, con dos NAS simulados, que las herramientas van al NAS activo, que `use_nas` cambia, `list_nas`, que cada NAS tiene su sesión y que con un solo NAS no se registran |
 | `test/mock/stdio.test.ts` | El punto de entrada real (`src/index.ts`) por stdio: sin `SYNOLOGY_READ_ONLY` expone solo las 29 de lectura; con `false` lista 49 y llama a `get_info`; `register-device <código>` contra un NAS con 2FA imprime `SYNOLOGY_DEVICE_ID=…`; sin variables de entorno sale con código 1 y el mensaje de error |
 
 **NAS simulado** (`test/helpers/mock-nas.ts`): servidor HTTP en un puerto libre de `127.0.0.1` que implementa `SYNO.API.Info`, `SYNO.API.Auth` v6 y v7 con el **lado servidor del handshake Noise IK** (usa la misma librería `noise-protocol`), sesiones y comprobación de `X-SYNO-TOKEN` (si falta o no coincide, responde 119 como DSM). Cada prueba registra las respuestas de las APIs que usa con `on(api, method, handler)`; el handler puede devolver datos, lanzar `SynoError(code, errors)` o devolver `RawBody` para descargas. Todas las llamadas quedan en `calls` para comprobar los parámetros enviados, incluidos los campos multipart de las subidas. Sustituye al simulador antiguo (puerto 5999, solo v6), que no estaba en el repositorio.
@@ -109,6 +110,13 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
   - feed de DistroWatch añadido, leído, actualizado y borrado, sin dejar feeds;
   - papeleras medidas (6,7 GB) y vaciada la de Games, que estaba vacía;
   - `docker_remove_images` rechazó `pihole/pihole:latest` (en uso) y una imagen inexistente.
+
+### Resultado 2026-11-20, versión 0.10.0 (QuickConnect y varios NAS)
+
+- `npm test`: 109/109.
+- Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
+- Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
+- No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
 
 ## Pruebas manuales anteriores (históricas)
 

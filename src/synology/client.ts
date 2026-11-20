@@ -4,6 +4,7 @@ import { Agent, fetch, FormData, type Dispatcher } from "undici";
 import { DEFAULT_DEVICE_NAME, type SynologyConfig } from "../config.js";
 import { SESSION_ERROR_CODES, SynologyApiError } from "./errors.js";
 import { cookieFrom, startNoiseHandshake } from "./noise.js";
+import { type Candidate, quickConnectId, resolveQuickConnect, type ResolveOptions } from "./quickconnect.js";
 
 export type ParamValue = string | number | boolean | undefined | null;
 export type Params = Record<string, ParamValue>;
@@ -75,6 +76,11 @@ export class SynologyClient {
   private apiInfo: Record<string, ApiInfoEntry> | null = null;
   private readonly dispatcher?: Dispatcher;
 
+  /** QuickConnect resolution, cached until a connection error forces a new one. */
+  private resolved: Promise<Candidate> | null = null;
+  /** For tests: how QuickConnect reaches the service and probes candidates. */
+  quickConnectOptions: ResolveOptions = {};
+
   constructor(private readonly config: SynologyConfig) {
     if (config.insecureTls) {
       this.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
@@ -86,7 +92,27 @@ export class SynologyClient {
    * plugged in later without changing callers.
    */
   private async baseUrl(): Promise<string> {
-    return this.config.url;
+    const id = quickConnectId(this.config.url);
+    if (!id) return this.config.url;
+    this.resolved ??= resolveQuickConnect(id, this.quickConnectOptions).then(
+      (c) => {
+        console.error(`QuickConnect ${id}: using ${c.kind} address ${new URL(c.url).host}`);
+        return c;
+      },
+      (err) => {
+        this.resolved = null;
+        throw err;
+      },
+    );
+    return (await this.resolved).url;
+  }
+
+  /** Where the client is talking to: the URL, and for QuickConnect how it was reached. */
+  async connection(): Promise<{ url: string; via?: Candidate["kind"]; quickconnect_id?: string }> {
+    const id = quickConnectId(this.config.url);
+    if (!id) return { url: this.config.url };
+    const c = await (this.resolved ?? Promise.reject(new Error("not resolved"))).catch(() => undefined);
+    return { url: c?.url ?? this.config.url, ...(c && { via: c.kind }), quickconnect_id: id };
   }
 
   // ---------------------------------------------------------------- API info
@@ -270,7 +296,7 @@ export class SynologyClient {
     return this.withSession(async (sid) => {
       const resolved = await this.resolveApi(api);
       const query = this.buildParams(api, "download", resolved.version, { path: json(paths), mode: json("download") }, sid);
-      const res = await nasFetch(`${await this.baseUrl()}/webapi/${resolved.path}?${query}`, {
+      const res = await this.fetchNas(`${await this.baseUrl()}/webapi/${resolved.path}?${query}`, {
         method: "GET",
         headers: this.authHeaders(),
         dispatcher: this.dispatcher,
@@ -338,7 +364,7 @@ export class SynologyClient {
         : new Blob([new Uint8Array(opts.file.content ?? Buffer.alloc(0))]);
       form.append(opts.file.field, blob, filename);
 
-      const res = await nasFetch(`${await this.baseUrl()}/webapi/${resolved.path}?${query}`, {
+      const res = await this.fetchNas(`${await this.baseUrl()}/webapi/${resolved.path}?${query}`, {
         method: "POST",
         body: form,
         headers: this.authHeaders(),
@@ -392,12 +418,29 @@ export class SynologyClient {
     return out;
   }
 
+  /**
+   * nasFetch, and with QuickConnect forget the resolved address after a connection
+   * error so the next call resolves again (the NAS may now be reachable another way).
+   */
+  private async fetchNas(url: string, init: Parameters<typeof fetch>[1]) {
+    try {
+      return await nasFetch(url, init);
+    } catch (err) {
+      if (quickConnectId(this.config.url)) {
+        this.resolved = null;
+        this.sid = null;
+        this.synoToken = null;
+      }
+      throw err;
+    }
+  }
+
   private authHeaders(): Record<string, string> {
     return this.synoToken ? { "X-SYNO-TOKEN": this.synoToken } : {};
   }
 
   private async httpPost(url: string, body: URLSearchParams, extraHeaders: Record<string, string> = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
-    const res = await nasFetch(url, {
+    const res = await this.fetchNas(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", ...this.authHeaders(), ...extraHeaders },
       body: body.toString(),

@@ -13,6 +13,10 @@ If you don't know the NAS yet, call `get_system_info` once. It returns the model
 
 For files, call `list_shares` before guessing paths.
 
+## Several NAS
+
+If `list_nas` and `use_nas` exist, several NAS are configured and every other tool acts on the active one. When the user names a NAS ("the one at my parents'"), switch with `use_nas` first and say which NAS you are reporting on. Switch back if the next request is about another NAS.
+
 ## Paths
 
 - **File Station tools** (`list_files`, `read_file`, `copy_move`, `delete`…) use NAS paths that start with a shared folder: `/home/Documents/report.pdf`, `/photo/2024`, `/video/Movies`. They never start with `/volume1`. `/home` is the logged-in user's home folder.

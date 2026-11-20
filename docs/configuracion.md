@@ -32,13 +32,14 @@ El resultado queda en `dist/index.js`.
 
 | Variable | Obligatoria | Por defecto | Descripción |
 |---|---|---|---|
-| `SYNOLOGY_URL` | sí | — | URL de DSM: `http://<IP del NAS>:5000` o `https://…:5001` |
+| `SYNOLOGY_URL` | sí | — | URL de DSM (`http://<IP del NAS>:5000`, `https://…:5001`) o `quickconnect:<ID>` |
 | `SYNOLOGY_USERNAME` | sí | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | sí | — | Contraseña |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` acepta un certificado HTTPS no válido (autofirmado, caducado o emitido para otro nombre). Solo en una red de confianza |
 | `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 40 herramientas de lectura (12 de File Station, 7 de estado y salud del NAS, 1 de papeleras, 11 de Drive, 5 de Download Station y 4 de Container Manager). `false` registra también las 29 de escritura |
 | `SYNOLOGY_DEVICE_ID` | no | — | Token de dispositivo para cuentas con 2FA (lo da `synology-mcp register-device`). Es secreto, como la contraseña |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Nombre con el que se registró el dispositivo; tiene que coincidir con el del registro |
+| `SYNOLOGY_NAS_FILE` | no | — | JSON con varios NAS (ver "Varios NAS"). Sustituye a `SYNOLOGY_URL`, `SYNOLOGY_USERNAME` y `SYNOLOGY_PASSWORD` |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | no | `60000` | Tiempo máximo que una herramienta espera a una tarea en segundo plano antes de devolver su `taskid` |
 
 Se leen en [src/config.ts](../src/config.ts).
@@ -70,6 +71,28 @@ Así la contraseña no se copia a `~/.claude.json`: allí solo queda la ruta del
 Decisión del usuario, con lo que implica: el MCP actúa como administrador sobre todo el NAS (puede borrar en cualquier carpeta compartida y gestionar las descargas de todos los usuarios). Se eligió frente a un usuario normal o admin en solo lectura para tener también `get_system_utilization`, `get_storage_status` y las herramientas de escritura. Para pasar a solo lectura sin cambiar de cuenta, volver a registrarlo sin `-e SYNOLOGY_READ_ONLY=false`.
 
 Tras cambiar el código hay que ejecutar `npm run build` y reiniciar la sesión de Claude Code para que cargue el nuevo `dist/`.
+
+## QuickConnect
+
+`SYNOLOGY_URL=quickconnect:<ID>` (también `quickconnect://<ID>`). Requiere QuickConnect activado en DSM (*Panel de control → Acceso externo → QuickConnect*). El cliente resuelve el ID la primera vez que lo necesita, prueba las direcciones en orden (red local, directa por Internet, relé de Synology) y se queda con la primera que responde. Si después falla la conexión, olvida la dirección y la sesión y vuelve a resolver en la llamada siguiente. Por stderr dice qué vía usa (`QuickConnect <ID>: using lan address …`). Cómo funciona el protocolo: [api-synology.md](api-synology.md#quickconnect-0100).
+
+Ventaja añadida: todas las direcciones de QuickConnect tienen certificado válido (`*.direct.quickconnect.to`), así que es una forma de usar HTTPS sin aceptar un certificado no válido.
+
+## Varios NAS
+
+`SYNOLOGY_NAS_FILE` apunta a un JSON con `default` (opcional; si no, el primero) y `nas`, una lista de `{ name, url, username, password | password_env, device_id | device_id_env, device_name, insecure_tls }`.
+
+- `name`: letras, cifras, `.`, `_` y `-`; no se puede repetir (sin distinguir mayúsculas).
+- `url` admite `quickconnect:<ID>`.
+- `password_env` y `device_id_env` nombran variables de entorno, para que los secretos no estén en el fichero. Si la variable no existe, el arranque falla con un mensaje claro.
+- `SYNOLOGY_READ_ONLY` y `SYNOLOGY_TASK_TIMEOUT_MS` siguen siendo globales, porque deciden qué herramientas existen. `SYNOLOGY_INSECURE_TLS` y `SYNOLOGY_DEVICE_NAME` sirven de valor por defecto para cada NAS.
+- Sin `SYNOLOGY_NAS_FILE` hay un solo NAS (`SYNOLOGY_URL`…), llamado `default` o `SYNOLOGY_NAS_NAME`.
+- Con más de uno aparecen `list_nas` y `use_nas` ([herramientas.md](herramientas.md#varios-nas)).
+- `register-device --nas <nombre>` registra el dispositivo 2FA en un NAS concreto del fichero.
+
+Errores de configuración que se explican al arrancar: JSON no válido, lista vacía, nombre que falta o repetido, variable de contraseña sin definir, `default` que no está en la lista.
+
+Probado contra el NAS real (2026-11-20) con dos entradas que apuntan al mismo NAS, una por IP local y otra por QuickConnect: cambiar entre ellas, `list_nas` y llamadas por cada una.
 
 ## HTTPS
 

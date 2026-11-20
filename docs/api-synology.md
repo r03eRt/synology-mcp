@@ -188,6 +188,25 @@ Fuentes: `webman/3rdparty/DownloadStation/download.js` y `webman/modules/AdminCe
   - En el NAS de pruebas las papeleras sumaban 6,7 GB, casi todo en `Descargas`.
 - **Borrar imágenes**: `SYNO.Docker.Image delete` con `images=[{repository, tags:[tag]}]` en JSON. Una imagen inexistente da **1004**. `Image prune` existe pero no se usa.
 
+## QuickConnect (0.10.0)
+
+Protocolo sin documentar, comprobado con el servicio real el 2026-11-20. Se partió de cómo lo usan las aplicaciones de Synology: el ID se resuelve en `global.quickconnect.to`.
+
+- `POST https://global.quickconnect.to/Serv.php` con un JSON `[{version:1, command:"get_server_info", id:"dsm_portal_https" (o "dsm_portal" para http), serverID:<ID>, is_gofile:false, path:"", stop_when_error:false, stop_when_success:false}]`. La respuesta es una lista con:
+  - `server.interface`: IP locales;
+  - `server.external.ip`;
+  - `service.port`, `ext_port` y `pingpong`: `CONNECTED` si el servicio llegó al NAS por la IP pública y el puerto;
+  - `smartdns.lan`: nombres `192-168-1-2.<ID>.direct.quickconnect.to`, que resuelven a la IP local;
+  - `smartdns.external`: un nombre que lleva dentro la IP pública;
+  - `env.control_host` y `env.relay_region`.
+
+  Un ID desconocido da `errno` distinto de 0. Si el NAS está registrado en otra región, la respuesta trae `sites` para repetir allí.
+- `POST https://<control_host>/Serv.php` con `command:"request_tunnel"` devuelve `service.relay_dn` y `relay_port` (`synr-<región>.<ID>.direct.quickconnect.to:<puerto>`), un relé que funciona sin puertos abiertos. `https://<ID>.<región>.quickconnect.to` también respondió, pero el MCP usa el que da el servicio.
+- **Todas las direcciones tienen certificado válido** para `*.direct.quickconnect.to`. El login Noise v7 funciona igual por cualquiera de ellas.
+- Medido desde la red local: el nombre de la red local respondió en unos 270 ms y el relé en unos 600–700 ms. Por el relé, el primer login con llamada tardó 3,3 s y las llamadas siguientes unos 130 ms.
+- En DSM, `SYNO.Core.QuickConnect get` (v2, admin) devuelve `enabled`, `server_alias` (el ID), `region` y la cuenta de Synology. Lo usó la prueba real para obtener el ID sin escribirlo.
+- `dsm_portal` (http) mostró `pingpong: CONNECTED` por la IP pública y el puerto 5000: es la forma de saber, desde fuera, que DSM por HTTP es accesible desde Internet.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

@@ -1,6 +1,6 @@
 {
   "name": "synology-mcp",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "MCP server that lets Claude use a Synology NAS (DSM 7.2+): File Station, Synology Drive, Download Station, Container Manager and system health",
   "keywords": [
     "mcp",

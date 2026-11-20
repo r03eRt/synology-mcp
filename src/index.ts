@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { loadConfig } from "./config.js";
+import { loadNasList } from "./config.js";
 import { createServer } from "./server.js";
 import { SynologyClient } from "./synology/client.js";
+import { NasPool } from "./synology/pool.js";
 
 async function serve() {
-  const config = loadConfig();
-  const client = new SynologyClient(config);
-  const server = createServer(client, config);
+  const { entries, defaultName } = loadNasList();
+  const pool = new NasPool(entries, defaultName);
+  const config = pool.entry(defaultName)!.config;
+  const server = createServer(pool.client, config, pool);
 
   const shutdown = async () => {
-    await client.logout();
+    await pool.logoutAll();
     process.exit(0);
   };
   process.on("SIGINT", shutdown);
@@ -19,7 +21,7 @@ async function serve() {
 
   await server.connect(new StdioServerTransport());
   console.error(
-    `synology-mcp connected to ${config.url}${config.readOnly ? " (read-only; set SYNOLOGY_READ_ONLY=false to enable write tools)" : ""}`,
+    `synology-mcp ready for ${entries.length > 1 ? `${entries.length} NAS (active: ${defaultName})` : config.url}${config.readOnly ? " (read-only; set SYNOLOGY_READ_ONLY=false to enable write tools)" : ""}`,
   );
 }
 
@@ -28,8 +30,11 @@ async function serve() {
  * code that prints a device token for SYNOLOGY_DEVICE_ID. Uses the same
  * SYNOLOGY_* variables as the server. Without [code] it asks for it.
  */
-async function registerDevice(codeArg?: string) {
-  const config = loadConfig();
+async function registerDevice(codeArg?: string, nasName?: string) {
+  const { entries, defaultName } = loadNasList();
+  const entry = entries.find((e) => e.name === (nasName ?? defaultName));
+  if (!entry) throw new Error(`No NAS named "${nasName}" in SYNOLOGY_NAS_FILE`);
+  const config = entry.config;
   let code = codeArg;
   if (!code) {
     const rl = createInterface({ input: process.stdin, output: process.stderr });
@@ -48,9 +53,12 @@ async function registerDevice(codeArg?: string) {
 }
 
 const [command, ...args] = process.argv.slice(2);
-const run = command === "register-device" ? () => registerDevice(args[0]) : serve;
+const nasFlag = args.indexOf("--nas");
+const nasName = nasFlag >= 0 ? args[nasFlag + 1] : undefined;
+const positional = nasFlag >= 0 ? args.filter((_, i) => i !== nasFlag && i !== nasFlag + 1) : args;
+const run = command === "register-device" ? () => registerDevice(positional[0], nasName) : serve;
 if (command && command !== "register-device") {
-  console.error(`Unknown command "${command}". Usage: synology-mcp [register-device [code]]`);
+  console.error(`Unknown command "${command}". Usage: synology-mcp [register-device [code] [--nas name]]`);
   process.exit(2);
 }
 

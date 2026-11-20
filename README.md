@@ -1,6 +1,6 @@
 # synology-mcp
 
-Usa tu NAS Synology desde Claude. Le pides cosas en lenguaje normal («¿cómo está el NAS?», «busca las facturas de 2024», «libera espacio», «¿por qué no va Pi-hole?») y Claude lo hace con **69 herramientas** sobre tu NAS:
+Usa tu NAS Synology desde Claude, en casa o fuera con QuickConnect, y con varios NAS si los tienes. Le pides cosas en lenguaje normal («¿cómo está el NAS?», «busca las facturas de 2024», «libera espacio», «¿por qué no va Pi-hole?») y Claude lo hace con **69 herramientas**, 71 con varios NAS:
 
 | Área | Qué puede hacer |
 |---|---|
@@ -36,7 +36,9 @@ Es un servidor [MCP](https://modelcontextprotocol.io) para **DSM 7** (probado en
 
 ## 1. Requisitos
 
-- Un NAS Synology con **DSM 7** (7.2 o superior recomendado). Debe ser accesible desde el ordenador donde corre Claude: misma red local, VPN o puerto abierto. QuickConnect aún no está soportado.
+- Un NAS Synology con **DSM 7** (7.2 o superior recomendado), accesible desde el ordenador donde corre Claude:
+  - por su IP o nombre, en la misma red, por VPN o con un puerto abierto;
+  - o por **QuickConnect** (`quickconnect:<tu ID>`), que funciona desde cualquier sitio sin abrir puertos.
 - **Node.js 22.19 o superior** en ese ordenador, para Claude Code o la instalación manual. Claude Desktop trae su propio Node.
 - Para cada área, su paquete instalado en el NAS: Synology Drive Server, Download Station o Container Manager. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
 
@@ -127,7 +129,7 @@ claude mcp add synology -s user -- node --env-file=/ruta/.env /ruta/a/synology-m
 
 | Variable | Campo del plugin / extensión | Por defecto | Para qué |
 |---|---|---|---|
-| `SYNOLOGY_URL` | NAS URL | — | Dirección de DSM con puerto: `http://IP:5000` o `https://nombre:5001` |
+| `SYNOLOGY_URL` | NAS URL | — | Dirección de DSM con puerto (`http://IP:5000`, `https://nombre:5001`) o `quickconnect:<ID>` |
 | `SYNOLOGY_USERNAME` | DSM user | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | DSM password | — | Contraseña |
 | `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 29 herramientas de escritura (crear, mover, borrar, descargar, parar contenedores…) |
@@ -135,6 +137,38 @@ claude mcp add synology -s user -- node --env-file=/ruta/.env /ruta/a/synology-m
 | `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token de `register-device`, para cuentas con 2FA |
 | `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Nombre con el que se registró el dispositivo |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | — | `60000` | Cuánto espera una herramienta a una operación larga (copiar, borrar, buscar…) antes de devolver su `taskid` para consultarla luego |
+| `SYNOLOGY_NAS_FILE` | — | — | Fichero JSON con **varios NAS** (ver abajo). Sustituye a las tres primeras variables |
+
+### Usarlo fuera de casa: QuickConnect
+
+Pon `SYNOLOGY_URL=quickconnect:<ID>`, con el ID que ves en DSM en *Panel de control → Acceso externo → QuickConnect*, que debe estar activado. Al conectar, el MCP pregunta al servicio de Synology dónde está el NAS y prueba, por este orden:
+
+1. **Red local**: un nombre `…direct.quickconnect.to` que apunta a la IP local del NAS.
+2. **Conexión directa por Internet**, solo si el NAS es accesible desde fuera.
+3. **El relé de Synology**: funciona desde cualquier sitio sin abrir puertos, aunque es más lento.
+
+Usa la primera que responde. Las tres tienen certificado válido, así que no hace falta `SYNOLOGY_INSECURE_TLS`. Si la conexión se corta (por ejemplo, al salir de casa), vuelve a buscar la mejor vía en la siguiente llamada. El ID se envía al servicio de Synology, igual que hacen sus propias aplicaciones.
+
+### Varios NAS
+
+Con `SYNOLOGY_NAS_FILE=/ruta/nas.json` (permisos `600`):
+
+```json
+{
+  "default": "casa",
+  "nas": [
+    { "name": "casa", "url": "http://192.168.1.2:5000", "username": "claude", "password_env": "NAS_CASA_PASSWORD" },
+    { "name": "padres", "url": "quickconnect:nas-padres", "username": "claude", "password_env": "NAS_PADRES_PASSWORD" }
+  ]
+}
+```
+
+- **Contraseña**: `password_env` es el nombre de una variable de entorno que la contiene; así no queda en el fichero. También se admite `password` directamente.
+- **Otros campos opcionales por NAS**: `device_id` / `device_id_env` (2FA), `device_name` e `insecure_tls`.
+- **Globales**: `SYNOLOGY_READ_ONLY` y `SYNOLOGY_TASK_TIMEOUT_MS` valen para todos.
+- **Herramientas**: aparecen `list_nas` (qué NAS hay, cuál está activo y por dónde se llega a cada uno) y `use_nas` (cambiar de NAS); el resto actúa sobre el activo. Pídele a Claude «cambia al NAS de mis padres».
+- **2FA**: `register-device --nas <nombre>` registra el dispositivo en uno concreto.
+- **Dónde funciona**: de momento solo en la instalación manual; el plugin y la extensión configuran un NAS.
 
 Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracion.md](docs/configuracion.md).
 
@@ -259,6 +293,13 @@ Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a 
 | `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
 | `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
 
+### Varios NAS: 2 (solo si hay más de uno configurado)
+
+| Herramienta | Tipo | Qué hace |
+|---|---|---|
+| `list_nas` | L | NAS configurados, cuál está activo y cómo se llega a cada uno (dirección; con QuickConnect, si es red local, directa o relé) |
+| `use_nas` | L | Cambiar el NAS activo; las demás herramientas pasan a actuar sobre él. No cambia nada en ningún NAS |
+
 Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [docs/herramientas.md](docs/herramientas.md).
 
 ## 7. Ejemplos de peticiones
@@ -297,7 +338,9 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 | Mensaje | Qué pasa | Qué hacer |
 |---|---|---|
 | `Missing required environment variables` | Falta la URL, el usuario o la contraseña | Revisa la configuración (sección 4) |
-| `Cannot reach the NAS at …` | No hay conexión con esa dirección | Comprueba la IP, el puerto (5000 http, 5001 https) y que estás en la red del NAS |
+| `Cannot reach the NAS at …` | No hay conexión con esa dirección | Comprueba la IP, el puerto (5000 http, 5001 https) y que estás en la red del NAS. Fuera de casa, usa `quickconnect:<ID>` |
+| `QuickConnect ID "…" was not found` | El ID no existe | Cópialo de *Panel de control → Acceso externo → QuickConnect* |
+| `none of its … addresses answered` | QuickConnect está desactivado o el NAS está apagado | Actívalo en DSM y comprueba que el NAS tiene conexión |
 | `TLS error … (CERT_HAS_EXPIRED)` o parecido | Certificado HTTPS caducado, autofirmado o de otro nombre | Renuévalo en *Panel de control → Seguridad → Certificado*, usa el nombre del certificado o pon `SYNOLOGY_INSECURE_TLS=true` |
 | `No such account or incorrect password (code 400)` | Credenciales incorrectas | Repetirlo muchas veces bloquea la IP (código 407) |
 | `2-step verification code required (code 403)` | La cuenta tiene 2FA | Ejecuta `register-device` (sección 2) |
@@ -335,6 +378,8 @@ src/
   synology/client.ts       login (Noise v7 / v6 / 2FA), peticiones, subidas, errores de conexión
   synology/errors.ts       textos de los códigos de error
   synology/noise.ts        handshake Noise del login de DSM 7.2
+  synology/quickconnect.ts resolución de un ID de QuickConnect (red local, directa o relé)
+  synology/pool.ts         varios NAS: el cliente activo y el cambio entre ellos
   tools/filestation.ts     ficheros
   tools/system.ts          get_system_info, utilización y almacenamiento
   tools/health.ts          SMART, actualizaciones, notificaciones y registros
@@ -342,6 +387,7 @@ src/
   tools/drive.ts           Synology Drive
   tools/downloadstation.ts Download Station (tareas, ficheros de torrent, RSS)
   tools/docker.ts          Container Manager
+  tools/nas.ts             list_nas y use_nas (con varios NAS)
 test/                      unitarias, NAS simulado (test/mock) y NAS real (test/real)
 plugin/                    plugin de Claude Code: manifiesto, skill y servidor empaquetado
 .claude-plugin/            marketplace
@@ -363,7 +409,7 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 
 ## 11. Limitaciones y próximos pasos
 
-- **Acceso fuera de casa**: aún no hay QuickConnect; se necesita la IP o el nombre del NAS. Es lo siguiente, junto con poder usar varios NAS.
+- **Varios NAS** solo en la instalación manual (`SYNOLOGY_NAS_FILE`); el plugin y la extensión configuran uno.
 - **npm**: el paquete no está publicado todavía.
 - **Sin probar en la práctica**: 2FA (probado solo con el NAS simulado) y la extensión de Claude Desktop instalada.
 - **No incluido**: Synology Photos, Hyper Backup, administración de DSM (usuarios, carpetas compartidas, tareas), crear o editar contenedores, reiniciar o apagar el NAS. Ver la [hoja de ruta](docs/hoja-de-ruta.md).

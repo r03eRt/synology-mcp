@@ -102,8 +102,8 @@ Ordenadas por utilidad probable.
 - [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia.
 - [ ] **4.4 Administración de DSM** (L). Usuarios y grupos, carpetas compartidas y permisos, tareas programadas. Solo admin; hay que pensar bien qué exponer.
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.
-- [ ] **4.6 QuickConnect** (M). Conectar fuera de casa sin abrir puertos. El punto de entrada es `SynologyClient.baseUrl()`.
-- [ ] **4.7 Varios NAS** (M). Configurar más de uno y elegir en cada llamada.
+- [x] **4.6 QuickConnect** (M). Hecho en 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, con red local, conexión directa o relé.
+- [x] **4.7 Varios NAS** (M). Hecho en 0.10.0 con `SYNOLOGY_NAS_FILE`, `list_nas` y `use_nas` (NAS activo, en vez de un parámetro en cada herramienta). Pendiente: configurarlo desde el plugin.
 
 Descartados por ahora: MailPlus y Calendar (no instalados en este NAS) y Spreadsheet (necesita un contenedor aparte). Ver [analisis-apis.md](analisis-apis.md).
 

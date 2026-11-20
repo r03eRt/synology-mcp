@@ -1,6 +1,6 @@
 {
   "name": "synology",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Use a Synology NAS (DSM 7) from Claude: files (File Station), Synology Drive, Download Station, Container Manager (Docker) and NAS status. Read-only unless you turn writes on.",
   "author": {
     "name": "Roberto Morgado Luengo"
@@ -18,7 +18,7 @@
     "url": {
       "type": "string",
       "title": "NAS URL",
-      "description": "DSM address with port, e.g. http://192.168.1.10:5000 or https://nas.example.com:5001",
+      "description": "DSM address with port (http://192.168.1.10:5000, https://nas.example.com:5001) or quickconnect:<your QuickConnect ID> to reach it from anywhere",
       "required": true
     },
     "username": {

@@ -4,6 +4,13 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.10.0: QuickConnect y varios NAS
+- **QuickConnect**: `SYNOLOGY_URL=quickconnect:<ID>`. El cliente pregunta al servicio de Synology y prueba la red local (nombre `…direct.quickconnect.to`), la conexión directa por Internet y el relé de Synology, por ese orden. Usa la primera que responde y vuelve a resolver si se corta. Todas tienen certificado válido. Probado contra el NAS real por la red local y por el relé, con login completo. Nuevo `src/synology/quickconnect.ts`.
+- **Varios NAS**: `SYNOLOGY_NAS_FILE` con una lista de NAS (contraseñas por variable de entorno). Herramientas `list_nas` y `use_nas`, solo cuando hay más de uno; las demás actúan sobre el NAS activo, mediante un `Proxy` (`src/synology/pool.ts`). `register-device --nas <nombre>`.
+- El plugin y la extensión aceptan `quickconnect:<ID>` en el campo de la URL.
+- README: cómo usarlo fuera de casa, varios NAS, nuevas entradas de problemas frecuentes.
+- Pruebas: 109 (`multi-nas.test.ts`).
+
 ### 0.9.0: liberar espacio y extras de Download Station
 - **Liberar espacio** (solo admin):
   - `recycle_bins`: cuánto ocupa cada papelera;

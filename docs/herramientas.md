@@ -1,6 +1,6 @@
 # Herramientas
 
-69 herramientas en seis grupos: File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14) y Container Manager (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 = 40); con `SYNOLOGY_READ_ONLY=false` registra las 69. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
+69 herramientas en seis grupos (71 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14) y Container Manager (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 = 40); con `SYNOLOGY_READ_ONLY=false` registra las 69. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -385,4 +385,15 @@ Solo con `SYNOLOGY_READ_ONLY=false`. Arrancar, parar y reiniciar devuelven `{ do
 | `docker_remove_images` | `Image list` + `Container list` + `Image delete` (`images=[{repository, tags:[tag]}]`) | **destructiva** | Recibe `"repositorio:etiqueta"`, o solo el repositorio para una imagen sin etiqueta. Entiende registros con puerto (`registry.local:5000/tool:1.0`). **Rechaza las imágenes que usa algún contenedor**, aunque esté parado, diciendo cuáles. Devuelve `removed` (con el espacio liberado) y `failed`. Desde 0.9.0 |
 
 No incluido (por ahora): crear, borrar o editar contenedores, descargar imágenes, `Image prune` y proyectos Compose. `prune` no se expone porque borra de golpe sin decir qué; `docker_images` más `docker_remove_images` hacen lo mismo de forma explícita. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
+
+# Varios NAS
+
+Código: [src/tools/nas.ts](../src/tools/nas.ts) y [src/synology/pool.ts](../src/synology/pool.ts), desde 0.10.0. Solo se registran si `SYNOLOGY_NAS_FILE` configura más de un NAS; con uno solo no aparecen y el número de herramientas no cambia. Configuración en [configuracion.md](configuracion.md#varios-nas).
+
+| Herramienta | Parámetros | Qué devuelve |
+|---|---|---|
+| `list_nas` | — | `active` y, por NAS: `name`, `active`, `user` y `url`. Con QuickConnect, una vez usado, también `via` (`lan`, `external` o `relay`) y `quickconnect_id`. No hace llamadas a los NAS |
+| `use_nas` | `name` (sin distinguir mayúsculas) | `{ active }`. Lectura e idempotente: solo cambia a qué NAS van las llamadas siguientes |
+
+Todas las demás herramientas usan el NAS activo. Cada NAS tiene su propio cliente y su sesión, creados al primer uso; al cambiar y volver no hay que iniciar sesión otra vez. Las instrucciones del servidor dicen qué NAS hay y cuál está activo al arrancar.
 
