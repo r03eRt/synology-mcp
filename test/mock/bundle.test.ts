@@ -25,7 +25,7 @@ describe("bundled server", () => {
     const client = new Client({ name: "bundle-test", version: "0" });
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [BUNDLE], env: env as Record<string, string>, stderr: "ignore" }));
     try {
-      assert.equal((await client.listTools()).tools.length, 47, "read-only by default");
+      assert.equal((await client.listTools()).tools.length, 49, "read-only by default");
       const r = await client.callTool({ name: "get_info", arguments: {} });
       assert.match((r.content as Array<{ text: string }>)[0].text, /bundled-nas/);
       assert.deepEqual(nas.logins, [{ version: 7 }]);

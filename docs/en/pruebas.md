@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-137 tests, ~8 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+150 tests, ~8 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -122,6 +122,16 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-21, version 0.13.0 (packages and Drive sharing)
+
+- `npm test`: 150/150. New: `test/mock/packages-drive-sharing.test.ts`. It covers `describePackage`, `linkRole`, `get_packages` (order, counts, filters, Hyper Backup warning, user without permission), `drive_share`, `drive_link` (internal, protected with password and expiry, refused public link that keeps the internal one, allowed public link, removal, past dates) and file requests (create, list, delete, disabled). The mock NAS applies `Sharing update` entry by entry, like the real one.
+- Against the real NAS, in temporary folders `/home/Drive/mcp-test-<base36>` (4 runs, all deleted; the first created nothing because of a bug in the test script):
+  - `get_packages`: 42 packages, 2 with a problem (WordPress and PHP 8.0 in `version_limit`) and the warning that Hyper Backup is missing.
+  - Internal `drive_link`: URL `/d/f/…`, visible in `drive_list_permissions`. With `allow_download: false`, password and expiry: role `previewer` and protected link `/d/s/…`, with the password and the right date. `access: none` removes both.
+  - Public `drive_link`: 1040. In the second run it deleted the internal link (`Sharing update` is not atomic); after the fix, in the fourth run, the internal one was kept.
+  - `drive_share` with a throwaway user (created and deleted in the same test): `editor` and then `none`.
+  - File requests: 1076, "file request is disabled", on `create` and `list`.
 
 ### Result 2026-11-20, version 0.12.0 (Download Station limits, schedule and search; users)
 

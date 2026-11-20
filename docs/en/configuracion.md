@@ -38,7 +38,7 @@ The output is in `dist/index.js`.
 | `SYNOLOGY_USERNAME` | yes | — | DSM user |
 | `SYNOLOGY_PASSWORD` | yes | — | Password |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` accepts an invalid HTTPS certificate (self-signed, expired or issued for another name). Only on a trusted network |
-| `SYNOLOGY_READ_ONLY` | no | **`true`** (since 0.6.0) | By default only the 47 read tools are registered (12 File Station, 7 NAS status and health, 1 recycle bins, 11 Drive, 6 Download Station, 4 Container Manager and 6 administration). `false` also registers the 37 write tools |
+| `SYNOLOGY_READ_ONLY` | no | **`true`** (since 0.6.0) | By default only the 49 read tools are registered (12 File Station, 8 NAS status and health, 1 recycle bins, 12 Drive, 6 Download Station, 4 Container Manager and 6 administration). `false` also registers the 41 write tools |
 | `SYNOLOGY_DEVICE_ID` | no | — | Device token for accounts with 2FA (given by `synology-mcp register-device`). It is secret, like the password |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Name the device was registered with; it must match the one used at registration |
 | `SYNOLOGY_NAS_FILE` | no | — | JSON with several NAS (see "Several NAS"). Replaces `SYNOLOGY_URL`, `SYNOLOGY_USERNAME` and `SYNOLOGY_PASSWORD` |

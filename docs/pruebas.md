@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-137 pruebas, ~8 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+150 pruebas, ~8 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -122,6 +122,16 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-21, versión 0.13.0 (paquetes y compartir en Drive)
+
+- `npm test`: 150/150. Nueva: `test/mock/packages-drive-sharing.test.ts`. Cubre `describePackage`, `linkRole`, `get_packages` (orden, recuentos, filtros, aviso de Hyper Backup, usuario sin permisos), `drive_share`, `drive_link` (interno, protegido con contraseña y caducidad, público rechazado que conserva el interno, público permitido, quitar, fechas pasadas) y las *file requests* (crear, listar, borrar, desactivadas). El NAS simulado aplica `Sharing update` entrada a entrada, como el real.
+- Contra el NAS real, en carpetas temporales `/home/Drive/mcp-test-<base36>` (4 ejecuciones, todas borradas; la primera no llegó a crear nada por un error del script de prueba):
+  - `get_packages`: 42 paquetes, 2 con problema (WordPress y PHP 8.0 en `version_limit`) y el aviso de que falta Hyper Backup.
+  - `drive_link` interno: URL `/d/f/…`, que se ve en `drive_list_permissions`. Con `allow_download: false`, contraseña y caducidad: rol `previewer` y enlace protegido `/d/s/…`, con contraseña y la fecha bien. `access: none` quita los dos.
+  - `drive_link` público: 1040. En la segunda ejecución borró el enlace interno (`Sharing update` no es atómica); tras el arreglo, en la cuarta, el interno se conservó.
+  - `drive_share` con un usuario desechable (creado y borrado en la misma prueba): `editor` y después `none`.
+  - *File requests*: 1076, "file request is disabled", en `create` y en `list`.
 
 ### Resultado 2026-11-20, versión 0.12.0 (límites, horario y búsqueda de Download Station; usuarios)
 

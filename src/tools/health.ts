@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { SynologyClient } from "../synology/client.js";
+import { json, type SynologyClient } from "../synology/client.js";
 import { ok, safe } from "./format.js";
 import { adminOnly } from "./system.js";
 
@@ -310,4 +310,80 @@ export function registerHealthTools(server: McpServer, client: SynologyClient) {
       }),
     ),
   );
+
+  server.registerTool(
+    "get_packages",
+    {
+      title: "Installed packages",
+      description:
+        "Packages installed on the NAS (Package Center) with version and status: running, stopped, or a problem (incompatible with this DSM version, failed to start, broken, license error, volume missing). Problems come first with what to do. Filter by status or text. Needs a DSM administrator account.",
+      inputSchema: {
+        status: z.enum(["running", "stopped", "problem"]).optional().describe("Only packages in this state"),
+        query: z.string().optional().describe("Text in the package name or id (case-insensitive)"),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    safe(async ({ status, query }) =>
+      adminOnly(async () => {
+        const { packages } = await client.request<{ packages: RawPackage[] }>(
+          "SYNO.Core.Package",
+          "list",
+          { additional: json(["status", "startable", "installed_info"]) },
+          2,
+        );
+        const all = packages.map(describePackage).sort((a, b) => Number(Boolean(b.problem)) - Number(Boolean(a.problem)) || a.name.localeCompare(b.name));
+        const q = query?.toLowerCase();
+        const list = all.filter(
+          (p) => (!status || (status === "problem" ? Boolean(p.problem) : p.status === status)) && (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
+        );
+        const counts = { total: all.length, running: all.filter((p) => p.status === "running").length, stopped: all.filter((p) => p.status === "stopped").length, problems: all.filter((p) => p.problem).length };
+        // Hyper Backup is DSM's versioned backup; Cloud Sync and USB Copy only sync or copy.
+        const noBackup = !all.some((p) => p.id === "HyperBackup");
+        return ok({
+          ...counts,
+          ...(noBackup && { warning: "Hyper Backup is not installed: unless backups are made some other way, the NAS has no versioned backup of its data." }),
+          matched: list.length,
+          packages: list,
+        });
+      }),
+    ),
+  );
+}
+
+interface RawPackage {
+  id: string;
+  name: string;
+  version: string;
+  additional?: { status?: string; status_origin?: string; startable?: boolean; installed_info?: { is_broken?: boolean; is_brick?: boolean } };
+}
+
+/**
+ * Package Center states (webman/modules/PkgManApp/PkgManApp.js): running and stop
+ * are normal; start_failed, stopped_by_dep_limit, version_limit and volume_unmounted
+ * are shown greyed and the rest of the broken set in red. version_limit is a
+ * broken state: the installed version does not work with this DSM ("broken_version_desc").
+ */
+const PACKAGE_PROBLEMS: Record<string, string> = {
+  version_limit: "Incompatible with this DSM version and not running: update or repair it in Package Center",
+  start_failed: "Failed to start: open Package Center to see why, or repair it",
+  stopped_by_dep_limit: "Stopped because a package it depends on is missing or stopped",
+  volume_unmounted: "The volume it is installed on is not available",
+  broken: "Broken: repair it in Package Center",
+  broken_by_other: "Broken by another package: repair it in Package Center",
+  license_error: "License problem",
+};
+
+export function describePackage(p: RawPackage) {
+  const raw = p.additional?.status ?? "unknown";
+  const broken = p.additional?.installed_info?.is_broken || p.additional?.installed_info?.is_brick;
+  const problem = PACKAGE_PROBLEMS[raw] ?? (broken ? PACKAGE_PROBLEMS.broken : undefined);
+  return {
+    id: p.id,
+    name: p.name,
+    version: p.version,
+    status: raw === "stop" ? "stopped" : raw === "running" ? "running" : raw,
+    ...(problem && { problem }),
+    // false: a system package that cannot be stopped from Package Center.
+    ...(p.additional?.startable === false && { can_stop: false }),
+  };
 }

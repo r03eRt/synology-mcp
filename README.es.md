@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">84 herramientas</a> ·
+  <a href="#6-herramientas">90 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -48,10 +48,10 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | | Área | Lo más útil |
 |---|---|---|
 | 📁 | **Ficheros** | Buscar por nombre, tipo, tamaño o fecha · leer documentos e imágenes · subir y descargar · mover, comprimir · compartir con enlace |
-| ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · convertir a Synology Office |
+| ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
 | 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · limpiar imágenes |
-| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · notificaciones y registros · volúmenes |
+| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
 | 🛠️ | **Administración** | Usuarios (crear, desactivar, borrar), grupos, permisos de carpetas, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) |
 | 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
@@ -231,7 +231,8 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
   - quitar descargas o feeds: `downloads_delete`, `downloads_rss_delete`;
   - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
   - administración: `dsm_run_task` (ejecuta un script), `dsm_set_share_access` (cambia quién ve qué), `dsm_update_user` y `dsm_delete_user` (borrar un usuario borra también su carpeta personal);
-  - otras: `delete_sharing_links`, `drive_delete_label`.
+  - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
+  - otras: `delete_sharing_links`.
 - **Secretos que nunca devuelve**, aunque la API del NAS los dé:
   - los **valores** de las variables de entorno de los contenedores (contraseñas de bases de datos, claves de API); solo da sus nombres;
   - las **claves privadas (passkeys)** de los trackers en las URL de torrents, RSS y enlaces magnet, y las credenciales dentro de URLs; salen como `<redacted>`;
@@ -272,7 +273,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | `create_sharing_link` | E | Enlace público, con contraseña y caducidad opcionales |
 | `delete_sharing_links` | **D** | Borrar enlaces públicos |
 
-### Estado y salud del NAS: 7
+### Estado y salud del NAS: 8
 
 | Herramienta | Tipo | Admin | Qué hace |
 |---|---|---|---|
@@ -282,6 +283,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | `get_disk_health` | L | sí | SMART de cada disco: sectores defectuosos y si aumentan, horas encendido, temperatura, atributos que fallan |
 | `check_updates` | L | sí | Actualización de DSM (y si es de seguridad) y paquetes con versión nueva. Solo consulta |
 | `get_notifications` | L | sí | Notificaciones de la campana de DSM (errores, avisos, descargas terminadas…) |
+| `get_packages` | L | sí | Paquetes instalados y su estado; señala los que no funcionan (por ejemplo, incompatibles con este DSM) y avisa si falta Hyper Backup |
 | `get_system_logs` | L | sí | Registro del sistema o de conexiones, filtrable por nivel, texto y fechas |
 
 ### Liberar espacio: 2 (más `docker_remove_images`)
@@ -293,7 +295,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`, `search_files` (con `size_from`) y `docker_images`.
 
-### Synology Drive: 16
+### Synology Drive: 21
 
 | Herramienta | Tipo | Qué hace |
 |---|---|---|
@@ -304,13 +306,18 @@ Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`,
 | `drive_list_labels` / `drive_list_labelled` | L | Etiquetas / elementos con una etiqueta |
 | `drive_list_permissions` | L | Quién tiene acceso a un elemento |
 | `drive_list_team_folders` | L | Carpetas de equipo |
+| `drive_file_requests` | L | Tus *file requests* (enlaces de subida) y su estado |
 | `drive_star` | E | Poner o quitar estrella |
 | `drive_label` | E | Añadir o quitar etiquetas por nombre (crea las que falten) |
 | `drive_create_label` | E | Crear una etiqueta |
 | `drive_delete_label` | **D** | Borrar una etiqueta (los ficheros se quedan) |
 | `drive_convert_to_office` | E | Convertir Word, Excel, PowerPoint o CSV a Synology Office |
+| `drive_create_file_request` | E | Crear un enlace de subida a una carpeta para gente sin cuenta en el NAS, con contraseña y caducidad opcionales |
+| `drive_share` | **D** | Dar, cambiar o quitar el rol de un usuario o grupo (lector, editor, gestor…) |
+| `drive_link` | **D** | Activar el enlace para compartir (usuarios del NAS o cualquiera) o quitarlo; con contraseña o caducidad, un enlace protegido |
+| `drive_delete_file_request` | **D** | Borrar *file requests* (lo subido se queda) |
 
-### Descargas (Download Station): 18
+### Descargas (Download Station): 17
 
 Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
 
@@ -382,6 +389,7 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 - «¿Cómo está el NAS? ¿Algún disco con problemas?»
 - «¿Hay actualizaciones pendientes? ¿Qué errores ha habido esta semana?»
 - «¿Quién ha entrado en el NAS hoy?»
+- «¿Hay algún paquete averiado o parado? ¿Tengo copias de seguridad?»
 
 **Espacio**
 - «El volumen está casi lleno: ¿qué puedo borrar?»
@@ -392,6 +400,8 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 - «Busca los PDF de facturas de 2024 en /home y dime cuánto ocupan.»
 - «Lee /home/notas/lista.txt y resúmela.»
 - «Crea un enlace para compartir /photo/Viaje que caduque el domingo.»
+- «Comparte la carpeta Proyecto de Drive con marta como editora.»
+- «Crea un enlace para que mi familia suba las fotos de la boda a Drive.»
 
 **Descargas**
 - «Añade este magnet en /home/Descargas.»

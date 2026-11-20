@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { json, type SynologyClient } from "../synology/client.js";
+import { SynologyApiError } from "../synology/errors.js";
 import { ok, safe } from "./format.js";
 
 /**
@@ -16,6 +17,55 @@ const LABELS_V = 3;
 const SHARING = "SYNO.SynologyDrive.Sharing";
 const TEAM = "SYNO.SynologyDrive.TeamFolders";
 const TASKS = "SYNO.SynologyDrive.Tasks";
+/** Protected links (password / expiry): a second link per file, from the web UI's "Advanced sharing". */
+const ADV_SHARING = "SYNO.SynologyDrive.AdvanceSharing";
+const FILE_REQUEST = "SYNO.SynologyDrive.FileRequest";
+
+/** Roles of the Drive share dialog; preview* = can view but not download. "organizer" is shown as Manager. */
+export const DRIVE_ROLES = ["previewer", "preview_commenter", "viewer", "commenter", "editor", "organizer"] as const;
+/** Link roles: the dialog offers viewer / commenter / editor plus "allow download"; without download viewer → previewer, commenter → preview_commenter. */
+export function linkRole(role: "viewer" | "commenter" | "editor", allowDownload: boolean): string {
+  if (allowDownload) return role;
+  return role === "viewer" ? "previewer" : role === "commenter" ? "preview_commenter" : role;
+}
+
+interface SharedWith {
+  type: string;
+  name?: string;
+  role?: string;
+  display_name?: string;
+}
+
+interface DriveFileInfo {
+  display_path: string;
+  file_id: string;
+  type: string;
+  shared_with?: SharedWith[];
+  adv_shared?: boolean;
+  capabilities?: { can_share?: boolean };
+}
+
+interface AdvSharing {
+  sharing_link: string;
+  url: string;
+  role: string;
+  protect_password?: string;
+  due_date?: number;
+}
+
+interface FileRequestInfo {
+  title: string;
+  description?: string;
+  display_path?: string;
+  url?: string;
+  sharing_link: string;
+  protect_password?: string;
+  due_date?: number;
+  is_expired?: boolean;
+  file_request_status?: string;
+  identifier?: string;
+  created_time?: number;
+}
 
 const drivePath = z
   .string()
@@ -62,6 +112,21 @@ interface DriveList {
 const iso = (seconds?: number) => (seconds ? new Date(seconds * 1000).toISOString() : undefined);
 
 /** Drive items carry ~40 fields; keep the ones useful to a model. */
+function simplifyFileRequest(f: FileRequestInfo) {
+  return {
+    title: f.title,
+    ...(f.description && { description: f.description }),
+    folder: f.display_path,
+    url: f.url,
+    sharing_link: f.sharing_link,
+    status: f.is_expired ? "expired" : f.file_request_status,
+    password: Boolean(f.protect_password),
+    expires: f.due_date ? iso(f.due_date) : undefined,
+    ...(f.identifier && { uploader_files: f.identifier === "add_prefix" ? "name prefix" : "folder per uploader" }),
+    created: iso(f.created_time),
+  };
+}
+
 function simplifyItem(i: DriveItem) {
   return {
     name: i.name,
@@ -278,6 +343,26 @@ export function registerDriveTools(server: McpServer, client: SynologyClient, op
     }),
   );
 
+  server.registerTool(
+    "drive_file_requests",
+    {
+      title: "Drive: file requests",
+      description:
+        "File requests the user created: links where anyone can upload files into a Drive folder. Title, folder, upload URL, status, whether they have a password and when they expire.",
+      inputSchema: { status: z.enum(["any", "active", "closed"]).optional().describe("Default any") },
+      annotations: READ,
+    },
+    safe(async ({ status }) => {
+      const r = await client.request<{ items: FileRequestInfo[]; total: number }>(
+        FILE_REQUEST,
+        "list",
+        { path: json("/mydrive"), offset: 0, limit: 500, status: json(status ?? "any"), sort_by: json("created_time"), sort_direction: json("desc") },
+        1,
+      );
+      return ok({ total: r.total, file_requests: r.items.map(simplifyFileRequest) });
+    }),
+  );
+
   // ================================================================== write
 
   if (opts.readOnly) return;
@@ -393,6 +478,171 @@ export function registerDriveTools(server: McpServer, client: SynologyClient, op
       );
       if (!finished) return ok({ task_id: async_task_id, status: result.status, note: "Still running; check the folder later" });
       return ok({ task_id: async_task_id, status: result.status, errors: result.result?.errors ?? null });
+    }),
+  );
+
+  const getFile = (path: string) => client.request<DriveFileInfo>(FILES, "get", { path: json(path) }, 3);
+  const updatePermissions = (path: string, permissions: unknown[]) => client.request(SHARING, "update", { path: json(path), permissions: json(permissions) }, 1);
+  // The link is a sharing entry of type internal/public: it shows in Sharing list, not in Files get shared_with.
+  const currentLink = async (path: string) =>
+    (await client.request<{ items: SharedWith[] }>(SHARING, "list", { path: json(path) }, 2)).items.find((w) => w.type === "public" || w.type === "internal");
+  const dateSeconds = (d: string) => {
+    const t = Date.parse(d);
+    if (Number.isNaN(t)) throw new Error(`Not a date: ${d}`);
+    if (t <= Date.now()) throw new Error(`${d} is in the past`);
+    return Math.floor(t / 1000);
+  };
+
+  server.registerTool(
+    "drive_share",
+    {
+      title: "Drive: share with users or groups",
+      description:
+        "Give DSM users or groups a role on a Drive file or folder, change it, or remove it (role none). Roles: previewer (view, no download), preview_commenter, viewer, commenter, editor, organizer (manager: can also share). This changes who can see or edit: state the exact change and wait for confirmation.",
+      inputSchema: {
+        path: drivePath,
+        members: z
+          .array(
+            z.object({
+              type: z.enum(["user", "group"]).default("user"),
+              name: z.string().min(1),
+              role: z.enum([...DRIVE_ROLES, "none"]),
+            }),
+          )
+          .min(1),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ path, members }) => {
+      await updatePermissions(
+        path,
+        members.map((m) => (m.role === "none" ? { action: "delete", member: { type: m.type, name: m.name } } : { action: "update", member: { type: m.type, name: m.name }, role: m.role })),
+      );
+      const f = await getFile(path);
+      return ok({
+        path: f.display_path,
+        shared_with: (f.shared_with ?? []).map((w) => ({ type: w.type, ...(w.name && { name: w.name }), role: w.role })),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "drive_link",
+    {
+      title: "Drive: sharing link",
+      description:
+        "Turn on, change or turn off the sharing link of a Drive file or folder. access internal = only signed-in DSM users with the link; public = anyone with the link (only if the Drive admin allows public sharing); none = turn the link off (also removes the protected link). With password or expires, it also creates a protected link (a separate URL) with those settings. Public links expose data outside the NAS: confirm first.",
+      inputSchema: {
+        path: drivePath,
+        access: z.enum(["internal", "public", "none"]),
+        role: z.enum(["viewer", "commenter", "editor"]).optional().describe("What link holders can do (default viewer; commenter only for Office files)"),
+        allow_download: z.boolean().optional().describe("Default true; false makes viewers preview-only"),
+        password: z.string().min(1).max(127).optional().describe("Protect the link with a password (creates a protected link)"),
+        expires: z.string().optional().describe("Date the protected link stops working, e.g. 2026-12-31"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ path, access, role, allow_download, password, expires }) => {
+      const [before, current] = await Promise.all([getFile(path), currentLink(path)]);
+      if (access === "none") {
+        if (current) await updatePermissions(path, [{ action: "delete", member: { type: current.type } }]);
+        if (before.adv_shared) {
+          const adv = await client.request<AdvSharing>(ADV_SHARING, "get", { path: json(path) }, 1).catch(() => undefined);
+          if (adv) await client.request(ADV_SHARING, "delete", { path: json(path), sharing_link: json(adv.sharing_link) }, 1);
+        }
+        return ok({ path: before.display_path, link: "off", ...(!current && !before.adv_shared && { note: "It had no link" }) });
+      }
+      const r = linkRole(role ?? "viewer", allow_download ?? true);
+      const changes: unknown[] = [];
+      if (current && current.type !== access) changes.push({ action: "delete", member: { type: current.type } });
+      changes.push({ action: "update", member: { type: access }, role: r });
+      try {
+        await updatePermissions(path, changes);
+      } catch (err) {
+        // Sharing update is not atomic: the delete of the old link can go through while the new one fails
+        // (seen with public links on the real NAS). Put the previous link back.
+        if (current && current.type !== access) await updatePermissions(path, [{ action: "update", member: { type: current.type }, role: current.role }]).catch(() => undefined);
+        // Seen on the real NAS when public sharing is not allowed for the user (the web UI hides the public options).
+        if (access === "public" && err instanceof SynologyApiError && err.code === 1040) {
+          throw new Error(`${err.message}. Public links are probably not allowed: Synology Drive Admin Console > Settings > Sharing permissions. Use access internal instead.`);
+        }
+        throw err;
+      }
+      const { url } = await client.request<{ url: string }>(SHARING, "create_link", { path: json(path) }, 1);
+      let protectedLink: { url: string; password: boolean; expires?: string } | undefined;
+      if (password || expires) {
+        const adv =
+          (await client.request<AdvSharing>(ADV_SHARING, "get", { path: json(path) }, 1).catch(() => undefined)) ??
+          (await client.request<AdvSharing>(ADV_SHARING, "create", { path: json(path) }, 1));
+        const due = expires ? dateSeconds(expires) : 0;
+        await client.request(
+          ADV_SHARING,
+          "update",
+          { path: json(path), sharing_link: json(adv.sharing_link), role: json(r), protect_password: json(password ?? ""), due_date: due },
+          1,
+        );
+        protectedLink = { url: adv.url, password: Boolean(password), ...(due && { expires: iso(due) }) };
+      }
+      return ok({
+        path: before.display_path,
+        access,
+        role: r,
+        url,
+        ...(protectedLink && { protected_link: protectedLink, note: "Share the protected link: the plain url has no password or expiry." }),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "drive_create_file_request",
+    {
+      title: "Drive: create a file request",
+      description:
+        "Create a file request on a Drive folder: a link where anyone (no NAS account needed) can upload files into that folder. Optional password and expiry date. Uploads go into a subfolder per uploader, or into the folder with the uploader's name as prefix. Returns the upload URL.",
+      inputSchema: {
+        folder: drivePath.describe("Existing Drive folder that receives the uploads"),
+        title: z.string().min(1).max(255),
+        description: z.string().max(1000).optional(),
+        password: z.string().min(1).max(127).optional(),
+        expires: z.string().optional().describe("Date it stops accepting uploads, e.g. 2026-12-31"),
+        uploader_files: z.enum(["folder_per_uploader", "name_prefix"]).optional().describe("Default folder_per_uploader"),
+      },
+      annotations: { ...WRITE, openWorldHint: true },
+    },
+    safe(async ({ folder, title, description, password, expires, uploader_files }) => {
+      const f = await getFile(folder);
+      if (f.type !== "dir") throw new Error(`${folder} is not a folder`);
+      const due = expires ? dateSeconds(expires) : 0;
+      const r = await client.request<FileRequestInfo>(
+        FILE_REQUEST,
+        "create",
+        {
+          path: json(`id:${f.file_id}`),
+          title: json(title),
+          identifier: json(uploader_files === "name_prefix" ? "add_prefix" : "create_folder"),
+          description: json(description ?? ""),
+          protect_password: json(password ?? ""),
+          due_date: due,
+          has_due_date_hour: false,
+        },
+        1,
+      );
+      return ok({ title, folder: f.display_path, url: r.url, sharing_link: r.sharing_link, password: Boolean(password), ...(due && { expires: iso(due) }) });
+    }),
+  );
+
+  server.registerTool(
+    "drive_delete_file_request",
+    {
+      title: "Drive: delete file requests",
+      description: "Delete file requests: their upload links stop working. Files already uploaded stay in the folder.",
+      inputSchema: { sharing_links: z.array(z.string().min(1)).min(1).describe("sharing_link values from drive_file_requests") },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ sharing_links }) => {
+      // The web UI deletes one per call.
+      for (const link of sharing_links) await client.request(FILE_REQUEST, "delete", { sharing_link: json(link) }, 1);
+      return ok({ deleted: sharing_links });
     }),
   );
 }

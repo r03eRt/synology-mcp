@@ -2,7 +2,7 @@
 
 # Herramientas
 
-84 herramientas en siete grupos (86 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (18), Container Manager (8) y administración de DSM (12). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 6 + 4 + 6 = 47); con `SYNOLOGY_READ_ONLY=false` registra las 84. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
+90 herramientas en siete grupos (92 con varios NAS, ver el final): File Station (22), estado y salud del NAS (8), papeleras (2), Synology Drive (21), Download Station (17), Container Manager (8) y administración de DSM (12). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 6 + 4 + 6 = 49); con `SYNOLOGY_READ_ONLY=false` registra las 90. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -225,13 +225,14 @@ No devuelve números de serie de los discos ni del NAS.
 
 ### Salud del NAS (0.7.0)
 
-Las cuatro herramientas siguientes son de solo lectura y **necesitan una cuenta administradora**, con el mismo mensaje que las anteriores si no lo es. Usan las mismas llamadas que la web de DSM: el Administrador de almacenamiento, *Panel de control → Actualizar*, el Centro de registros y la campana de notificaciones. Los métodos y parámetros se sacaron del JavaScript que sirve el propio NAS; ver [api-synology.md](api-synology.md#salud-del-nas-070).
+Las cinco herramientas siguientes son de solo lectura y **necesitan una cuenta administradora**, con el mismo mensaje que las anteriores si no lo es. Usan las mismas llamadas que la web de DSM: el Administrador de almacenamiento, *Panel de control → Actualizar*, el Centro de registros y la campana de notificaciones. Los métodos y parámetros se sacaron del JavaScript que sirve el propio NAS; ver [api-synology.md](api-synology.md#salud-del-nas-070).
 
 | Herramienta | API | Parámetros | Qué devuelve |
 |---|---|---|---|
 | `get_disk_health` | `Storage.CGI.Storage load_info` + `Storage.CGI.Smart get_health_info` por disco | `disk` (id `sda` o nombre `Drive 1`), `all_attributes` | Por disco: `status`, `smart`, `last_smart_test`, `bad_sectors` y `bad_sectors_trend` (estable o creciendo, según el historial de DSM), `power_on_hours`/`power_on_years`, `remaining_life_pct` si se conoce, `temperature_c` y los atributos SMART que fallan o que importan: 5 sectores reasignados, 9 horas encendido, 187, 188, 194 temperatura, 196, 197 pendientes, 198 incorregibles y 199 errores CRC. Con `all_attributes`, todos. Sin números de serie |
 | `check_updates` | `Core.Upgrade.Server check` v3 + `Core.Package list` + `Core.Package.Server list` | — | `dsm`: si hay actualización, versión, si es de seguridad y si pide reinicio. `packages`: paquetes instalados con una versión más nueva en el Centro de paquetes (comparación numérica, sin betas). No instala nada. *Open world*: consulta los servidores de Synology |
 | `get_notifications` | `Core.DSMNotify notify` (`action=load`) | `limit` (por defecto 30), `level` (`info`/`warning`/`error`) | Notificaciones del escritorio de DSM, las más recientes primero: `time`, `level`, `event` (clave de DSM, p. ej. `DownloadCompleted`, `DSMAutoUpdateNotifyNewImportantVersion`), `app` y `details` (parámetros decodificados, sin los repetidos: nombre del NAS, sistema, fecha y hora) |
+| `get_packages` (0.13.0) | `Core.Package list` v2 (`additional=["status", "startable", "installed_info"]`) | `status` (`running`/`stopped`/`problem`), `query` | Paquetes instalados con `version` y `status`. Los que tienen un problema van primero, con `problem` explicando qué hacer: `version_limit` (no es compatible con esta versión de DSM y no funciona), `start_failed`, `stopped_by_dep_limit`, `volume_unmounted`, `broken`, `broken_by_other` o `license_error`. `can_stop: false` marca los paquetes del sistema. Recuentos `running`/`stopped`/`problems`, y `warning` si Hyper Backup no está instalado |
 | `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (fecha ISO; una fecha sola es el día entero en hora local), `offset`, `limit` (por defecto 50, máx. 500) | `total` coincidente, `returned` y `entries` (`time`, `level`, `who`, `message`), lo más reciente primero |
 
 # Papeleras
@@ -247,7 +248,7 @@ La carpeta `homes` tiene una papelera por usuario (`/homes/<usuario>/#recycle`);
 
 # Synology Drive
 
-Código: [src/tools/drive.ts](../src/tools/drive.ts). Basado en la especificación oficial *Synology Drive* v2 de la Office Suite API; cada operación se llama por `entry.cgi` con la misma sesión que File Station (`SYNO.SynologyDrive.Files` v11, `Labels` v3, `Sharing` v2, `TeamFolders` v1, `Tasks` v1).
+Código: [src/tools/drive.ts](../src/tools/drive.ts). Basado en la especificación oficial *Synology Drive* v2 de la Office Suite API; cada operación se llama por `entry.cgi` con la misma sesión que File Station (`SYNO.SynologyDrive.Files` v11, `Labels` v3, `Sharing` v2, `TeamFolders` v1, `Tasks` v1). Compartir, enlaces y *file requests* (0.13.0) usan las llamadas de la web de Drive (`Sharing update`/`create_link` v1, `AdvanceSharing` y `FileRequest` v1); ver [api-synology.md](api-synology.md).
 
 **Rutas de Drive** (distintas de las de File Station):
 
@@ -264,7 +265,7 @@ Todas las herramientas de listado devuelven `{total, items}` con cada elemento s
 
 Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`, `owner`, `type`), `sort_direction` (`asc`/`desc`), `limit` (0 = sin límite) y `offset`.
 
-## Lectura (11)
+## Lectura (12)
 
 | Herramienta | Método | Parámetros | Qué hace |
 |---|---|---|---|
@@ -279,8 +280,9 @@ Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`,
 | `drive_list_labelled` | `Files list_labelled` | `label_id` | Elementos con una etiqueta |
 | `drive_list_permissions` | `Sharing list` | `path` | Quién tiene acceso y con qué rol |
 | `drive_list_team_folders` | `TeamFolders list` | — | Carpetas de equipo accesibles |
+| `drive_file_requests` | `FileRequest list` (`path=/mydrive`, `status`, orden por fecha de creación) | `status` (`any`/`active`/`closed`) | *File requests* del usuario: `title`, `folder`, `url`, `sharing_link`, `status` (o `expired`), `password` (sí/no, nunca la contraseña), `expires`, `uploader_files` y `created` |
 
-## Escritura (5)
+## Escritura (9)
 
 | Herramienta | Método | Parámetros | Qué hace |
 |---|---|---|---|
@@ -290,11 +292,23 @@ Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`,
 | `drive_delete_label` | `Labels delete` | `label_id` | Borrar etiqueta (se quita de todos los ficheros; los ficheros se conservan). Destructiva |
 | `drive_convert_to_office` | `Files convert_office` + `Tasks get` | `paths`, `dest_folder`, `conflict_action` (`autorename` por defecto, `overwrite`, `stop`, `version`) | Convierte Word/Excel/PowerPoint/CSV a Synology Office (`.odoc`/`.osheet`/`.oslides`). Espera a la tarea; si no termina dentro de `SYNOLOGY_TASK_TIMEOUT_MS`, devuelve el `task_id` |
 
+| `drive_share` (0.13.0) | `Sharing update` v1 (`permissions=[{action: "update", member: {type, name}, role}]` o `{action: "delete", member}`) + `Files get` | `path`, `members` (`[{type: user/group, name, role}]`) | Dar, cambiar o quitar (`role: none`) el acceso de usuarios o grupos. Roles: `previewer` (ver sin descargar), `preview_commenter`, `viewer`, `commenter`, `editor` y `organizer` (gestor: también puede compartir). Devuelve cómo queda `shared_with`. **Destructiva** |
+| `drive_link` (0.13.0) | `Sharing list` + `Sharing update` (miembro `internal` o `public`) + `Sharing create_link`; con contraseña o caducidad, `AdvanceSharing get`/`create` + `update` (`role`, `protect_password`, `due_date`) | `path`, `access` (`internal`/`public`/`none`), `role` (`viewer`/`commenter`/`editor`), `allow_download` (por defecto `true`), `password`, `expires` (fecha) | Enlace para compartir. `internal`: solo usuarios del NAS con sesión; `public`: cualquiera con el enlace. Sin descarga, `viewer` pasa a `previewer` y `commenter` a `preview_commenter`, como en la web. Con `password` o `expires` crea además un **enlace protegido** (otra URL, `protected_link`): es el que hay que compartir, porque el `url` normal no lleva contraseña. `none` quita el enlace y el protegido. **Destructiva** y *open world* |
+| `drive_create_file_request` (0.13.0) | `Files get` + `FileRequest create` v1 (`path=id:<file_id>`, `title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour=false`) | `folder`, `title`, `description`, `password`, `expires`, `uploader_files` (`folder_per_uploader` por defecto, o `name_prefix`) | Enlace para que cualquiera, sin cuenta en el NAS, suba ficheros a esa carpeta. Devuelve `url` y `sharing_link`. *Open world* |
+| `drive_delete_file_request` (0.13.0) | `FileRequest delete` v1 (`sharing_link`), una llamada por cada uno, como la web | `sharing_links` | El enlace deja de funcionar; lo ya subido se queda. **Destructiva** |
+
 `drive_label` nunca envía la lista vacía de etiquetas: según la especificación, eso quitaría todas las etiquetas de los ficheros.
+
+**Enlaces**:
+- `Sharing update` **no es atómica**: si un cambio de la lista falla, los anteriores ya se han aplicado. En el NAS real, pasar de enlace interno a público borró el interno y luego falló el público. Por eso `drive_link`, si falla, vuelve a poner el enlace que había.
+- El enlace es una entrada más de `Sharing list` (tipo `internal` o `public`) y sale también en `shared_with` de `Files get`.
+- En el NAS de pruebas los **enlaces públicos se rechazan con 1040** ("update permission failed"), y la web oculta esas opciones. Probablemente Drive no permite compartir en público en ese NAS (*Consola de administración de Drive → Configuración → Permisos de compartición*); el MCP lo explica en el error.
+
+**File requests**: en el NAS de pruebas están **desactivadas** (1076, `"file request is disabled"`), así que crearlas y listarlas solo se ha probado con el NAS simulado. Se activan en la *Consola de administración de Drive*.
 
 ## No incluido (por ahora)
 
-De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y borrar (ya los cubre File Station sobre `/home/Drive`), cambiar permisos, crear enlaces de Drive, *file requests*, webhooks y las operaciones de administración.
+De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y borrar (ya los cubre File Station sobre `/home/Drive`), editar una *file request* o volver a abrirla, webhooks y las operaciones de administración.
 
 # Download Station
 

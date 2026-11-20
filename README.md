@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">84 tools</a> ·
+  <a href="#6-tools">90 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -48,10 +48,10 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | | Area | Most useful |
 |---|---|---|
 | 📁 | **Files** | Search by name, type, size or date · read documents and images · upload and download · move, compress · share with a link |
-| ☁️ | **Synology Drive** | Recent, starred, labels, shared · convert to Synology Office |
+| ☁️ | **Synology Drive** | Recent, starred, labels, shared · share with people, links with password and expiry, file requests · convert to Synology Office |
 | ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
 | 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · clean up images |
-| 🩺 | **Health** | SMART for each disk · pending updates · notifications and logs · volumes |
+| 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
 | 🛠️ | **Administration** | Users (create, disable, delete), groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
 | 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
@@ -231,7 +231,8 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
   - removing downloads or feeds: `downloads_delete`, `downloads_rss_delete`;
   - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
   - administration: `dsm_run_task` (runs a script), `dsm_set_share_access` (changes who sees what), `dsm_update_user` and `dsm_delete_user` (deleting a user also deletes their home folder);
-  - others: `delete_sharing_links`, `drive_delete_label`.
+  - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
+  - others: `delete_sharing_links`.
 - **Secrets it never returns**, even if the NAS API provides them:
   - the **values** of container environment variables (database passwords, API keys); it only gives their names;
   - tracker **private keys (passkeys)** in torrent, RSS and magnet URLs, and credentials inside URLs; they come out as `<redacted>`;
@@ -272,7 +273,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | `create_sharing_link` | E | Public link, with optional password and expiry |
 | `delete_sharing_links` | **D** | Delete public links |
 
-### NAS status and health: 7
+### NAS status and health: 8
 
 | Tool | Type | Admin | What it does |
 |---|---|---|---|
@@ -282,6 +283,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | `get_disk_health` | L | yes | SMART for each disk: bad sectors and whether they're growing, power-on hours, temperature, failing attributes |
 | `check_updates` | L | yes | DSM update (and whether it's a security one) and packages with a new version. Check only |
 | `get_notifications` | L | yes | DSM bell notifications (errors, warnings, finished downloads…) |
+| `get_packages` | L | yes | Installed packages and their status; flags the ones not working (e.g. incompatible with this DSM) and warns if Hyper Backup is missing |
 | `get_system_logs` | L | yes | System or connection log, filterable by level, text and dates |
 
 ### Freeing up space: 2 (plus `docker_remove_images`)
@@ -293,7 +295,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 To find what else is taking up space, use `get_storage_status`, `get_dir_size`, `search_files` (with `size_from`) and `docker_images`.
 
-### Synology Drive: 16
+### Synology Drive: 21
 
 | Tool | Type | What it does |
 |---|---|---|
@@ -304,13 +306,18 @@ To find what else is taking up space, use `get_storage_status`, `get_dir_size`, 
 | `drive_list_labels` / `drive_list_labelled` | L | Labels / items with a label |
 | `drive_list_permissions` | L | Who has access to an item |
 | `drive_list_team_folders` | L | Team folders |
+| `drive_file_requests` | L | Your file requests (upload links) and their status |
 | `drive_star` | E | Star or unstar |
 | `drive_label` | E | Add or remove labels by name (creates missing ones) |
 | `drive_create_label` | E | Create a label |
 | `drive_delete_label` | **D** | Delete a label (files stay) |
 | `drive_convert_to_office` | E | Convert Word, Excel, PowerPoint or CSV to Synology Office |
+| `drive_create_file_request` | E | Create an upload link to a folder for people without a NAS account, with optional password and expiry |
+| `drive_share` | **D** | Give, change or remove a user's or group's role (viewer, editor, manager…) |
+| `drive_link` | **D** | Turn the sharing link on (NAS users or anyone) or off; with password or expiry, a protected link |
+| `drive_delete_file_request` | **D** | Delete file requests (uploaded files stay) |
 
-### Downloads (Download Station): 18
+### Downloads (Download Station): 17
 
 A regular user sees and manages their own downloads; an administrator, everyone's.
 
@@ -382,6 +389,7 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 - "How's the NAS doing? Any disk with problems?"
 - "Are there pending updates? What errors have there been this week?"
 - "Who has logged into the NAS today?"
+- "Is any package broken or stopped? Do I have backups?"
 
 **Space**
 - "The volume is almost full: what can I delete?"
@@ -392,6 +400,8 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 - "Find the 2024 invoice PDFs in /home and tell me how much space they take."
 - "Read /home/notas/lista.txt and summarize it."
 - "Create a share link for /photo/Viaje that expires on Sunday."
+- "Share the Proyecto Drive folder with marta as an editor."
+- "Create a link so my family can upload the wedding photos to Drive."
 
 **Downloads**
 - "Add this magnet in /home/Descargas."

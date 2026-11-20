@@ -84,7 +84,7 @@ Needed before anyone else uses it.
   - speed limits and schedule;
   - RSS;
   - torrent search (BTSearch).
-- [ ] **3.2 Drive** (M):
+- [x] **3.2 Drive** (M). Done in 0.13.0: `drive_share`, `drive_link` (with a protected link) and file requests. On the test NAS public links and file requests are disabled by Drive's settings. Pending: editing or reopening a file request.
   - change sharing permissions;
   - create Drive links;
   - file requests.
@@ -93,7 +93,7 @@ Needed before anyone else uses it.
   - SMART status per disk;
   - available DSM and package updates;
   - restart and shut down, with `destructiveHint` and admin only.
-- [ ] **3.4 Installed packages** (S). List the packages and whether they're running. Also useful for 1.5.
+- [x] **3.4 Installed packages** (S). Done in 0.13.0: `get_packages`, with broken packages first and a warning if Hyper Backup is missing. No starting or stopping packages.
 
 ## Phase 4: new areas
 
@@ -101,7 +101,7 @@ Ordered by likely usefulness.
 
 - [ ] **4.1 Synology Photos** (L). Albums, search by date, person or place, and creating albums and adding photos. There's no official specification: it has to be extracted from the Photos web UI.
 - [x] **4.2 Container Manager (Docker)** (M). List containers, start, stop and restart, and view logs. Done in 0.8.0, together with images.
-- [ ] **4.3 Hyper Backup** (M). Status of the backups and of the last run, and start a backup.
+- [ ] **4.3 Hyper Backup** (M). Status of the backups and of the last run, and start a backup. **Blocked** (2026-11-21): Hyper Backup is not installed on the test NAS, so its API can't be taken from the web UI or tested. To resume if the user installs it.
 - [x] **4.4 DSM administration** (L). Done in 0.11.0: reading users, groups, folders and permissions, tasks and services (with warnings); enabling or running tasks and changing permissions. In 0.12.0: creating, changing (disable, groups, password) and deleting users. No creating or deleting groups or shared folders.
 - [ ] **4.5 Surveillance Station** (L). Cameras, recordings and snapshots. Only if someone uses it.
 - [x] **4.6 QuickConnect** (M). Done in 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, with local network, direct connection or relay.

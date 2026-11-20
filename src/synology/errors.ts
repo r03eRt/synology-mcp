@@ -85,6 +85,8 @@ const SPECIFIC: Record<number, string> = {
 const DRIVE: Record<number, string> = {
   1000: "Drive operation failed",
   1003: "Drive item not found (or not indexed yet: files added through File Station take a few seconds to appear)",
+  1036: "There is no protected link for this item",
+  1076: "File requests are disabled in Synology Drive (Drive Admin Console > Settings)",
 };
 
 /** Download Station codes (Download Station Web API guide), plus 544 seen per task on the real NAS. DownloadStation2 uses the same ones (403 seen). */

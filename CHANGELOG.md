@@ -4,6 +4,22 @@
 
 Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué cambió y por qué.
 
+## 2026-11-21
+
+### 0.13.0: paquetes instalados y compartir en Drive; Hyper Backup, bloqueado
+- **`get_packages`** (3.4 de la hoja de ruta): paquetes instalados y su estado, con los averiados primero y qué hacer. En el NAS real aparecieron **WordPress y PHP 8.0 parados por `version_limit`**: no son compatibles con este DSM y la web de WordPress no funciona. Avisa también si falta Hyper Backup.
+- **Drive** (3.2):
+  - `drive_share`: dar, cambiar o quitar el acceso de usuarios y grupos;
+  - `drive_link`: enlace interno o público, o quitarlo; con contraseña o caducidad, crea un enlace protegido;
+  - `drive_file_requests`, `drive_create_file_request` y `drive_delete_file_request`: enlaces para que gente sin cuenta suba ficheros a una carpeta.
+- **Hyper Backup** (4.3): no está instalado en el NAS, así que no hay API que sacar ni probar. Queda bloqueado. Es también un hallazgo: el NAS no tiene copias de seguridad con versiones.
+- Arreglado al probar en el NAS real:
+  - el enlace de Drive se busca en `Sharing list`;
+  - `Sharing update` no es atómica: un enlace público rechazado borraba el interno, y ahora se restaura.
+- Nuevos mensajes de error de Drive: 1036 (no hay enlace protegido) y 1076 (*file requests* desactivadas). El 1040 de los enlaces públicos se explica en el error.
+- Corregido un recuento de la 0.12.0: Download Station tiene 17 herramientas, no 18.
+- 90 herramientas (49 en solo lectura). Pruebas: 150.
+
 ## 2026-11-20
 
 ### 0.12.0: límites, horario y búsqueda en Download Station; gestión de usuarios

@@ -84,7 +84,7 @@ Necesaria antes de que lo use nadie más.
   - límites de velocidad y horario;
   - RSS;
   - búsqueda de torrents (BTSearch).
-- [ ] **3.2 Drive** (M):
+- [x] **3.2 Drive** (M). Hecho en 0.13.0: `drive_share`, `drive_link` (con enlace protegido) y las *file requests*. En el NAS de pruebas los enlaces públicos y las *file requests* están desactivados por la configuración de Drive. Pendiente: editar o reabrir una *file request*.
   - cambiar permisos de compartición;
   - crear enlaces de Drive;
   - *file requests*.
@@ -93,7 +93,7 @@ Necesaria antes de que lo use nadie más.
   - estado SMART por disco;
   - actualizaciones de DSM y de paquetes disponibles;
   - reiniciar y apagar, con `destructiveHint` y solo con admin.
-- [ ] **3.4 Paquetes instalados** (S). Listar los paquetes y si están en marcha. Sirve también para 1.5.
+- [x] **3.4 Paquetes instalados** (S). Hecho en 0.13.0: `get_packages`, con los paquetes averiados primero y aviso si falta Hyper Backup. Sin arrancar ni parar paquetes.
 
 ## Fase 4: áreas nuevas
 
@@ -101,7 +101,7 @@ Ordenadas por utilidad probable.
 
 - [ ] **4.1 Synology Photos** (L). Álbumes, búsqueda por fecha, persona o lugar, y crear álbumes y añadir fotos. No hay especificación oficial: hay que sacarla de la web de Photos.
 - [x] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros. Hecho en 0.8.0, junto con las imágenes.
-- [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia.
+- [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia. **Bloqueado** (2026-11-21): Hyper Backup no está instalado en el NAS de pruebas, así que no se puede sacar su API de la web ni probarla. Se retoma si el usuario lo instala.
 - [x] **4.4 Administración de DSM** (L). Hecho en 0.11.0: lectura de usuarios, grupos, carpetas y permisos, tareas y servicios (con avisos); activar o ejecutar tareas y cambiar permisos. En 0.12.0: crear, cambiar (desactivar, grupos, contraseña) y borrar usuarios. Sin crear ni borrar grupos o carpetas compartidas.
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.
 - [x] **4.6 QuickConnect** (M). Hecho en 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, con red local, conexión directa o relé.

@@ -2,7 +2,7 @@
 
 # Tools
 
-84 tools in seven groups (86 with several NAS, see the end): File Station (22), NAS status and health (7), recycle bins (2), Synology Drive (16), Download Station (18), Container Manager (8) and DSM administration (12). By default (since 0.6.0) the server is read-only and registers only the read tools (12 + 7 + 1 + 11 + 6 + 4 + 6 = 47); with `SYNOLOGY_READ_ONLY=false` it registers all 84. The [README](../../README.md#6-tools) has the summary with the type of each one.
+90 tools in seven groups (92 with several NAS, see the end): File Station (22), NAS status and health (8), recycle bins (2), Synology Drive (21), Download Station (17), Container Manager (8) and DSM administration (12). By default (since 0.6.0) the server is read-only and registers only the read tools (12 + 8 + 1 + 12 + 6 + 4 + 6 = 49); with `SYNOLOGY_READ_ONLY=false` it registers all 90. The [README](../../README.md#6-tools) has the summary with the type of each one.
 
 # File Station
 
@@ -225,13 +225,14 @@ It does not return serial numbers of the disks or the NAS.
 
 ### NAS health (0.7.0)
 
-The following four tools are read-only and **need an administrator account**, with the same message as the previous ones if it is not. They use the same calls as the DSM web UI: Storage Manager, *Control Panel → Update*, Log Center and the notifications bell. The methods and parameters were taken from the JavaScript served by the NAS itself; see [api-synology.md](api-synology.md#nas-health-070).
+The following five tools are read-only and **need an administrator account**, with the same message as the previous ones if it is not. They use the same calls as the DSM web UI: Storage Manager, *Control Panel → Update*, Log Center and the notifications bell. The methods and parameters were taken from the JavaScript served by the NAS itself; see [api-synology.md](api-synology.md#nas-health-070).
 
 | Tool | API | Parameters | What it returns |
 |---|---|---|---|
 | `get_disk_health` | `Storage.CGI.Storage load_info` + `Storage.CGI.Smart get_health_info` per disk | `disk` (id `sda` or name `Drive 1`), `all_attributes` | Per disk: `status`, `smart`, `last_smart_test`, `bad_sectors` and `bad_sectors_trend` (stable or growing, according to DSM's history), `power_on_hours`/`power_on_years`, `remaining_life_pct` if known, `temperature_c` and the SMART attributes that are failing or that matter: 5 reallocated sectors, 9 power-on hours, 187, 188, 194 temperature, 196, 197 pending, 198 uncorrectable and 199 CRC errors. With `all_attributes`, all of them. No serial numbers |
 | `check_updates` | `Core.Upgrade.Server check` v3 + `Core.Package list` + `Core.Package.Server list` | — | `dsm`: whether there is an update, version, whether it is a security update and whether it requires a reboot. `packages`: installed packages with a newer version in Package Center (numeric comparison, no betas). Installs nothing. *Open world*: queries Synology's servers |
 | `get_notifications` | `Core.DSMNotify notify` (`action=load`) | `limit` (default 30), `level` (`info`/`warning`/`error`) | DSM desktop notifications, most recent first: `time`, `level`, `event` (DSM key, e.g. `DownloadCompleted`, `DSMAutoUpdateNotifyNewImportantVersion`), `app` and `details` (decoded parameters, without the repeated ones: NAS name, system, date and time) |
+| `get_packages` (0.13.0) | `Core.Package list` v2 (`additional=["status", "startable", "installed_info"]`) | `status` (`running`/`stopped`/`problem`), `query` | Installed packages with `version` and `status`. The ones with a problem come first, with `problem` explaining what to do: `version_limit` (not compatible with this DSM version and not working), `start_failed`, `stopped_by_dep_limit`, `volume_unmounted`, `broken`, `broken_by_other` or `license_error`. `can_stop: false` marks system packages. Counts `running`/`stopped`/`problems`, and `warning` if Hyper Backup is not installed |
 | `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (ISO date; a date alone is the whole day in local time), `offset`, `limit` (default 50, max. 500) | Matching `total`, `returned` and `entries` (`time`, `level`, `who`, `message`), most recent first |
 
 # Recycle bins
@@ -247,7 +248,7 @@ The `homes` folder has one recycle bin per user (`/homes/<usuario>/#recycle`); o
 
 # Synology Drive
 
-Code: [src/tools/drive.ts](../../src/tools/drive.ts). Based on the official *Synology Drive* v2 specification of the Office Suite API; each operation is called through `entry.cgi` with the same session as File Station (`SYNO.SynologyDrive.Files` v11, `Labels` v3, `Sharing` v2, `TeamFolders` v1, `Tasks` v1).
+Code: [src/tools/drive.ts](../../src/tools/drive.ts). Based on the official *Synology Drive* v2 specification of the Office Suite API; each operation is called through `entry.cgi` with the same session as File Station (`SYNO.SynologyDrive.Files` v11, `Labels` v3, `Sharing` v2, `TeamFolders` v1, `Tasks` v1). Sharing, links and file requests (0.13.0) use the Drive web UI's calls (`Sharing update`/`create_link` v1, `AdvanceSharing` and `FileRequest` v1); see [api-synology.md](api-synology.md).
 
 **Drive paths** (different from File Station's):
 
@@ -264,7 +265,7 @@ All listing tools return `{total, items}` with each item simplified: `name`, `pa
 
 Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, `type`), `sort_direction` (`asc`/`desc`), `limit` (0 = no limit) and `offset`.
 
-## Read (11)
+## Read (12)
 
 | Tool | Method | Parameters | What it does |
 |---|---|---|---|
@@ -279,8 +280,9 @@ Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, 
 | `drive_list_labelled` | `Files list_labelled` | `label_id` | Items with a label |
 | `drive_list_permissions` | `Sharing list` | `path` | Who has access and with what role |
 | `drive_list_team_folders` | `TeamFolders list` | — | Accessible team folders |
+| `drive_file_requests` | `FileRequest list` (`path=/mydrive`, `status`, sorted by creation date) | `status` (`any`/`active`/`closed`) | The user's file requests: `title`, `folder`, `url`, `sharing_link`, `status` (or `expired`), `password` (yes/no, never the password), `expires`, `uploader_files` and `created` |
 
-## Write (5)
+## Write (9)
 
 | Tool | Method | Parameters | What it does |
 |---|---|---|---|
@@ -290,11 +292,23 @@ Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, 
 | `drive_delete_label` | `Labels delete` | `label_id` | Delete a label (it is removed from all files; the files are kept). Destructive |
 | `drive_convert_to_office` | `Files convert_office` + `Tasks get` | `paths`, `dest_folder`, `conflict_action` (`autorename` by default, `overwrite`, `stop`, `version`) | Converts Word/Excel/PowerPoint/CSV to Synology Office (`.odoc`/`.osheet`/`.oslides`). Waits for the task; if it does not finish within `SYNOLOGY_TASK_TIMEOUT_MS`, returns the `task_id` |
 
+| `drive_share` (0.13.0) | `Sharing update` v1 (`permissions=[{action: "update", member: {type, name}, role}]` or `{action: "delete", member}`) + `Files get` | `path`, `members` (`[{type: user/group, name, role}]`) | Give, change or remove (`role: none`) access for users or groups. Roles: `previewer` (view without download), `preview_commenter`, `viewer`, `commenter`, `editor` and `organizer` (manager: can also share). Returns the resulting `shared_with`. **Destructive** |
+| `drive_link` (0.13.0) | `Sharing list` + `Sharing update` (member `internal` or `public`) + `Sharing create_link`; with a password or expiry, `AdvanceSharing get`/`create` + `update` (`role`, `protect_password`, `due_date`) | `path`, `access` (`internal`/`public`/`none`), `role` (`viewer`/`commenter`/`editor`), `allow_download` (default `true`), `password`, `expires` (date) | Sharing link. `internal`: only signed-in NAS users; `public`: anyone with the link. Without download, `viewer` becomes `previewer` and `commenter` becomes `preview_commenter`, as in the web UI. With `password` or `expires` it also creates a **protected link** (another URL, `protected_link`): that is the one to share, because the plain `url` has no password. `none` removes the link and the protected one. **Destructive** and *open world* |
+| `drive_create_file_request` (0.13.0) | `Files get` + `FileRequest create` v1 (`path=id:<file_id>`, `title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour=false`) | `folder`, `title`, `description`, `password`, `expires`, `uploader_files` (`folder_per_uploader` by default, or `name_prefix`) | A link for anyone, without a NAS account, to upload files to that folder. Returns `url` and `sharing_link`. *Open world* |
+| `drive_delete_file_request` (0.13.0) | `FileRequest delete` v1 (`sharing_link`), one call each, like the web UI | `sharing_links` | The link stops working; what was uploaded stays. **Destructive** |
+
 `drive_label` never sends an empty label list: according to the specification, that would remove all labels from the files.
+
+**Links**:
+- `Sharing update` is **not atomic**: if one change in the list fails, the earlier ones have already been applied. On the real NAS, switching from an internal to a public link deleted the internal one and then the public one failed. So if `drive_link` fails, it puts back the link that was there.
+- The link is one more entry of `Sharing list` (type `internal` or `public`) and also shows in `shared_with` from `Files get`.
+- On the test NAS **public links are rejected with 1040** ("update permission failed"), and the web UI hides those options. Probably Drive doesn't allow public sharing on that NAS (*Drive Admin Console → Settings → Sharing permissions*); the MCP explains it in the error.
+
+**File requests**: on the test NAS they are **disabled** (1076, `"file request is disabled"`), so creating and listing them was only tested with the mock NAS. They are enabled in the *Drive Admin Console*.
 
 ## Not included (for now)
 
-From the Drive specification the following are left out: upload, download, copy, move and delete (already covered by File Station on `/home/Drive`), changing permissions, creating Drive links, *file requests*, webhooks and administration operations.
+From the Drive specification the following are left out: upload, download, copy, move and delete (already covered by File Station on `/home/Drive`), editing or reopening a file request, webhooks and administration operations.
 
 # Download Station
 
