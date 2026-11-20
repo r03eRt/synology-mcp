@@ -31,8 +31,10 @@
   "files": [
     "dist",
     "README.md",
+    "README.es.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "CHANGELOG.en.md"
   ],
   "scripts": {
     "build": "tsc",

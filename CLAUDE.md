@@ -16,7 +16,12 @@ Cada cambio de código, decisión o hallazgo se documenta en el mismo turno:
   - pruebas hechas y resultado → `docs/pruebas.md`
 - Investigaciones: dejar el razonamiento (hipótesis descartadas incluidas), no solo la conclusión.
 
-La documentación se escribe en español.
+La documentación se escribe en español **y en inglés**:
+
+- El español es la versión de referencia: `README.es.md`, `docs/*.md` y `CHANGELOG.md`.
+- La copia en inglés se actualiza en el mismo turno: `README.md` (el que ven GitHub y npm), `docs/en/*.md` (mismos nombres de fichero) y `CHANGELOG.en.md`.
+- Cada fichero empieza con el enlace al otro idioma (`**English** · [Español](…)`).
+- Las notas de las *releases* van en los dos idiomas.
 
 ## Comandos
 

@@ -1,123 +1,125 @@
+**English** · [Español](README.es.md)
+
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="synology-mcp: tu NAS Synology, en manos de Claude" width="100%">
+  <img src="docs/assets/banner.svg" alt="synology-mcp: your Synology NAS, in Claude's hands" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/r03eRt/synology-mcp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/r03eRt/synology-mcp?color=d97757"></a>
-  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
-  <img alt="MCP" src="https://img.shields.io/badge/MCP-servidor-5f93d1">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-server-5f93d1">
   <img alt="DSM 7" src="https://img.shields.io/badge/Synology-DSM%207-0b1f3a">
   <img alt="Node 22.19+" src="https://img.shields.io/badge/node-%E2%89%A522.19-3c873a">
 </p>
 
 <p align="center">
-  <b>Habla con tu NAS.</b> Busca ficheros, gestiona descargas y contenedores, vigila los discos y administra DSM<br>
-  desde <b>Claude Code</b> o <b>Claude Desktop</b>, en casa o fuera con QuickConnect. Seguro por defecto.
+  <b>Talk to your NAS.</b> Find files, manage downloads and containers, keep an eye on your disks and administer DSM<br>
+  from <b>Claude Code</b> or <b>Claude Desktop</b>, at home or away with QuickConnect. Secure by default.
 </p>
 
 <p align="center">
-  <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">78 herramientas</a> ·
-  <a href="#5-seguridad">Seguridad</a> ·
-  <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
-  <a href="docs/README.md">Documentación</a>
+  <a href="#quick-install">Quick install</a> ·
+  <a href="#6-tools">78 tools</a> ·
+  <a href="#5-security">Security</a> ·
+  <a href="#7-example-requests">Examples</a> ·
+  <a href="docs/en/README.md">Documentation</a>
 </p>
 
 ---
 
-## Así se usa
+## What it looks like
 
-> **Tú:** ¿Cómo está el NAS?
+> **You:** How's the NAS doing?
 >
-> **Claude:** Todo funciona, pero hay tres cosas que mirar:
-> - 🌡️ **41 °C**, encendido 23 días. El volumen está al **89 %**.
-> - 💽 El Disco 1 tiene 8 sectores reasignados, **estables** en las 12 últimas comprobaciones; los dos discos llevan casi 7 años en marcha.
-> - 🔒 Hay una **actualización de seguridad** de DSM y dos paquetes con versión nueva.
+> **Claude:** Everything is working, but there are three things worth a look:
+> - 🌡️ **41 °C**, up for 23 days. The volume is **89 %** full.
+> - 💽 Disk 1 has 8 reallocated sectors, **stable** over the last 12 checks; both disks have been running for almost 7 years.
+> - 🔒 There's a DSM **security update** and two packages with a new version.
 >
-> **Tú:** Libera espacio.
+> **You:** Free up some space.
 >
-> **Claude:** Hay **6,7 GB** en papeleras (casi todo en Descargas) e imágenes de Docker que no usa ningún contenedor, como la versión anterior de Immich (1,6 GB). ¿Vacío la papelera de Descargas y borro esas imágenes?
+> **Claude:** There's **6.7 GB** in recycle bins (almost all in Descargas) and Docker images no container uses, such as the previous Immich version (1.6 GB). Shall I empty the Descargas recycle bin and delete those images?
 
-Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las acciones que borran o cambian algo **siempre piden confirmación**.
+Every answer comes from this server's tools running against your real NAS. Actions that delete or change something **always ask for confirmation**.
 
-## Qué puede hacer
+## What it can do
 
-| | Área | Lo más útil |
+| | Area | Most useful |
 |---|---|---|
-| 📁 | **Ficheros** | Buscar por nombre, tipo, tamaño o fecha · leer documentos e imágenes · subir y descargar · mover, comprimir · compartir con enlace |
-| ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · convertir a Synology Office |
-| ⬇️ | **Descargas** | URLs, magnets y `.torrent` · elegir ficheros · RSS · detectar descargas muertas |
-| 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · limpiar imágenes |
-| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · notificaciones y registros · volúmenes |
-| 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
-| 🛠️ | **Administración** | Usuarios, grupos, permisos de carpetas, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) |
-| 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
+| 📁 | **Files** | Search by name, type, size or date · read documents and images · upload and download · move, compress · share with a link |
+| ☁️ | **Synology Drive** | Recent, starred, labels, shared · convert to Synology Office |
+| ⬇️ | **Downloads** | URLs, magnets and `.torrent` · pick files · RSS · detect dead downloads |
+| 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · clean up images |
+| 🩺 | **Health** | SMART for each disk · pending updates · notifications and logs · volumes |
+| 🧹 | **Space** | Recycle bins, unused images and the largest folders |
+| 🛠️ | **Administration** | Users, groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
+| 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
 
-## Instalación rápida
+## Quick install
 
 ```bash
 claude plugin marketplace add r03eRt/synology-mcp
 claude plugin install synology@synology-mcp
 ```
 
-Después, en Claude Code: `/plugin configure synology@synology-mcp`. Pon la dirección del NAS (`http://192.168.1.10:5000` o `quickconnect:<tu ID>`), el usuario y la contraseña, y pregúntale lo que quieras.
+Then, in Claude Code: `/plugin configure synology@synology-mcp`. Enter the NAS address (`http://192.168.1.10:5000` or `quickconnect:<your ID>`), the user and the password, and ask it whatever you want.
 
-¿Usas Claude Desktop? Descarga el `.mcpb` de [Releases](https://github.com/r03eRt/synology-mcp/releases) y ábrelo. Más opciones en [Instala](#3-instala).
+Using Claude Desktop? Download the `.mcpb` from [Releases](https://github.com/r03eRt/synology-mcp/releases) and open it. More options in [Install](#3-install).
 
-> Proyecto independiente, sin relación con Synology Inc. Licencia MIT. Probado en un DS218+ con DSM 7.4.1.
+> Independent project, not affiliated with Synology Inc. MIT License. Tested on a DS218+ with DSM 7.4.1.
 
-## Índice
+## Contents
 
-1. [Requisitos](#1-requisitos)
-2. [Prepara un usuario en DSM](#2-prepara-un-usuario-en-dsm)
-3. [Instala](#3-instala)
-4. [Configuración](#4-configuración)
-5. [Seguridad](#5-seguridad)
-6. [Herramientas](#6-herramientas)
-7. [Ejemplos de peticiones](#7-ejemplos-de-peticiones)
-8. [Problemas frecuentes](#8-problemas-frecuentes)
-9. [Actualizar](#9-actualizar)
-10. [Desarrollo](#10-desarrollo)
-11. [Limitaciones y próximos pasos](#11-limitaciones-y-próximos-pasos)
+1. [Requirements](#1-requirements)
+2. [Set up a DSM user](#2-set-up-a-dsm-user)
+3. [Install](#3-install)
+4. [Configuration](#4-configuration)
+5. [Security](#5-security)
+6. [Tools](#6-tools)
+7. [Example requests](#7-example-requests)
+8. [Troubleshooting](#8-troubleshooting)
+9. [Updating](#9-updating)
+10. [Development](#10-development)
+11. [Limitations and next steps](#11-limitations-and-next-steps)
 
-## 1. Requisitos
+## 1. Requirements
 
-- Un NAS Synology con **DSM 7** (7.2 o superior recomendado), accesible desde el ordenador donde corre Claude:
-  - por su IP o nombre, en la misma red, por VPN o con un puerto abierto;
-  - o por **QuickConnect** (`quickconnect:<tu ID>`), que funciona desde cualquier sitio sin abrir puertos.
-- **Node.js 22.19 o superior** en ese ordenador, para Claude Code o la instalación manual. Claude Desktop trae su propio Node.
-- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Download Station o Container Manager. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
+- A Synology NAS with **DSM 7** (7.2 or later recommended), reachable from the computer where Claude runs:
+  - by its IP or name, on the same network, over VPN or through an open port;
+  - or via **QuickConnect** (`quickconnect:<your ID>`), which works from anywhere without opening ports.
+- **Node.js 22.19 or later** on that computer, for Claude Code or the manual install. Claude Desktop ships its own Node.
+- For each area, its package installed on the NAS: Synology Drive Server, Download Station or Container Manager. Tools for a package that isn't installed answer "is … installed?". `get_system_info` tells you which packages are present.
 
-## 2. Prepara un usuario en DSM
+## 2. Set up a DSM user
 
-Claude solo puede hacer lo que permita el usuario de DSM que configures; esa es la principal barrera de seguridad.
+Claude can only do what the DSM user you configure is allowed to do; that is the main security barrier.
 
-**Recomendado: un usuario específico, sin permisos de administrador.**
+**Recommended: a dedicated user without administrator rights.**
 
-1. En *Panel de control → Usuario y grupo*, crea un usuario, por ejemplo `claude`.
-2. En *Permisos*, dale lectura (o lectura y escritura) **solo** en las carpetas compartidas que quieras que Claude vea.
-3. En *Aplicaciones*, permítele File Station y, si los usas, Synology Drive y Download Station.
+1. In *Control Panel → User & Group*, create a user, for example `claude`.
+2. Under *Permissions*, give it read (or read/write) access **only** to the shared folders you want Claude to see.
+3. Under *Applications*, allow File Station and, if you use them, Synology Drive and Download Station.
 
-Qué funciona con cada tipo de cuenta:
+What works with each kind of account:
 
-| Con un usuario normal | Solo con un administrador |
+| With a regular user | Only with an administrator |
 |---|---|
-| Ficheros, Drive, Download Station (sus propias descargas), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), papeleras, administración (`dsm_*`) y las descargas de todos los usuarios |
+| Files, Drive, Download Station (its own downloads), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), recycle bins, administration (`dsm_*`) and every user's downloads |
 
-Usar un administrador da a Claude acceso a todo el NAS. Si lo haces, considera dejar el modo solo lectura activado.
+Using an administrator gives Claude access to the whole NAS. If you do, consider keeping read-only mode on.
 
-**Si tu cuenta tiene verificación en dos pasos (2FA)**, registra Claude una vez como dispositivo de confianza. Te pedirá el código del autenticador:
+**If your account has 2-step verification (2FA)**, register Claude once as a trusted device. It will ask for the authenticator code:
 
 ```bash
 SYNOLOGY_URL=http://192.168.1.10:5000 SYNOLOGY_USERNAME=claude SYNOLOGY_PASSWORD='…' npx synology-mcp register-device
 ```
 
-Imprime `SYNOLOGY_DEVICE_ID=…`: ponlo en la configuración (campo «2FA device token»). El dispositivo aparece en DSM (*Personal → Seguridad*) y se puede revocar allí.
+It prints `SYNOLOGY_DEVICE_ID=…`: put it in the configuration (field "2FA device token"). The device shows up in DSM (*Personal → Security*) and can be revoked there.
 
-## 3. Instala
+## 3. Install
 
-### Claude Code: plugin (recomendado)
+### Claude Code: plugin (recommended)
 
 ```bash
 claude plugin marketplace add r03eRt/synology-mcp
@@ -127,18 +129,18 @@ claude plugin marketplace add r03eRt/synology-mcp
 claude plugin install synology@synology-mcp
 ```
 
-Después, dentro de Claude Code, rellena los datos con `/plugin configure synology@synology-mcp`. La contraseña se guarda en el almacén de credenciales del sistema. El plugin trae:
+Then, inside Claude Code, fill in the details with `/plugin configure synology@synology-mcp`. The password is stored in the system credential store. The plugin includes:
 
-- el servidor ya empaquetado, sin dependencias que instalar;
-- la skill `synology-nas`, que enseña a Claude a usar bien el NAS: rutas, qué herramienta usar para cada cosa, confirmar antes de borrar o de parar servicios, y cómo interpretar la salud de los discos.
+- the server already bundled, with no dependencies to install;
+- the `synology-nas` skill, which teaches Claude to use the NAS well: paths, which tool to use for what, confirming before deleting or stopping services, and how to read disk health.
 
-### Claude Desktop: extensión
+### Claude Desktop: extension
 
-Descarga `synology-mcp-<versión>.mcpb` de [Releases](https://github.com/r03eRt/synology-mcp/releases) y ábrelo con doble clic. Claude Desktop pide los mismos datos y guarda la contraseña en el llavero.
+Download `synology-mcp-<version>.mcpb` from [Releases](https://github.com/r03eRt/synology-mcp/releases) and double-click it. Claude Desktop asks for the same details and stores the password in the keychain.
 
-### Instalación manual (cualquier cliente MCP)
+### Manual install (any MCP client)
 
-> El paquete npm todavía **no está publicado**: `npx synology-mcp` no funcionará hasta entonces. Mientras tanto, usa el código.
+> The npm package is **not published yet**: `npx synology-mcp` won't work until then. In the meantime, use the source.
 
 ```bash
 git clone https://github.com/r03eRt/synology-mcp.git
@@ -148,14 +150,14 @@ git clone https://github.com/r03eRt/synology-mcp.git
 cd synology-mcp && npm install && npm run build
 ```
 
-Configuración del cliente MCP:
+MCP client configuration:
 
 ```json
 {
   "mcpServers": {
     "synology": {
       "command": "node",
-      "args": ["/ruta/a/synology-mcp/dist/index.js"],
+      "args": ["/path/to/synology-mcp/dist/index.js"],
       "env": {
         "SYNOLOGY_URL": "http://192.168.1.10:5000",
         "SYNOLOGY_USERNAME": "claude",
@@ -166,39 +168,39 @@ Configuración del cliente MCP:
 }
 ```
 
-Para no dejar la contraseña en la configuración del cliente, guárdala en un fichero `.env` con permisos `600` y arranca con `node --env-file=/ruta/.env /ruta/a/synology-mcp/dist/index.js`. En Claude Code:
+To keep the password out of the client configuration, store it in a `.env` file with `600` permissions and start with `node --env-file=/path/to/.env /path/to/synology-mcp/dist/index.js`. In Claude Code:
 
 ```bash
-claude mcp add synology -s user -- node --env-file=/ruta/.env /ruta/a/synology-mcp/dist/index.js
+claude mcp add synology -s user -- node --env-file=/path/to/.env /path/to/synology-mcp/dist/index.js
 ```
 
-## 4. Configuración
+## 4. Configuration
 
-| Variable | Campo del plugin / extensión | Por defecto | Para qué |
+| Variable | Plugin / extension field | Default | Purpose |
 |---|---|---|---|
-| `SYNOLOGY_URL` | NAS URL | — | Dirección de DSM con puerto (`http://IP:5000`, `https://nombre:5001`) o `quickconnect:<ID>` |
-| `SYNOLOGY_USERNAME` | DSM user | — | Usuario de DSM |
-| `SYNOLOGY_PASSWORD` | DSM password | — | Contraseña |
-| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 32 herramientas de escritura (crear, mover, borrar, descargar, parar contenedores, cambiar permisos…) |
-| `SYNOLOGY_INSECURE_TLS` | Accept an invalid HTTPS certificate | `false` | Acepta un certificado HTTPS autofirmado, caducado o de otro nombre. Solo en una red de confianza |
-| `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token de `register-device`, para cuentas con 2FA |
-| `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Nombre con el que se registró el dispositivo |
-| `SYNOLOGY_TASK_TIMEOUT_MS` | — | `60000` | Cuánto espera una herramienta a una operación larga (copiar, borrar, buscar…) antes de devolver su `taskid` para consultarla luego |
-| `SYNOLOGY_NAS_FILE` | — | — | Fichero JSON con **varios NAS** (ver abajo). Sustituye a las tres primeras variables |
+| `SYNOLOGY_URL` | NAS URL | — | DSM address with port (`http://IP:5000`, `https://nombre:5001`) or `quickconnect:<ID>` |
+| `SYNOLOGY_USERNAME` | DSM user | — | DSM user |
+| `SYNOLOGY_PASSWORD` | DSM password | — | Password |
+| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` enables the 32 write tools (create, move, delete, download, stop containers, change permissions…) |
+| `SYNOLOGY_INSECURE_TLS` | Accept an invalid HTTPS certificate | `false` | Accepts a self-signed, expired or wrong-name HTTPS certificate. Only on a trusted network |
+| `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token from `register-device`, for accounts with 2FA |
+| `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Name the device was registered under |
+| `SYNOLOGY_TASK_TIMEOUT_MS` | — | `60000` | How long a tool waits for a long operation (copy, delete, search…) before returning its `taskid` to check later |
+| `SYNOLOGY_NAS_FILE` | — | — | JSON file with **multiple NAS** (see below). Replaces the first three variables |
 
-### Usarlo fuera de casa: QuickConnect
+### Using it away from home: QuickConnect
 
-Pon `SYNOLOGY_URL=quickconnect:<ID>`, con el ID que ves en DSM en *Panel de control → Acceso externo → QuickConnect*, que debe estar activado. Al conectar, el MCP pregunta al servicio de Synology dónde está el NAS y prueba, por este orden:
+Set `SYNOLOGY_URL=quickconnect:<ID>`, with the ID shown in DSM under *Control Panel → External Access → QuickConnect*, which must be enabled. When connecting, the MCP asks Synology's service where the NAS is and tries, in this order:
 
-1. **Red local**: un nombre `…direct.quickconnect.to` que apunta a la IP local del NAS.
-2. **Conexión directa por Internet**, solo si el NAS es accesible desde fuera.
-3. **El relé de Synology**: funciona desde cualquier sitio sin abrir puertos, aunque es más lento.
+1. **Local network**: a `…direct.quickconnect.to` name pointing to the NAS's local IP.
+2. **Direct connection over the Internet**, only if the NAS is reachable from outside.
+3. **Synology's relay**: works from anywhere without opening ports, though it's slower.
 
-Usa la primera que responde. Las tres tienen certificado válido, así que no hace falta `SYNOLOGY_INSECURE_TLS`. Si la conexión se corta (por ejemplo, al salir de casa), vuelve a buscar la mejor vía en la siguiente llamada. El ID se envía al servicio de Synology, igual que hacen sus propias aplicaciones.
+It uses the first one that answers. All three have a valid certificate, so `SYNOLOGY_INSECURE_TLS` isn't needed. If the connection drops (for example, when you leave home), it looks for the best route again on the next call. The ID is sent to Synology's service, just as Synology's own apps do.
 
-### Varios NAS
+### Multiple NAS
 
-Con `SYNOLOGY_NAS_FILE=/ruta/nas.json` (permisos `600`):
+With `SYNOLOGY_NAS_FILE=/path/to/nas.json` (permissions `600`):
 
 ```json
 {
@@ -210,279 +212,279 @@ Con `SYNOLOGY_NAS_FILE=/ruta/nas.json` (permisos `600`):
 }
 ```
 
-- **Contraseña**: `password_env` es el nombre de una variable de entorno que la contiene; así no queda en el fichero. También se admite `password` directamente.
-- **Otros campos opcionales por NAS**: `device_id` / `device_id_env` (2FA), `device_name` e `insecure_tls`.
-- **Globales**: `SYNOLOGY_READ_ONLY` y `SYNOLOGY_TASK_TIMEOUT_MS` valen para todos.
-- **Herramientas**: aparecen `list_nas` (qué NAS hay, cuál está activo y por dónde se llega a cada uno) y `use_nas` (cambiar de NAS); el resto actúa sobre el activo. Pídele a Claude «cambia al NAS de mis padres».
-- **2FA**: `register-device --nas <nombre>` registra el dispositivo en uno concreto.
-- **Dónde funciona**: de momento solo en la instalación manual; el plugin y la extensión configuran un NAS.
+- **Password**: `password_env` is the name of an environment variable that holds it, so it isn't stored in the file. `password` directly is also accepted.
+- **Other optional per-NAS fields**: `device_id` / `device_id_env` (2FA), `device_name` and `insecure_tls`.
+- **Global**: `SYNOLOGY_READ_ONLY` and `SYNOLOGY_TASK_TIMEOUT_MS` apply to all of them.
+- **Tools**: `list_nas` (which NAS exist, which is active and how each one is reached) and `use_nas` (switch NAS) appear; the rest act on the active one. Ask Claude "switch to my parents' NAS".
+- **2FA**: `register-device --nas <nombre>` registers the device on a specific one.
+- **Where it works**: for now only in the manual install; the plugin and the extension configure a single NAS.
 
-Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracion.md](docs/configuracion.md).
+Details, and how it's registered on the author's machine, in [docs/en/configuracion.md](docs/en/configuracion.md).
 
-## 5. Seguridad
+## 5. Security
 
-- **Permisos de DSM**: el MCP nunca puede más que el usuario configurado.
-- **Solo lectura por defecto**: sin `SYNOLOGY_READ_ONLY=false`, las herramientas de escritura no existen para Claude.
-- **Confirmación antes de destruir.** Estas herramientas van marcadas como destructivas, y la skill obliga a Claude a decir qué va a hacer y esperar tu «sí»:
-  - borrar o sobrescribir ficheros: `delete`, `copy_move`, `upload_file`, `write_text_file`, `extract`;
-  - vaciar papeleras: `empty_recycle_bin`;
-  - quitar descargas o feeds: `downloads_delete`, `downloads_rss_delete`;
+- **DSM permissions**: the MCP can never do more than the configured user.
+- **Read-only by default**: without `SYNOLOGY_READ_ONLY=false`, write tools don't exist for Claude.
+- **Confirmation before destroying.** These tools are marked as destructive, and the skill requires Claude to say what it's about to do and wait for your "yes":
+  - deleting or overwriting files: `delete`, `copy_move`, `upload_file`, `write_text_file`, `extract`;
+  - emptying recycle bins: `empty_recycle_bin`;
+  - removing downloads or feeds: `downloads_delete`, `downloads_rss_delete`;
   - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
-  - administración: `dsm_run_task` (ejecuta un script) y `dsm_set_share_access` (cambia quién ve qué);
-  - otras: `delete_sharing_links`, `drive_delete_label`.
-- **Secretos que nunca devuelve**, aunque la API del NAS los dé:
-  - los **valores** de las variables de entorno de los contenedores (contraseñas de bases de datos, claves de API); solo da sus nombres;
-  - las **claves privadas (passkeys)** de los trackers en las URL de torrents, RSS y enlaces magnet, y las credenciales dentro de URLs; salen como `<redacted>`;
-  - las contraseñas y claves dentro de los **scripts de las tareas programadas** (solo se muestra un resumen del comando, con los valores ocultos);
-  - los **emails** de los usuarios;
-  - los **números de serie** del NAS y de los discos.
-- **Credenciales**: con el plugin o la extensión, en el almacén seguro del sistema. En la instalación manual, mejor en un `.env` con permisos `600`. El historial del repositorio no contiene datos personales.
+  - administration: `dsm_run_task` (runs a script) and `dsm_set_share_access` (changes who sees what);
+  - others: `delete_sharing_links`, `drive_delete_label`.
+- **Secrets it never returns**, even if the NAS API provides them:
+  - the **values** of container environment variables (database passwords, API keys); it only gives their names;
+  - tracker **private keys (passkeys)** in torrent, RSS and magnet URLs, and credentials inside URLs; they come out as `<redacted>`;
+  - passwords and keys inside **scheduled task scripts** (only a summary of the command is shown, with values hidden);
+  - users' **emails**;
+  - the **serial numbers** of the NAS and its disks.
+- **Credentials**: with the plugin or the extension, in the system's secure store. In the manual install, preferably in a `.env` with `600` permissions. The repository history contains no personal data.
 
-## 6. Herramientas
+## 6. Tools
 
-**Tipo**: *L* = lectura, *E* = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (escritura que pide confirmación). **Admin**: necesita una cuenta administradora de DSM.
+**Type**: *L* = read, *E* = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (write that asks for confirmation). **Admin**: needs a DSM administrator account.
 
-**Rutas**: las de ficheros empiezan por una carpeta compartida (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` es la carpeta personal del usuario. Synology Drive usa `/mydrive/…` (la misma carpeta que `/home/Drive`), `/team-folders/<nombre>/…` o `id:<file_id>`. Los destinos de descargas son carpetas del NAS (`/home/Descargas`), y los contenedores se nombran como en Container Manager.
+**Paths**: file paths start with a shared folder (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` is the user's personal folder. Synology Drive uses `/mydrive/…` (the same folder as `/home/Drive`), `/team-folders/<nombre>/…` or `id:<file_id>`. Download destinations are NAS folders (`/home/Descargas`), and containers are named as in Container Manager.
 
-### Ficheros (File Station): 22
+### Files (File Station): 22
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `get_info` | L | Nombre del NAS, si el usuario es admin, soporte de enlaces |
-| `list_shares` | L | Carpetas compartidas con espacio libre y total |
-| `list_files` | L | Contenido de una carpeta (orden, filtro, paginación) |
-| `get_file_info` | L | Detalles de ficheros o carpetas |
-| `search_files` | L | Búsqueda recursiva por nombre, extensión, tamaño, fecha o propietario |
-| `get_dir_size` | L | Tamaño total y número de ficheros de carpetas |
-| `get_md5` | L | MD5 de un fichero |
-| `read_file` | L | Contenido de un fichero de texto o una imagen (hasta 1 MB por defecto) |
-| `download_file` | L | Descargar al ordenador (varios ficheros o una carpeta llegan en ZIP) |
-| `list_sharing_links` | L | Enlaces públicos creados |
-| `list_background_tasks` / `get_task_status` | L | Operaciones largas en curso y su progreso |
-| `create_folder` | E | Crear una carpeta (y sus padres) |
-| `rename` | E | Renombrar |
-| `copy_move` | **D** | Copiar o mover (puede sobrescribir) |
-| `delete` | **D** | Borrar (recursivo; trátalo como permanente) |
-| `upload_file` | **D** | Subir un fichero del ordenador (puede sobrescribir) |
-| `write_text_file` | **D** | Crear o reemplazar un fichero de texto |
-| `compress` | E | Comprimir en ZIP o 7z (con contraseña opcional) |
-| `extract` | **D** | Extraer un archivo (puede sobrescribir) |
-| `create_sharing_link` | E | Enlace público, con contraseña y caducidad opcionales |
-| `delete_sharing_links` | **D** | Borrar enlaces públicos |
+| `get_info` | L | NAS name, whether the user is admin, link support |
+| `list_shares` | L | Shared folders with free and total space |
+| `list_files` | L | Folder contents (sorting, filter, pagination) |
+| `get_file_info` | L | File or folder details |
+| `search_files` | L | Recursive search by name, extension, size, date or owner |
+| `get_dir_size` | L | Total size and file count of folders |
+| `get_md5` | L | MD5 of a file |
+| `read_file` | L | Contents of a text file or an image (up to 1 MB by default) |
+| `download_file` | L | Download to the computer (multiple files or a folder arrive as a ZIP) |
+| `list_sharing_links` | L | Public links created |
+| `list_background_tasks` / `get_task_status` | L | Long-running operations in progress and their progress |
+| `create_folder` | E | Create a folder (and its parents) |
+| `rename` | E | Rename |
+| `copy_move` | **D** | Copy or move (may overwrite) |
+| `delete` | **D** | Delete (recursive; treat it as permanent) |
+| `upload_file` | **D** | Upload a file from the computer (may overwrite) |
+| `write_text_file` | **D** | Create or replace a text file |
+| `compress` | E | Compress to ZIP or 7z (optional password) |
+| `extract` | **D** | Extract an archive (may overwrite) |
+| `create_sharing_link` | E | Public link, with optional password and expiry |
+| `delete_sharing_links` | **D** | Delete public links |
 
-### Estado y salud del NAS: 7
+### NAS status and health: 7
 
-| Herramienta | Tipo | Admin | Qué hace |
+| Tool | Type | Admin | What it does |
 |---|---|---|---|
-| `get_system_info` | L | | Modelo, DSM, RAM, temperatura, tiempo encendido, veredicto de salud de DSM y qué paquetes hay |
-| `get_system_utilization` | L | sí | CPU, RAM, red y E/S de discos en vivo |
-| `get_storage_status` | L | sí | Grupos de almacenamiento, RAID, volúmenes (ocupación, avisos) y discos |
-| `get_disk_health` | L | sí | SMART de cada disco: sectores defectuosos y si aumentan, horas encendido, temperatura, atributos que fallan |
-| `check_updates` | L | sí | Actualización de DSM (y si es de seguridad) y paquetes con versión nueva. Solo consulta |
-| `get_notifications` | L | sí | Notificaciones de la campana de DSM (errores, avisos, descargas terminadas…) |
-| `get_system_logs` | L | sí | Registro del sistema o de conexiones, filtrable por nivel, texto y fechas |
+| `get_system_info` | L | | Model, DSM, RAM, temperature, uptime, DSM's health verdict and which packages are installed |
+| `get_system_utilization` | L | yes | Live CPU, RAM, network and disk I/O |
+| `get_storage_status` | L | yes | Storage pools, RAID, volumes (usage, warnings) and disks |
+| `get_disk_health` | L | yes | SMART for each disk: bad sectors and whether they're growing, power-on hours, temperature, failing attributes |
+| `check_updates` | L | yes | DSM update (and whether it's a security one) and packages with a new version. Check only |
+| `get_notifications` | L | yes | DSM bell notifications (errors, warnings, finished downloads…) |
+| `get_system_logs` | L | yes | System or connection log, filterable by level, text and dates |
 
-### Liberar espacio: 2 (más `docker_remove_images`)
+### Freeing up space: 2 (plus `docker_remove_images`)
 
-| Herramienta | Tipo | Admin | Qué hace |
+| Tool | Type | Admin | What it does |
 |---|---|---|---|
-| `recycle_bins` | L | sí | Cuánto ocupa la papelera de cada carpeta compartida (de mayor a menor) y cuáles no tienen papelera |
-| `empty_recycle_bin` | **D** | sí | Vaciar las papeleras indicadas. **No se puede deshacer** |
+| `recycle_bins` | L | yes | How much each shared folder's recycle bin takes up (largest first) and which have no recycle bin |
+| `empty_recycle_bin` | **D** | yes | Empty the given recycle bins. **Cannot be undone** |
 
-Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`, `search_files` (con `size_from`) y `docker_images`.
+To find what else is taking up space, use `get_storage_status`, `get_dir_size`, `search_files` (with `size_from`) and `docker_images`.
 
 ### Synology Drive: 16
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `drive_list` / `drive_get_info` | L | Listar una carpeta / detalles de un elemento |
-| `drive_recent` / `drive_starred` | L | Recientes / con estrella |
-| `drive_shared_with_me` / `drive_shared_with_others` | L | Compartido contigo / por ti |
-| `drive_search` | L | Búsqueda por nombre, contenido, tipo, etiqueta, tamaño o fecha |
-| `drive_list_labels` / `drive_list_labelled` | L | Etiquetas / elementos con una etiqueta |
-| `drive_list_permissions` | L | Quién tiene acceso a un elemento |
-| `drive_list_team_folders` | L | Carpetas de equipo |
-| `drive_star` | E | Poner o quitar estrella |
-| `drive_label` | E | Añadir o quitar etiquetas por nombre (crea las que falten) |
-| `drive_create_label` | E | Crear una etiqueta |
-| `drive_delete_label` | **D** | Borrar una etiqueta (los ficheros se quedan) |
-| `drive_convert_to_office` | E | Convertir Word, Excel, PowerPoint o CSV a Synology Office |
+| `drive_list` / `drive_get_info` | L | List a folder / details of an item |
+| `drive_recent` / `drive_starred` | L | Recent / starred |
+| `drive_shared_with_me` / `drive_shared_with_others` | L | Shared with you / by you |
+| `drive_search` | L | Search by name, content, type, label, size or date |
+| `drive_list_labels` / `drive_list_labelled` | L | Labels / items with a label |
+| `drive_list_permissions` | L | Who has access to an item |
+| `drive_list_team_folders` | L | Team folders |
+| `drive_star` | E | Star or unstar |
+| `drive_label` | E | Add or remove labels by name (creates missing ones) |
+| `drive_create_label` | E | Create a label |
+| `drive_delete_label` | **D** | Delete a label (files stay) |
+| `drive_convert_to_office` | E | Convert Word, Excel, PowerPoint or CSV to Synology Office |
 
-### Descargas (Download Station): 14
+### Downloads (Download Station): 14
 
-Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
+A regular user sees and manages their own downloads; an administrator, everyone's.
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `downloads_info` | L | Versión, carpeta por defecto, límites y velocidad actual |
-| `downloads_list` | L | Descargas con estado, progreso y velocidad. Filtra por estado, tipo, texto o **descargas muertas** (`stalled`: activas pero sin velocidad ni pares durante más de una hora, normalmente torrents retirados del tracker) |
-| `downloads_get` | L | Detalle: origen, ficheros, pares y trackers |
-| `downloads_files` | L | Ficheros de un torrent con su índice, progreso, prioridad y si se descargan |
-| `downloads_rss` | L | Feeds RSS suscritos, o los elementos de uno (filtrables por texto) |
-| `downloads_add` | E | Añadir URLs, magnets o `.torrent` del ordenador, con carpeta de destino y contraseña para descomprimir opcionales |
-| `downloads_pause` / `downloads_resume` | E | Pausar o reanudar |
-| `downloads_set_destination` | E | Cambiar la carpeta de destino |
-| `downloads_set_files` | E | Elegir qué ficheros de un torrent descargar y su prioridad |
-| `downloads_rss_add` / `downloads_rss_refresh` | E | Suscribirse a un feed / actualizar feeds |
-| `downloads_delete` | **D** | Quitar descargas. Lo ya completado se conserva; con `move_incomplete`, también lo incompleto |
-| `downloads_rss_delete` | **D** | Quitar suscripciones RSS |
+| `downloads_info` | L | Version, default folder, limits and current speed |
+| `downloads_list` | L | Downloads with status, progress and speed. Filters by status, type, text or **dead downloads** (`stalled`: active but with no speed or peers for over an hour, usually torrents removed from the tracker) |
+| `downloads_get` | L | Details: source, files, peers and trackers |
+| `downloads_files` | L | Files in a torrent with their index, progress, priority and whether they're being downloaded |
+| `downloads_rss` | L | Subscribed RSS feeds, or the items of one (filterable by text) |
+| `downloads_add` | E | Add URLs, magnets or `.torrent` files from the computer, with optional destination folder and extraction password |
+| `downloads_pause` / `downloads_resume` | E | Pause or resume |
+| `downloads_set_destination` | E | Change the destination folder |
+| `downloads_set_files` | E | Choose which files of a torrent to download and their priority |
+| `downloads_rss_add` / `downloads_rss_refresh` | E | Subscribe to a feed / refresh feeds |
+| `downloads_delete` | **D** | Remove downloads. What's already complete is kept; with `move_incomplete`, incomplete data too |
+| `downloads_rss_delete` | **D** | Remove RSS subscriptions |
 
-Para limpiar las descargas muertas: pide «¿qué descargas están muertas?» (`downloads_list` con `stalled`) y luego «quítalas» (`downloads_delete`, con confirmación).
+To clean up dead downloads: ask "which downloads are dead?" (`downloads_list` with `stalled`) and then "remove them" (`downloads_delete`, with confirmation).
 
 ### Docker (Container Manager): 8
 
-Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a otros usuarios.
+All require an administrator account: DSM doesn't let other users use Container Manager.
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `docker_list` | L | Contenedores con estado, salud, imagen, tiempo encendido, proyecto Compose, CPU y memoria |
-| `docker_get` | L | Puertos, volúmenes (carpeta del NAS → contenedor), redes, reinicio, último *health check* y **solo los nombres** de las variables de entorno |
-| `docker_logs` | L | Registro de un contenedor, con filtros por texto y fecha. Puede tardar 20–60 s |
-| `docker_images` | L | Imágenes con tamaño, si alguna las usa y si hay actualización |
-| `docker_start` | E | Arrancar contenedores |
-| `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
-| `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
+| `docker_list` | L | Containers with status, health, image, uptime, Compose project, CPU and memory |
+| `docker_get` | L | Ports, volumes (NAS folder → container), networks, restart policy, last *health check* and **only the names** of environment variables |
+| `docker_logs` | L | A container's log, with text and date filters. May take 20–60 s |
+| `docker_images` | L | Images with size, whether any container uses them and whether there's an update |
+| `docker_start` | E | Start containers |
+| `docker_stop` / `docker_restart` | **D** | Stop or restart. Their service goes down (DNS, password manager…) |
+| `docker_remove_images` | **D** | Delete images no container uses (images in use are rejected) |
 
-### Administración de DSM: 9
+### DSM administration: 9
 
-Todas necesitan una cuenta administradora.
+All require an administrator account.
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `dsm_users` | L | Usuarios con estado (activo, desactivado, caducado), si son administradores y sus grupos. Sin emails |
-| `dsm_groups` | L | Grupos y sus miembros |
-| `dsm_shared_folders` | L | Carpetas compartidas (ruta, espacio, oculta, cifrada, papelera, USB) o, para una carpeta, quién tiene acceso y de qué tipo |
-| `dsm_user_access` | L | A qué carpetas puede entrar un usuario, sumando sus permisos y los de sus grupos (prevalece la denegación) |
-| `dsm_scheduled_tasks` | L | Tareas programadas: activas o no, próxima ejecución, resultado de la última y resumen del comando sin secretos |
-| `dsm_services` | L | SMB, AFP, NFS, FTP, SSH, Telnet y DSM web, con **avisos** de lo inseguro: SMB1, FTP sin cifrar, Telnet, DSM sin redirección a HTTPS… |
-| `dsm_set_task_enabled` | E | Activar o desactivar tareas programadas |
-| `dsm_run_task` | **D** | Ejecutar una tarea ahora (corre su script, a menudo como root) |
-| `dsm_set_share_access` | **D** | Dar o quitar acceso a carpetas a un usuario o grupo: lectura y escritura, solo lectura, denegado o nada |
+| `dsm_users` | L | Users with status (active, disabled, expired), whether they're administrators and their groups. No emails |
+| `dsm_groups` | L | Groups and their members |
+| `dsm_shared_folders` | L | Shared folders (path, space, hidden, encrypted, recycle bin, USB) or, for one folder, who has access and what kind |
+| `dsm_user_access` | L | Which folders a user can access, combining their permissions and their groups' (deny wins) |
+| `dsm_scheduled_tasks` | L | Scheduled tasks: enabled or not, next run, last result and a secret-free summary of the command |
+| `dsm_services` | L | SMB, AFP, NFS, FTP, SSH, Telnet and DSM web, with **warnings** about insecure settings: SMB1, unencrypted FTP, Telnet, DSM without HTTPS redirect… |
+| `dsm_set_task_enabled` | E | Enable or disable scheduled tasks |
+| `dsm_run_task` | **D** | Run a task now (runs its script, often as root) |
+| `dsm_set_share_access` | **D** | Grant or remove folder access for a user or group: read/write, read-only, deny or none |
 
-### Varios NAS: 2 (solo si hay más de uno configurado)
+### Multiple NAS: 2 (only if more than one is configured)
 
-| Herramienta | Tipo | Qué hace |
+| Tool | Type | What it does |
 |---|---|---|
-| `list_nas` | L | NAS configurados, cuál está activo y cómo se llega a cada uno (dirección; con QuickConnect, si es red local, directa o relé) |
-| `use_nas` | L | Cambiar el NAS activo; las demás herramientas pasan a actuar sobre él. No cambia nada en ningún NAS |
+| `list_nas` | L | Configured NAS, which is active and how each one is reached (address; with QuickConnect, whether local network, direct or relay) |
+| `use_nas` | L | Switch the active NAS; the other tools then act on it. Changes nothing on any NAS |
 
-Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [docs/herramientas.md](docs/herramientas.md).
+Full reference (parameters, the DSM API each one uses and responses) in [docs/en/herramientas.md](docs/en/herramientas.md).
 
-## 7. Ejemplos de peticiones
+## 7. Example requests
 
-**Estado**
-- «¿Cómo está el NAS? ¿Algún disco con problemas?»
-- «¿Hay actualizaciones pendientes? ¿Qué errores ha habido esta semana?»
-- «¿Quién ha entrado en el NAS hoy?»
+**Status**
+- "How's the NAS doing? Any disk with problems?"
+- "Are there pending updates? What errors have there been this week?"
+- "Who has logged into the NAS today?"
 
-**Espacio**
-- «El volumen está casi lleno: ¿qué puedo borrar?»
-- «¿Cuánto ocupan las papeleras? Vacía la de Descargas.»
-- «Borra las imágenes de Docker que no se usan.»
+**Space**
+- "The volume is almost full: what can I delete?"
+- "How much space do the recycle bins take? Empty the Descargas one."
+- "Delete the Docker images that aren't in use."
 
-**Ficheros**
-- «Busca los PDF de facturas de 2024 en /home y dime cuánto ocupan.»
-- «Lee /home/notas/lista.txt y resúmela.»
-- «Crea un enlace para compartir /photo/Viaje que caduque el domingo.»
+**Files**
+- "Find the 2024 invoice PDFs in /home and tell me how much space they take."
+- "Read /home/notas/lista.txt and summarize it."
+- "Create a share link for /photo/Viaje that expires on Sunday."
 
-**Descargas**
-- «Añade este magnet en /home/Descargas.»
-- «Del torrent de la serie, baja solo los capítulos 1 a 3.»
-- «¿Qué descargas están muertas? Quítalas.»
-- «Suscríbete a este RSS y dime qué hay nuevo.»
+**Downloads**
+- "Add this magnet in /home/Descargas."
+- "From the series torrent, download only episodes 1 to 3."
+- "Which downloads are dead? Remove them."
+- "Subscribe to this RSS feed and tell me what's new."
 
-**Administración**
-- «¿Quién puede ver la carpeta photo?»
-- «¿Hay algún servicio inseguro activado?»
-- «¿Qué tareas programadas fallaron la última vez?»
-- «Quita a marta el acceso a Documents.»
+**Administration**
+- "Who can see the photo folder?"
+- "Is any insecure service enabled?"
+- "Which scheduled tasks failed last time?"
+- "Remove marta's access to Documents."
 
 **Docker**
-- «¿Qué contenedores están parados? Enséñame los últimos errores de pihole.»
-- «Reinicia jellyfin.»
+- "Which containers are stopped? Show me pihole's latest errors."
+- "Restart jellyfin."
 
 **Drive**
-- «Lista lo que tengo marcado con estrella en Drive.»
-- «Etiqueta como "Impuestos" los PDF de /mydrive/2024.»
+- "List what I've starred in Drive."
+- "Label the PDFs in /mydrive/2024 as "Taxes"."
 
-## 8. Problemas frecuentes
+## 8. Troubleshooting
 
-| Mensaje | Qué pasa | Qué hacer |
+| Message | What's happening | What to do |
 |---|---|---|
-| `Missing required environment variables` | Falta la URL, el usuario o la contraseña | Revisa la configuración (sección 4) |
-| `Cannot reach the NAS at …` | No hay conexión con esa dirección | Comprueba la IP, el puerto (5000 http, 5001 https) y que estás en la red del NAS. Fuera de casa, usa `quickconnect:<ID>` |
-| `QuickConnect ID "…" was not found` | El ID no existe | Cópialo de *Panel de control → Acceso externo → QuickConnect* |
-| `none of its … addresses answered` | QuickConnect está desactivado o el NAS está apagado | Actívalo en DSM y comprueba que el NAS tiene conexión |
-| `TLS error … (CERT_HAS_EXPIRED)` o parecido | Certificado HTTPS caducado, autofirmado o de otro nombre | Renuévalo en *Panel de control → Seguridad → Certificado*, usa el nombre del certificado o pon `SYNOLOGY_INSECURE_TLS=true` |
-| `No such account or incorrect password (code 400)` | Credenciales incorrectas | Repetirlo muchas veces bloquea la IP (código 407) |
-| `2-step verification code required (code 403)` | La cuenta tiene 2FA | Ejecuta `register-device` (sección 2) |
-| `needs a DSM administrator account (code 105)` | La herramienta es solo para administradores | Usa una cuenta del grupo *administrators* o prescinde de ella |
-| `… not be allowed to use <paquete> (code 105)` | El usuario no tiene permiso para esa aplicación | Dáselo en *Panel de control → Privilegios de aplicaciones* |
-| `is <paquete> installed …? (code 102)` | Ese paquete no está instalado | Instálalo desde el Centro de paquetes |
-| Faltan las herramientas de escritura | Está en solo lectura | `SYNOLOGY_READ_ONLY=false` |
-| `finished: false` con un `taskid` | La operación sigue en marcha | Pide a Claude que la consulte más tarde (`get_task_status`) |
+| `Missing required environment variables` | The URL, user or password is missing | Check the configuration (section 4) |
+| `Cannot reach the NAS at …` | No connection to that address | Check the IP, the port (5000 http, 5001 https) and that you're on the NAS's network. Away from home, use `quickconnect:<ID>` |
+| `QuickConnect ID "…" was not found` | The ID doesn't exist | Copy it from *Control Panel → External Access → QuickConnect* |
+| `none of its … addresses answered` | QuickConnect is disabled or the NAS is off | Enable it in DSM and check the NAS has a connection |
+| `TLS error … (CERT_HAS_EXPIRED)` or similar | HTTPS certificate expired, self-signed or for another name | Renew it in *Control Panel → Security → Certificate*, use the certificate's name or set `SYNOLOGY_INSECURE_TLS=true` |
+| `No such account or incorrect password (code 400)` | Wrong credentials | Repeating it many times blocks the IP (code 407) |
+| `2-step verification code required (code 403)` | The account has 2FA | Run `register-device` (section 2) |
+| `needs a DSM administrator account (code 105)` | The tool is admin-only | Use an account in the *administrators* group or do without it |
+| `… not be allowed to use <package> (code 105)` | The user doesn't have permission for that application | Grant it in *Control Panel → Application Privileges* |
+| `is <package> installed …? (code 102)` | That package isn't installed | Install it from Package Center |
+| Write tools are missing | It's in read-only mode | `SYNOLOGY_READ_ONLY=false` |
+| `finished: false` with a `taskid` | The operation is still running | Ask Claude to check it later (`get_task_status`) |
 
-## 9. Actualizar
+## 9. Updating
 
-- Plugin: `claude plugin marketplace update synology-mcp`, luego `claude plugin update synology@synology-mcp`, y reinicia Claude Code.
-- Claude Desktop: instala el `.mcpb` de la última [release](https://github.com/r03eRt/synology-mcp/releases).
-- Manual: `git pull && npm install && npm run build`, y reinicia el cliente.
+- Plugin: `claude plugin marketplace update synology-mcp`, then `claude plugin update synology@synology-mcp`, and restart Claude Code.
+- Claude Desktop: install the `.mcpb` from the latest [release](https://github.com/r03eRt/synology-mcp/releases).
+- Manual: `git pull && npm install && npm run build`, and restart the client.
 
-Los cambios de cada versión están en el [CHANGELOG](CHANGELOG.md).
+Each version's changes are in the [CHANGELOG](CHANGELOG.en.md).
 
-## 10. Desarrollo
+## 10. Development
 
 ```bash
 npm install
-npm run typecheck    # tipos de src/ y test/
-npm run build        # dist/ (paquete npm)
-npm run bundle       # plugin/server/synology-mcp.cjs: el servidor en un solo fichero, para el plugin y la extensión
-npm run pack:mcpb    # build/synology-mcp-<versión>.mcpb
-npm test             # regenera el bundle y ejecuta las pruebas con un NAS simulado, sin red
-SYNOLOGY_ENV_FILE=.env.admin npm run test:real   # opcional: contra un NAS real, en una carpeta temporal de /home
+npm run typecheck    # types for src/ and test/
+npm run build        # dist/ (npm package)
+npm run bundle       # plugin/server/synology-mcp.cjs: the server in a single file, for the plugin and the extension
+npm run pack:mcpb    # build/synology-mcp-<version>.mcpb
+npm test             # regenerates the bundle and runs the tests against a simulated NAS, no network
+SYNOLOGY_ENV_FILE=.env.admin npm run test:real   # optional: against a real NAS, in a temporary folder in /home
 ```
 
 ```
 src/
-  index.ts                 arranque (stdio) y comando register-device
-  server.ts                creación del servidor y registro de herramientas
-  config.ts                variables de entorno
-  synology/client.ts       login (Noise v7 / v6 / 2FA), peticiones, subidas, errores de conexión
-  synology/errors.ts       textos de los códigos de error
-  synology/noise.ts        handshake Noise del login de DSM 7.2
-  synology/quickconnect.ts resolución de un ID de QuickConnect (red local, directa o relé)
-  synology/pool.ts         varios NAS: el cliente activo y el cambio entre ellos
-  tools/filestation.ts     ficheros
-  tools/system.ts          get_system_info, utilización y almacenamiento
-  tools/health.ts          SMART, actualizaciones, notificaciones y registros
-  tools/space.ts           papeleras
+  index.ts                 startup (stdio) and register-device command
+  server.ts                server creation and tool registration
+  config.ts                environment variables
+  synology/client.ts       login (Noise v7 / v6 / 2FA), requests, uploads, connection errors
+  synology/errors.ts       error code messages
+  synology/noise.ts        Noise handshake for the DSM 7.2 login
+  synology/quickconnect.ts QuickConnect ID resolution (local network, direct or relay)
+  synology/pool.ts         multiple NAS: the active client and switching between them
+  tools/filestation.ts     files
+  tools/system.ts          get_system_info, utilization and storage
+  tools/health.ts          SMART, updates, notifications and logs
+  tools/space.ts           recycle bins
   tools/drive.ts           Synology Drive
-  tools/downloadstation.ts Download Station (tareas, ficheros de torrent, RSS)
+  tools/downloadstation.ts Download Station (tasks, torrent files, RSS)
   tools/docker.ts          Container Manager
-  tools/nas.ts             list_nas y use_nas (con varios NAS)
-  tools/admin.ts           administración de DSM (dsm_*)
-test/                      unitarias, NAS simulado (test/mock) y NAS real (test/real)
-plugin/                    plugin de Claude Code: manifiesto, skill y servidor empaquetado
+  tools/nas.ts             list_nas and use_nas (with multiple NAS)
+  tools/admin.ts           DSM administration (dsm_*)
+test/                      unit tests, simulated NAS (test/mock) and real NAS (test/real)
+plugin/                    Claude Code plugin: manifest, skill and bundled server
 .claude-plugin/            marketplace
-mcpb/manifest.json         extensión de Claude Desktop
-docs/                      documentación técnica (en español)
+mcpb/manifest.json         Claude Desktop extension
+docs/                      technical documentation (Spanish; English in docs/en/)
 ```
 
-Documentación técnica en [docs/](docs/README.md):
+Technical documentation in [docs/](docs/en/README.md):
 
-- [herramientas](docs/herramientas.md): referencia completa;
-- [API de Synology](docs/api-synology.md): comportamientos no documentados descubiertos al probar;
-- [autenticación](docs/autenticacion.md);
-- [arquitectura](docs/arquitectura.md);
-- [pruebas](docs/pruebas.md);
-- [distribución](docs/distribucion.md);
-- [hoja de ruta](docs/hoja-de-ruta.md).
+- [tools](docs/en/herramientas.md): full reference;
+- [Synology API](docs/en/api-synology.md): undocumented behaviors discovered while testing;
+- [authentication](docs/en/autenticacion.md);
+- [architecture](docs/en/arquitectura.md);
+- [testing](docs/en/pruebas.md);
+- [distribution](docs/en/distribucion.md);
+- [roadmap](docs/en/hoja-de-ruta.md).
 
-Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript), pruébala a mano, escribe la herramienta con su prueba en `test/mock/`, documenta y sube la versión en `package.json`, `src/server.ts`, `plugin/.claude-plugin/plugin.json` y `mcpb/manifest.json` (una prueba comprueba que coinciden).
+To add something: find the call in the DSM web UI (the NAS serves its JavaScript), try it by hand, write the tool with its test in `test/mock/`, document it and bump the version in `package.json`, `src/server.ts`, `plugin/.claude-plugin/plugin.json` and `mcpb/manifest.json` (a test checks that they match).
 
-## 11. Limitaciones y próximos pasos
+## 11. Limitations and next steps
 
-- **Varios NAS** solo en la instalación manual (`SYNOLOGY_NAS_FILE`); el plugin y la extensión configuran uno.
-- **npm**: el paquete no está publicado todavía.
-- **Sin probar en la práctica**: 2FA (probado solo con el NAS simulado) y la extensión de Claude Desktop instalada.
-- **No incluido**: Synology Photos, Hyper Backup, crear o borrar usuarios y carpetas compartidas, cambiar contraseñas o servicios, crear o editar contenedores, reiniciar o apagar el NAS. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **Multiple NAS** only in the manual install (`SYNOLOGY_NAS_FILE`); the plugin and the extension configure one.
+- **npm**: the package isn't published yet.
+- **Not tested in practice**: 2FA (tested only with the simulated NAS) and the installed Claude Desktop extension.
+- **Not included**: Synology Photos, Hyper Backup, creating or deleting users and shared folders, changing passwords or services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).

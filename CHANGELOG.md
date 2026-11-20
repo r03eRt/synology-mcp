@@ -1,8 +1,17 @@
+[English](CHANGELOG.en.md) · **Español**
+
 # Changelog
 
 Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué cambió y por qué.
 
 ## 2026-11-20
+
+### Documentación en inglés y castellano
+- **`README.md` pasa a estar en inglés**, que es lo que muestran GitHub y npm. El castellano queda en `README.es.md`. Cada uno lleva arriba un enlace al otro y tiene su banner (`banner.svg` en inglés, `banner-es.svg` en castellano).
+- **`docs/en/`**: traducción de toda la documentación técnica, con los mismos nombres de fichero, y `CHANGELOG.en.md`. Todos los ficheros empiezan con el selector de idioma.
+- Los documentos en castellano enlazan ahora a `README.es.md`.
+- Comprobado con un script: los dos idiomas tienen los mismos encabezados en cada fichero y todos los enlaces y anclas resuelven.
+- `CLAUDE.md`: el castellano es la versión de referencia, la copia en inglés se actualiza en el mismo turno y las notas de las *releases* van en los dos idiomas. El paquete npm incluye `README.es.md` y `CHANGELOG.en.md`.
 
 ### 0.11.0: administración de DSM y README nuevo
 - **9 herramientas `dsm_*`** en `src/tools/admin.ts`, todas solo para administradores:

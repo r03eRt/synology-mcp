@@ -1,3 +1,5 @@
+[English](en/hoja-de-ruta.md) · **Español**
+
 # Hoja de ruta: de MCP propio a librería para Claude (2026-11-20)
 
 ## Objetivo

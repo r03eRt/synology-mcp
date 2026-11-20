@@ -1,6 +1,8 @@
+[English](en/herramientas.md) · **Español**
+
 # Herramientas
 
-78 herramientas en siete grupos (80 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14), Container Manager (8) y administración de DSM (9). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 + 6 = 46); con `SYNOLOGY_READ_ONLY=false` registra las 78. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
+78 herramientas en siete grupos (80 con varios NAS, ver el final): File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14), Container Manager (8) y administración de DSM (9). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 + 6 = 46); con `SYNOLOGY_READ_ONLY=false` registra las 78. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 

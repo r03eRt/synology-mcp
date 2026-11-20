@@ -1,3 +1,5 @@
+[English](en/api-synology.md) · **Español**
+
 # Particularidades de la WebAPI de Synology
 
 Comportamientos encontrados al probar contra el NAS real (DSM 7.4.1) que la guía oficial no deja claros o contradice.

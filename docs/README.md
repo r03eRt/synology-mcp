@@ -1,4 +1,8 @@
+[English](en/README.md) · **Español**
+
 # Documentación de synology-mcp
+
+> Documentation in English: [docs/en/](en/README.md).
 
 Servidor MCP para un NAS Synology con DSM 7.2 o superior (probado en DSM 7.4.1). Hoy cubre **File Station** (ficheros), el **estado del NAS**, **Synology Drive** (etiquetas, estrellas, búsqueda, compartidos, conversión a Office) y **Download Station**.
 
@@ -17,7 +21,7 @@ Servidor MCP para un NAS Synology con DSM 7.2 o superior (probado en DSM 7.4.1).
 
 ## Estado actual
 
-- 78 herramientas (0.11.0): 22 de File Station, 7 de estado y salud del NAS, 2 de papeleras, 16 de Drive, 14 de Download Station, 8 de Container Manager y 9 de administración de DSM (más 2 con varios NAS). Resumen para usuarios en el [README](../README.md).
+- 78 herramientas (0.11.0): 22 de File Station, 7 de estado y salud del NAS, 2 de papeleras, 16 de Drive, 14 de Download Station, 8 de Container Manager y 9 de administración de DSM (más 2 con varios NAS). Resumen para usuarios en el [README](../README.es.md).
 - Se instala como plugin de Claude Code (con una skill), extensión de Claude Desktop o paquete npm: ver [distribucion.md](distribucion.md). Publicado en [GitHub](https://github.com/r03eRt/synology-mcp); npm pendiente.
 - Desde 0.6.0 arranca en solo lectura salvo `SYNOLOGY_READ_ONLY=false`, soporta cuentas con verificación en dos pasos (`register-device`) y explica los errores de certificado y de conexión. Plan hacia una librería instalable: [hoja-de-ruta.md](hoja-de-ruta.md).
 - Conexión por IP o nombre, o por QuickConnect (`quickconnect:<ID>`: red local, directa o relé). Varios NAS con `SYNOLOGY_NAS_FILE` (desde 0.10.0).

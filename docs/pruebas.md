@@ -1,3 +1,5 @@
+[English](en/pruebas.md) · **Español**
+
 # Pruebas
 
 Desde 2026-11-20 hay dos suites automatizadas con el ejecutor de pruebas de Node (`node:test`) y `tsx` para cargar TypeScript sin compilar. Antes de eso, las pruebas eran scripts sueltos (secciones históricas más abajo).

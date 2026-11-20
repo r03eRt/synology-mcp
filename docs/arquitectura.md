@@ -1,3 +1,5 @@
+[English](en/arquitectura.md) · **Español**
+
 # Arquitectura
 
 ## Módulos

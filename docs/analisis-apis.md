@@ -1,3 +1,5 @@
+[English](en/analisis-apis.md) · **Español**
+
 # Análisis de APIs para ampliar el MCP (2026-11-13)
 
 Fuentes: las cuatro especificaciones OpenAPI de la *Synology Office Suite API* (Drive, Spreadsheet, MailPlus, Calendar) y una consulta de `SYNO.API.Info` al NAS real con el usuario `usuario-prueba`.

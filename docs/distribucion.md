@@ -1,3 +1,5 @@
+[English](en/distribucion.md) · **Español**
+
 # Distribución: npm, plugin de Claude Code y extensión de Claude Desktop (2026-11-20)
 
 Fase 2 de la [hoja de ruta](hoja-de-ruta.md). Hay tres formas de instalarlo, todas con el mismo servidor:

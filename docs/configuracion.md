@@ -1,3 +1,5 @@
+[English](en/configuracion.md) · **Español**
+
 # Configuración
 
 ## Requisitos
@@ -19,7 +21,7 @@ El MCP solo puede hacer lo que DSM permita a ese usuario. Es la principal barrer
 
 ## Instalación
 
-Para usuarios: plugin de Claude Code, extensión de Claude Desktop o `npx synology-mcp` (ver el [README](../README.md) y [distribucion.md](distribucion.md)). Desde el código:
+Para usuarios: plugin de Claude Code, extensión de Claude Desktop o `npx synology-mcp` (ver el [README](../README.es.md) y [distribucion.md](distribucion.md)). Desde el código:
 
 ```bash
 npm install
