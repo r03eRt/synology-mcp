@@ -65,7 +65,7 @@ Necesaria antes de que lo use nadie más.
   ¿También en inglés, para publicarlo?
 - [x] **2.6 Integración continua** (S). GitHub Actions con `typecheck`, `build` y `npm test` (sin NAS real) en cada cambio.
 
-**Estado (2026-11-20)**: todo preparado y probado en local, sin publicar. Detalle en [distribucion.md](distribucion.md).
+**Estado (2026-11-20)**: publicado en GitHub ([r03eRt/synology-mcp](https://github.com/r03eRt/synology-mcp), release v0.6.0 con el `.mcpb`). Falta `npm publish`, que hace el usuario. Detalle en [distribucion.md](distribucion.md).
 - 2.1: paquete npm probado con `npm pack` e instalado desde el `.tgz`. Falta `npm publish`.
 - 2.2: plugin `synology` y marketplace `synology-mcp` en el mismo repositorio; los dos pasan `claude plugin validate`. El servidor va empaquetado en un solo fichero, sin npm. Falta probarlo instalado en Claude Code.
 - 2.3: skill `synology-nas` dentro del plugin.

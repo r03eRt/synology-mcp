@@ -94,11 +94,21 @@ Al subir de versión hay que cambiar los cuatro sitios.
 
 No se ha ejecutado todavía, porque el repositorio no tiene remoto.
 
-## Publicar
+## Publicación (2026-11-20)
 
-Requiere decisiones del usuario: si el proyecto es público y quién es el `OWNER` de GitHub. Pasos:
+El usuario decidió publicarlo como proyecto público.
 
-1. Crear el repositorio en GitHub y hacer `git push`. Sustituir `OWNER` en el README y rellenar `repository` en `package.json`.
-2. `npm publish`, con la cuenta npm del usuario.
-3. Crear un *release* de GitHub con `build/synology-mcp-<versión>.mcpb` adjunto.
-4. Probar la instalación real: el plugin en Claude Code y la extensión en Claude Desktop.
+1. **Limpieza previa.** Se quitaron de la documentación los datos privados del NAS de pruebas:
+   - el nombre del usuario no administrador (ahora `usuario-prueba`) y la nota de que su contraseña había aparecido en un chat;
+   - la IP local y las rutas del Mac del autor;
+   - el número de descargas y el torrent personal de la prueba real.
+
+   El historial local (tres commits que contenían esos datos y el email personal) se juntó en un solo commit. El autor usa el email `noreply` de GitHub.
+2. **Repositorio público** [r03eRt/synology-mcp](https://github.com/r03eRt/synology-mcp), con temas `mcp`, `claude`, `synology`, `nas`, `claude-code-plugin` y `mcpb`. La integración continua pasó a la primera con Node 22 y 24; esto confirma de paso que el bundle generado en Linux es idéntico al guardado. Después se pasó a `actions/checkout@v5` y `setup-node@v5`, porque las v4 dan un aviso de Node 20 obsoleto.
+3. **Release [v0.6.0](https://github.com/r03eRt/synology-mcp/releases/tag/v0.6.0)** con `synology-mcp-0.6.0.mcpb` adjunto.
+4. **Plugin instalado desde GitHub** en este equipo:
+   - `claude plugin marketplace add r03eRt/synology-mcp` y `claude plugin install synology@synology-mcp` funcionaron. Avisaron de "6 userConfig options not yet set (3 required)" y de que se configura con `/plugin configure synology@synology-mcp` o `--config KEY=VALUE`.
+   - El servidor instalado, arrancado con las credenciales de `.env.admin`, funciona contra el NAS real: 29 herramientas, `get_system_info`, `list_shares` y `downloads_info`.
+   - Se dejó **desactivado** (`claude plugin disable`) hasta que el usuario lo configure. Si no, habría un servidor sin configurar fallando junto al MCP `synology` que ya estaba registrado a mano.
+5. **npm: pendiente.** No hay sesión de npm en este equipo, y el login y la publicación los hace el usuario: `npm login`, y después `npm publish` en la carpeta del proyecto (`prepublishOnly` ejecuta las comprobaciones). Hasta entonces no funcionan `npx synology-mcp` ni `npx synology-mcp register-device` del README.
+6. **Pendiente de probar**: la extensión `.mcpb` en Claude Desktop y la versión de Node que trae.

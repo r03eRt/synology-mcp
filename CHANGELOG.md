@@ -4,6 +4,13 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### Publicación
+- Repositorio público [r03eRt/synology-mcp](https://github.com/r03eRt/synology-mcp) y release v0.6.0 con la extensión `.mcpb`. La CI pasa con Node 22 y 24.
+- Antes de publicar se quitaron de la documentación los datos privados del NAS de pruebas (usuario no administrador, IP, rutas locales, descargas personales), y el historial se juntó en un único commit con el email `noreply` de GitHub.
+- `package.json`, `plugin.json` y `manifest.json` llevan `repository` y `homepage`; el README apunta a `r03eRt/synology-mcp`.
+- CI: `actions/checkout` y `setup-node` v5.
+- Plugin instalado desde GitHub en este equipo y comprobado contra el NAS real; queda desactivado hasta configurarlo. npm sigue pendiente (lo publica el usuario). Detalle en `docs/distribucion.md`.
+
 ### Fase 2 de la hoja de ruta: distribución (sin publicar)
 - **Plugin de Claude Code** `synology` en `plugin/`, con marketplace `synology-mcp` en `.claude-plugin/marketplace.json`. Pide URL, usuario, contraseña (sensible), solo lectura (por defecto sí), aceptar certificado no válido y token 2FA (sensible).
 - **Skill `synology-nas`** dentro del plugin: rutas, qué herramienta usar, tareas largas, reglas de seguridad, flujos típicos y errores. En inglés, porque la lee Claude.

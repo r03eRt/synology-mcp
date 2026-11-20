@@ -18,7 +18,7 @@ Servidor MCP para un NAS Synology con DSM 7.2 o superior (probado en DSM 7.4.1).
 ## Estado actual
 
 - 49 herramientas (22 de File Station, 3 de estado del NAS, 16 de Drive y 8 de Download Station). Las de File Station, `get_system_info` y Drive se probaron contra el NAS real (DS218+, DSM 7.4.1, `<IP del NAS>:5000`) con un usuario sin privilegios de administrador; las de administración y Download Station, con la cuenta administradora.
-- Se instala como plugin de Claude Code (con una skill), extensión de Claude Desktop o paquete npm: ver [distribucion.md](distribucion.md). Aún sin publicar.
+- Se instala como plugin de Claude Code (con una skill), extensión de Claude Desktop o paquete npm: ver [distribucion.md](distribucion.md). Publicado en [GitHub](https://github.com/r03eRt/synology-mcp); npm pendiente.
 - Desde 0.6.0 arranca en solo lectura salvo `SYNOLOGY_READ_ONLY=false`, soporta cuentas con verificación en dos pasos (`register-device`) y explica los errores de certificado y de conexión. Plan hacia una librería instalable: [hoja-de-ruta.md](hoja-de-ruta.md).
 - Conexión por IP local. QuickConnect queda pendiente.
 - Estado del NAS: `get_system_info` con cualquier usuario; `get_system_utilization` (CPU, RAM, red, E/S) y `get_storage_status` (pools, volúmenes, discos) solo si el MCP usa una cuenta administradora.
