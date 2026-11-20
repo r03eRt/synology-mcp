@@ -1,6 +1,6 @@
 # synology-mcp
 
-Usa tu NAS Synology desde Claude. Puedes buscar, leer y organizar ficheros, usar Synology Drive, gestionar Download Station (URLs, enlaces magnet y ficheros `.torrent`) y revisar el estado del NAS (temperatura, discos, volúmenes).
+Usa tu NAS Synology desde Claude. Puedes buscar, leer y organizar ficheros, usar Synology Drive, gestionar Download Station (URLs, enlaces magnet y ficheros `.torrent`) y los contenedores de Container Manager (Docker), y revisar el estado del NAS (temperatura, discos, actualizaciones, registros).
 
 Es un servidor [MCP](https://modelcontextprotocol.io) para DSM 7 (probado en DSM 7.4.1). Viene como plugin de Claude Code, como extensión de Claude Desktop o como paquete npm. **Arranca en solo lectura**: Claude no puede cambiar nada hasta que actives la escritura.
 
@@ -12,7 +12,7 @@ Claude solo puede hacer lo que permita el usuario de DSM que configures, así qu
 
 1. En *Panel de control → Usuario y grupo*, crea un usuario específico, por ejemplo `claude`, **sin permisos de administrador**.
 2. En *Permisos*, dale acceso de lectura (o lectura y escritura) solo a las carpetas compartidas que quieras que Claude vea.
-3. En *Aplicaciones*, permítele File Station y, si los vas a usar, Synology Drive y Download Station.
+3. En *Aplicaciones*, permítele File Station y, si los vas a usar, Synology Drive y Download Station. Container Manager solo lo pueden usar administradores.
 
 Con un usuario normal funciona todo salvo las herramientas de estado y salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications` y `get_system_logs`), que necesitan un administrador.
 
@@ -87,6 +87,7 @@ Para no dejar la contraseña en la configuración del cliente, guárdala en un f
 - «Lee /home/notas/lista.txt y resúmela.»
 - «Añade este magnet a Download Station en /home/Descargas.»
 - «¿Qué descargas tienen error?»
+- «¿Qué contenedores de Docker están parados? Enséñame los últimos errores de pihole.»
 - «Crea un enlace para compartir /photo/Viaje que caduque el domingo.»
 - «Lista lo que tengo marcado con estrella en Drive.»
 
@@ -166,6 +167,17 @@ Las rutas del NAS empiezan siempre por una carpeta compartida: `/photo/2024/foto
 | `downloads_delete` *(escritura)* | Quitar descargas (conserva lo ya descargado) |
 | `downloads_set_destination` *(escritura)* | Cambiar la carpeta de destino de una descarga |
 
+**Container Manager (Docker)** (por nombre de contenedor)
+
+| Herramienta | Qué hace |
+|---|---|
+| `docker_list` | Contenedores con estado, salud, imagen, tiempo encendido, proyecto Compose y CPU/memoria en vivo |
+| `docker_get` | Detalle: puertos, volúmenes (carpeta del NAS → ruta del contenedor), redes, política de reinicio, último *health check*. De las variables de entorno solo da los nombres, nunca los valores |
+| `docker_logs` | Registro de un contenedor, lo más reciente primero, con filtros por texto y fecha |
+| `docker_images` | Imágenes con tamaño, si alguna se usa y si hay actualización |
+| `docker_start` *(escritura)* | Arrancar contenedores |
+| `docker_stop` / `docker_restart` *(escritura, destructivas)* | Parar o reiniciar contenedores (su servicio se corta) |
+
 ## Autenticación
 
 El servidor inicia sesión igual que la página web de DSM 7.2. Primero obtiene la clave del servidor con `SYNO.API.Auth.Type` (cookie `_SSID`). Después hace un handshake `Noise_IK_25519_ChaChaPoly_BLAKE2b` y envía un login `SYNO.API.Auth` versión 7 con `ik_message`. Todas las peticiones llevan el token `X-SYNO-TOKEN`.
@@ -189,6 +201,7 @@ src/
   tools/health.ts          get_disk_health, check_updates, get_notifications, get_system_logs
   tools/drive.ts           herramientas de Synology Drive
   tools/downloadstation.ts herramientas de Download Station
+  tools/docker.ts          herramientas de Container Manager (docker_*)
   tools/format.ts          formateo de respuestas
 test/                      pruebas (ver docs/pruebas.md)
 plugin/                    plugin de Claude Code: manifiesto, skill synology-nas y servidor en un fichero

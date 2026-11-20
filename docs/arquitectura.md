@@ -14,6 +14,7 @@ src/
   tools/system.ts          get_system_info (SYNO.DSM.Info), get_system_utilization
                            (SYNO.Core.System.Utilization), get_storage_status
                            (SYNO.Storage.CGI.Storage); adminOnly()
+  tools/docker.ts          herramientas de Container Manager (docker_*)
   tools/health.ts          get_disk_health, check_updates, get_notifications,
                            get_system_logs (APIs de la web de DSM; usan adminOnly)
   tools/drive.ts           herramientas de Synology Drive (drive_*)
@@ -82,6 +83,10 @@ Es el modo por defecto desde 0.6.0: quien instale el MCP empieza sin poder modif
 ## Anotaciones MCP
 
 Cada herramienta declara `readOnlyHint`, `destructiveHint` y `openWorldHint` para que el cliente pueda pedir confirmación en las peligrosas. Son destructivas `delete`, `delete_sharing_links`, `drive_delete_label`, `downloads_delete` y las que pueden sobrescribir: `copy_move`, `upload_file`, `write_text_file` y `extract` (estas tres se marcaron en 0.6.0). Una prueba exige que toda herramienta de escritura declare `destructiveHint` y fija la lista de las destructivas.
+
+## Tiempo de espera por llamada
+
+`request(api, method, params, version, { timeoutMs })`: por defecto 30 s por petición HTTP. Las llamadas lentas de Container Manager (registros, arrancar, parar, reiniciar) usan 120 s.
 
 ## Errores de conexión
 

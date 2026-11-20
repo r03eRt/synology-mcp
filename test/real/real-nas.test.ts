@@ -80,6 +80,20 @@ describe("real NAS", { skip }, () => {
     }
   });
 
+  test("Container Manager read-only tools answer (if installed)", async (t) => {
+    const list = await h.call("docker_list");
+    if (list.isError && /not installed|code 102|code 105/.test(list.text)) return t.skip("Container Manager not available to this user");
+    assert.equal(list.isError, false, list.text);
+    assert.equal(typeof list.json.total, "number");
+    assert.equal((await h.call("docker_images")).isError, false);
+    const first = list.json.containers[0]?.name;
+    if (first) {
+      const d = await h.call("docker_get", { name: first });
+      assert.equal(d.isError, false, d.text);
+      assert.doesNotMatch(d.text, /"[A-Z_]+=/, "environment values must not be returned");
+    }
+  });
+
   test("Drive read-only tools answer", async () => {
     for (const [name, args] of [
       ["drive_list", { path: "/mydrive", limit: 5 }],

@@ -101,6 +101,11 @@ const DOWNLOAD_STATION: Record<number, string> = {
   544: "Task not found",
 };
 
+/** Container Manager (SYNO.Docker.*) codes seen on the real NAS. */
+const DOCKER: Record<number, string> = {
+  117: "No such container (or a parameter that is not JSON-encoded)",
+};
+
 /** DSM packages behind each API family, to explain 102 (not installed) and 105 (no application privilege). */
 const PACKAGES: [RegExp, string][] = [
   [/^SYNO\.SynologyDrive\./, "Synology Drive Server"],
@@ -130,6 +135,7 @@ export function describeError(code: number, api: string): string {
   }
   if (api.startsWith("SYNO.SynologyDrive.") && DRIVE[code]) return DRIVE[code];
   if (/^SYNO\.DownloadStation2?\./.test(api) && DOWNLOAD_STATION[code]) return DOWNLOAD_STATION[code];
+  if (api.startsWith("SYNO.Docker.") && DOCKER[code]) return DOCKER[code];
   // Other APIs (DSM, Drive, ...) have their own undocumented code tables.
   return `Error code ${code} of ${api}`;
 }

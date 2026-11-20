@@ -1,6 +1,6 @@
 # Herramientas
 
-53 herramientas en cuatro grupos: File Station (22), estado y salud del NAS (7), Synology Drive (16) y Download Station (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 11 + 3 = 33); con `SYNOLOGY_READ_ONLY=false` registra las 53.
+60 herramientas en cinco grupos: File Station (22), estado y salud del NAS (7), Synology Drive (16), Download Station (8) y Container Manager (7). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 11 + 3 + 4 = 37); con `SYNOLOGY_READ_ONLY=false` registra las 60.
 
 # File Station
 
@@ -334,4 +334,35 @@ Los nombres de fichero no se tocan.
 Pausar, reanudar y borrar devuelven `{ done: [ids], failed: [{ id, error }] }`: la API responde por cada id, y un id inexistente no hace fallar a los demás.
 
 No incluido (por ahora): elegir qué ficheros de un torrent descargar, RSS, búsqueda de torrents (`BTSearch`), programación y contraseña de extracción.
+
+# Container Manager (Docker)
+
+Código: [src/tools/docker.ts](../src/tools/docker.ts), desde 0.8.0. `SYNO.Docker.*` no está documentada: los métodos y parámetros se sacaron de la web de Container Manager (`webman/3rdparty/ContainerManager/MainVue.js`). Ver [api-synology.md](api-synology.md#container-manager-080).
+
+**Permisos**: Container Manager solo lo pueden usar administradores. Con otro usuario, el 105 se explica como falta de privilegio de aplicación.
+
+**Contenedores por nombre**, el mismo que muestra Container Manager (`pihole`, `immich_server`). Los nombres van codificados en JSON; sin codificar, el NAS responde 117, igual que con un contenedor que no existe.
+
+**Secretos**: `Container get` devuelve las variables de entorno **con sus valores** (contraseñas de bases de datos, claves de API…). `docker_get` solo devuelve sus nombres (`env_names`) y nunca la sección `profile`, que también las trae. Lo comprueban una prueba simulada y otra contra el NAS real.
+
+## Lectura (4)
+
+| Herramienta | API | Parámetros | Qué devuelve |
+|---|---|---|---|
+| `docker_list` | `Container list` (`type="all"`, `limit=-1`) + `Container stats` | `status` (`running`/`stopped`) | `total`, `by_status` y, por contenedor, `name`, `status`, `health`, `image`, `up` (texto de Docker, p. ej. "Up 3 weeks (healthy)"), `started` o `stopped` + `exit_code`, `project` (Compose) y, si está en marcha, `cpu_pct` y `memory`. La CPU y la memoria se calculan como `docker stats` y la web (CPU entre dos muestras por núcleos; memoria sin la caché inactiva). Si `stats` falla se omiten |
+| `docker_get` | `Container get` | `name` | `image`, `status`, `health` con `last_check` (hora, código y salida del último *health check*), `created`, `started`, `restart_policy`, `restart_count`, `network_mode`, `ports` ("8080 → 80/tcp"), `exposed_ports`, `volumes` (`nas` → `container`, `read_only`), `networks` con IP, `command`, `project`, `memory`/`memory_pct` y `env_names` |
+| `docker_logs` | `Container.Log get` | `name`, `keyword`, `from`/`to` (`YYYY-MM-DD`), `limit` (50), `offset` | `total`, `returned` y `lines` (`time`, `stream` si no es stdout, `text`), lo más reciente primero. Espera hasta 120 s, porque Container Manager tarda 20–60 s con registros largos |
+| `docker_images` | `Image list` (`show_dsm=false`) + `Container list` | — | `total`, `total_size` e imágenes con `repository`, `tags`, `size`, `created`, `in_use` (si algún contenedor la usa) y `update_available` |
+
+## Escritura (3)
+
+Solo con `SYNOLOGY_READ_ONLY=false`. Devuelven `{ done: [...], failed: [{ name, error }] }`: un contenedor que falla no impide los demás.
+
+| Herramienta | API | Anotaciones | Notas |
+|---|---|---|---|
+| `docker_start` | `Container start` | no destructiva, idempotente | Arrancar uno que ya está en marcha no hace nada |
+| `docker_stop` | `Container stop` | **destructiva**, idempotente | No borra datos, pero corta el servicio del contenedor (DNS, gestor de contraseñas…). Se marca destructiva para que el cliente pida confirmación |
+| `docker_restart` | `Container restart` | **destructiva** | Corte breve del servicio |
+
+No incluido (por ahora): crear, borrar o editar contenedores, descargar o borrar imágenes, y proyectos Compose. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
 

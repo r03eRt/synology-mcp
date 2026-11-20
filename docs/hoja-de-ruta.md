@@ -98,7 +98,7 @@ Necesaria antes de que lo use nadie más.
 Ordenadas por utilidad probable.
 
 - [ ] **4.1 Synology Photos** (L). Álbumes, búsqueda por fecha, persona o lugar, y crear álbumes y añadir fotos. No hay especificación oficial: hay que sacarla de la web de Photos.
-- [ ] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros.
+- [x] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros. Hecho en 0.8.0, junto con las imágenes.
 - [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia.
 - [ ] **4.4 Administración de DSM** (L). Usuarios y grupos, carpetas compartidas y permisos, tareas programadas. Solo admin; hay que pensar bien qué exponer.
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.

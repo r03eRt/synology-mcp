@@ -4,6 +4,16 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.8.0: Container Manager (Docker)
+- 7 herramientas en `src/tools/docker.ts`:
+  - lectura: `docker_list` (estado, salud, proyecto, CPU y memoria en vivo), `docker_get` (puertos, volúmenes, redes, *health check*, nombres de las variables de entorno), `docker_logs` e `docker_images`;
+  - escritura: `docker_start`, `docker_stop` y `docker_restart`. Las dos últimas son destructivas porque cortan el servicio.
+- **Seguridad**: la API devuelve las variables de entorno con sus valores (contraseñas). El MCP solo da los nombres, y hay pruebas, simulada y real, que lo comprueban.
+- `request()` acepta un `timeoutMs` por llamada; los registros de contenedores pueden tardar más de 30 s.
+- Texto del error 117 de `SYNO.Docker.*` (contenedor inexistente o parámetro sin codificar en JSON).
+- La skill pide confirmar antes de parar o reiniciar, y avisar si es un DNS.
+- 60 herramientas (37 en solo lectura). Pruebas: 94; suite real: 6/6.
+
 ### 0.7.0: salud del NAS
 - 4 herramientas nuevas en `src/tools/health.ts`, de solo lectura y solo para administradores:
   - `get_disk_health`: SMART por disco, con la tendencia de los sectores defectuosos y los atributos clave o que fallan.

@@ -37,6 +37,7 @@ For files, call `list_shares` before guessing paths.
 | CPU, RAM, network now | `get_system_utilization` (admin only) |
 | Recent, starred, shared-with-me files, labels | `drive_*` tools. File Station has no such metadata |
 | Share a file with someone | `create_sharing_link` (optional password and expiry). Drive sharing is read-only here: `drive_list_permissions` |
+| Docker containers: what is running, why one is down, its logs | `docker_list`, then `docker_get` (ports, volumes, last health check) and `docker_logs` (admin only). `docker_get` shows only the names of environment variables; never try to obtain their values |
 | Downloads, torrents, magnet links | `downloads_list` / `downloads_get` to look; `downloads_add` (URLs, magnets or local `.torrent` files) to add |
 
 Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `search_files`) wait up to a timeout. If they return `finished: false` and a `taskid`, check again later with `get_task_status` instead of starting the operation again.
@@ -48,6 +49,7 @@ Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `
 - `delete` on the NAS may bypass the recycle bin, depending on the share's settings. Treat it as permanent.
 - Prefer moving things into a folder the user can review (for example `/home/to-delete`) over deleting, when the user is unsure.
 - Sharing links are public URLs. Create them only when asked, and mention the expiry or password options.
+- `docker_stop` and `docker_restart` take a service down: DNS (Pi-hole), a password manager, a media server… Name the containers and what they do, and wait for confirmation. Never stop a DNS container without warning that name resolution on the network may fail.
 - Download Station is shared with other users and may hold hundreds of tasks. Pause, resume or delete only the task ids the user means. Never do it to "all" without explicit confirmation.
 
 ## Common requests

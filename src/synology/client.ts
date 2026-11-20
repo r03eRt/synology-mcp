@@ -245,11 +245,17 @@ export class SynologyClient {
   // ---------------------------------------------------------------- requests
 
   /** Call a JSON WebAPI method. Re-logs in once if the session expired. */
-  async request<T = unknown>(api: string, method: string, params: Params = {}, version?: number): Promise<T> {
+  async request<T = unknown>(
+    api: string,
+    method: string,
+    params: Params = {},
+    version?: number,
+    opts: { timeoutMs?: number } = {},
+  ): Promise<T> {
     return this.withSession(async (sid) => {
       const resolved = await this.resolveApi(api, version);
       const body = this.buildParams(api, method, resolved.version, params, sid);
-      const res = await this.httpPost(`${await this.baseUrl()}/webapi/${resolved.path}`, body);
+      const res = await this.httpPost(`${await this.baseUrl()}/webapi/${resolved.path}`, body, {}, opts.timeoutMs);
       const parsed = (await res.json()) as SynoResponse<T>;
       if (!parsed.success) {
         throw new SynologyApiError(api, method, parsed.error?.code ?? 100, parsed.error?.errors ?? []);
@@ -390,13 +396,13 @@ export class SynologyClient {
     return this.synoToken ? { "X-SYNO-TOKEN": this.synoToken } : {};
   }
 
-  private async httpPost(url: string, body: URLSearchParams, extraHeaders: Record<string, string> = {}) {
+  private async httpPost(url: string, body: URLSearchParams, extraHeaders: Record<string, string> = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const res = await nasFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", ...this.authHeaders(), ...extraHeaders },
       body: body.toString(),
       dispatcher: this.dispatcher,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).pathname}`);
     return res;

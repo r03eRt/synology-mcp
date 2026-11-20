@@ -158,6 +158,19 @@ Para saber qué ficheros cargar, se mira el `config` de cada módulo. Todo se pr
   - el Disco 1, con 8 sectores defectuosos ya reasignados (atributo 5 = 8, pendientes e incorregibles a 0) y estables en las 12 últimas comprobaciones;
   - unas 59.500 horas encendidos los dos discos.
 
+## Container Manager (0.8.0)
+
+Fuente: `webman/3rdparty/ContainerManager/MainVue.js` (2,6 MB). Los métodos se encontraron buscando `api:"SYNO.Docker…",method:"…"`. Todo se probó contra el NAS real el 2026-11-20.
+
+- **Parámetros de texto en JSON** (`name: "\"pihole\""`). `Container get` acepta también el nombre sin codificar, pero `Container.Log get` responde 117 si no va codificado. El MCP codifica siempre. El **117** es también la respuesta para un contenedor que no existe.
+- **`Container get` devuelve los secretos.** `details.Config.Env` lleva las variables con su valor; en este NAS, la contraseña de la base de datos de Immich y la del panel de Pi-hole. `profile.env_variables` también las trae. Durante la exploración, la de Immich apareció una vez en la salida de una prueba manual, en la sesión local; por eso las herramientas solo devuelven nombres.
+- `Container list` (con `type="all"` y `limit=-1`) trae `status` (`running`/`stopped`), `up_status` (texto de Docker), `State` (salud, inicio y fin, `ExitCode`), `Labels` e `ImageID`. Un contenedor que nunca arrancó tiene `StartedAt` = `0001-01-01T00:00:00Z`.
+- `Container stats` devuelve el JSON de `docker stats` por id de contenedor, con `name` = `/nombre`, `cpu_stats` y `precpu_stats` (para calcular la CPU) y `memory_stats`. La web calcula la memoria como `usage - total_inactive_file`.
+- `Container.Log get` necesita `name`, `from`, `to`, `level` y `keyword` (cadenas JSON, vacías si no se filtra), `sort_dir` (`"DESC"`), `offset` y `limit`. Es **lento**: 2 s para Pi-hole (82.000 líneas) y 24 s para Redis. Con Immich superó los 30 s del cliente. Por eso `request()` admite ahora un `timeoutMs` por llamada, y los registros y acciones usan 120 s.
+- `start`, `stop` y `restart` con `{name}` devuelven `{name, cpu, memory, …}`. Parar uno ya parado o arrancar uno ya en marcha responde éxito sin hacer nada. Así se probaron contra el NAS real sin tocar ningún servicio: `stop` sobre Sonarr (parado) y `start` sobre jackett (en marcha).
+- `Image list` con `show_dsm=false` da `repository`, `tags` (`<none>` si no tiene), `size`, `created` y `upgradable`.
+- `Project list` devuelve `{}` si los proyectos Compose no se crearon desde Container Manager.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |
