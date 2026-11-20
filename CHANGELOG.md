@@ -4,6 +4,11 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.6.2: tabla de estados de Download Station corregida
+- La 0.6.1 traducía los estados numéricos por el orden de la guía, y era incorrecto: 8 es `seeding`, no `filehosting_waiting`. Se vio al usar el MCP tras reiniciar Claude, con una descarga que se estaba compartiendo.
+- Ahora se usa la tabla `TASK_STATUS_INT` de la web de Download Station: 1–15 son estados (incluye `pre_seeding` y otros internos) y 101–134 errores, que se devuelven como `error` con su causa. `downloads_list` admite filtrar por los estados nuevos.
+- El NAS simulado reproduce el formato mixto de `getinfo` (texto en la primera tarea, números en las demás). Comprobado contra el NAS real con seis tareas.
+
 ### 0.6.1: corrección de Download Station
 - **Seguridad**: `downloads_get` devolvía las URL de los trackers privados con la clave del usuario (`/announce/<passkey>`). Ahora se ocultan las claves en las URL de trackers y de origen: segmentos largos, parámetros de clave, usuario y contraseña, y los `tr` de los enlaces magnet. Encontrado al usar el MCP sobre el NAS real.
 - **Estados numéricos**: `Task getinfo` a veces da el estado como número (`6` en vez de `hash_checking`). Se traduce a nombre en `downloads_list` (también al contar y filtrar), `downloads_get` y `downloads_add`.

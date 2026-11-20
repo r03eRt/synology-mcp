@@ -17,6 +17,7 @@ const TASK = "SYNO.DownloadStation.Task";
 const TASK2 = "SYNO.DownloadStation2.Task";
 const TASK2_V = 2;
 const MAX_TORRENT_BYTES = 10 * 1024 * 1024;
+/** Status names, as Task list returns them; also what downloads_list can filter on. */
 export const STATUSES = [
   "waiting",
   "downloading",
@@ -24,24 +25,78 @@ export const STATUSES = [
   "finishing",
   "finished",
   "hash_checking",
+  "pre_seeding",
   "seeding",
   "filehosting_waiting",
   "extracting",
+  "preprocessing",
+  "preprocess_pass",
+  "downloaded",
+  "postprocessing",
+  "captcha_needed",
   "error",
 ] as const;
 
 type Status = (typeof STATUSES)[number];
 
 /**
- * Task status. Usually a name, but Task getinfo sometimes answers with the
- * number (seen: 6 for a task that Task list calls "hash_checking"). The numbers
- * follow the order of STATUSES starting at 1 (waiting = 1 … error = 10).
+ * Numeric task statuses, from TASK_STATUS_INT in the Download Station web UI
+ * (webman/3rdparty/DownloadStation/download.js, 4.1.2). 1–15 are states; 101 is a
+ * generic error and 102–134 errors with a cause.
  */
-export function normalizeStatus(status: string | number): string {
+const STATUS_BY_NUMBER: Record<number, Status> = Object.fromEntries(STATUSES.slice(0, 15).map((s, i) => [i + 1, s]));
+const ERROR_BY_NUMBER: Record<number, string> = {
+  101: "unknown",
+  102: "broken_link",
+  103: "destination_not_exist",
+  104: "destination_denied",
+  105: "disk_full",
+  106: "quota_reached",
+  107: "timeout",
+  108: "exceed_max_fs_size",
+  109: "exceed_max_temp_fs_size",
+  110: "exceed_max_dest_fs_size",
+  111: "name_too_long_encryption",
+  112: "name_too_long",
+  113: "torrent_duplicate",
+  114: "file_not_exist",
+  115: "required_premium",
+  116: "not_supported_type",
+  117: "ftp_encryption_not_supported_type",
+  118: "extract_failed",
+  119: "extract_wrong_password",
+  120: "extract_invalid_archive",
+  121: "extract_quota_reached",
+  122: "extract_disk_full",
+  123: "torrent_invalid",
+  124: "required_account",
+  125: "try_it_later",
+  126: "encryption",
+  127: "missing_python",
+  128: "private_video",
+  129: "extract_folder_not_exist",
+  130: "nzb_missing_article",
+  131: "ed2k_link_duplicate",
+  132: "destination_file_duplicate",
+  133: "parchive_repair_failed",
+  134: "invalid_account_password",
+};
+
+/**
+ * Task status as a name. Task list gives names, but Task getinfo with several
+ * ids answers with a name for the first task and numbers for the rest (seen:
+ * 2 downloading, 6 hash_checking, 8 seeding on DS 4.1.2). Error numbers become
+ * "error" plus the cause.
+ */
+export function statusInfo(status: string | number): { status: string; error?: string } {
   const n = typeof status === "number" ? status : /^\d+$/.test(status) ? Number(status) : NaN;
-  if (Number.isNaN(n)) return String(status);
-  return STATUSES[n - 1] ?? `unknown_${n}`;
+  if (Number.isNaN(n)) return { status: String(status) };
+  if (STATUS_BY_NUMBER[n]) return { status: STATUS_BY_NUMBER[n] };
+  if (n >= 101) return { status: "error", error: ERROR_BY_NUMBER[n] ?? `code_${n}` };
+  return { status: `unknown_${n}` };
 }
+
+export const normalizeStatus = (status: string | number) => statusInfo(status).status;
 
 const REDACTED = "<redacted>";
 const SECRET_PARAM = /pass|key|token|auth|secret|sig|^pid$|^uk$|^id$/i;
@@ -143,7 +198,7 @@ function simplifyTask(t: DsTask, withFiles = false) {
     title: t.title,
     type: t.type,
     status: normalizeStatus(t.status),
-    ...(t.status_extra?.error_detail && { error: t.status_extra.error_detail }),
+    ...((t.status_extra?.error_detail ?? statusInfo(t.status).error) && { error: t.status_extra?.error_detail ?? statusInfo(t.status).error }),
     size: humanSize(t.size),
     ...(progress !== undefined && { progress_pct: progress }),
     ...(x && {

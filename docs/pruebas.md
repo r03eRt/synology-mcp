@@ -72,6 +72,12 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - `npm test`: 81/81. Nuevas pruebas: `normalizeStatus`, `redactUrl` (rutas, parámetros, credenciales, magnet, nombres de fichero) y, en el NAS simulado, una tarea con `status: 6` y un tracker con clave (en `downloads_list` y `downloads_get`).
 - Contra el NAS real, con el bundle: `downloads_get` de una tarea atascada y de la que estaba en comprobación da `downloading` y `hash_checking`, con la URL del tracker como `…/announce/<redacted>`. `downloads_list` cuenta y filtra `hash_checking` bien.
 
+### Resultado 2026-11-20, versión 0.6.2
+
+- Tras reiniciar Claude, el MCP 0.6.1 ocultaba bien la clave, pero daba `filehosting_waiting` para una tarea en `seeding`. La causa era la tabla de estados deducida; ver [api-synology.md](api-synology.md).
+- El NAS simulado imita ahora a DS 4.1.2: `getinfo` con varios ids da texto en la primera tarea y número en las demás.
+- `npm test`: 81/81. Contra el NAS real, `downloads_get` de seis tareas da `downloading` ×2, `hash_checking` y `seeding` ×3, igual que `Task list`.
+
 ## Pruebas manuales anteriores (históricas)
 
 ## NAS real (DS218+, DSM 7.4.1, `<IP del NAS>:5000`)

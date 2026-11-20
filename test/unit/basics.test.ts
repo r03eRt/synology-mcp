@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import { loadConfig } from "../../src/config.js";
 import { describeError, SynologyApiError } from "../../src/synology/errors.js";
 import { cookieFrom, startNoiseHandshake } from "../../src/synology/noise.js";
-import { normalizeStatus, redactUrl } from "../../src/tools/downloadstation.js";
+import { normalizeStatus, redactUrl, statusInfo } from "../../src/tools/downloadstation.js";
 import { humanSize, simplifyFile } from "../../src/tools/format.js";
 
 const BASE_ENV = { SYNOLOGY_URL: "http://nas:5000/", SYNOLOGY_USERNAME: "u", SYNOLOGY_PASSWORD: "p" };
@@ -121,12 +121,20 @@ describe("noise helpers", () => {
 
 describe("Download Station helpers", () => {
   test("normalizeStatus turns the numbers Task getinfo sometimes returns into names", () => {
+    // Seen on the real NAS: 2, 6 and 8. The rest come from TASK_STATUS_INT in the DS web UI.
+    assert.equal(normalizeStatus(2), "downloading");
     assert.equal(normalizeStatus(6), "hash_checking");
     assert.equal(normalizeStatus("6"), "hash_checking");
+    assert.equal(normalizeStatus(8), "seeding");
+    assert.equal(normalizeStatus(7), "pre_seeding");
+    assert.equal(normalizeStatus(9), "filehosting_waiting");
     assert.equal(normalizeStatus(1), "waiting");
-    assert.equal(normalizeStatus(10), "error");
+    assert.equal(normalizeStatus(15), "captcha_needed");
     assert.equal(normalizeStatus("seeding"), "seeding");
     assert.equal(normalizeStatus(42), "unknown_42");
+    assert.deepEqual(statusInfo(102), { status: "error", error: "broken_link" });
+    assert.deepEqual(statusInfo(101), { status: "error", error: "unknown" });
+    assert.deepEqual(statusInfo(199), { status: "error", error: "code_199" });
   });
 
   test("redactUrl hides tracker passkeys and credentials", () => {

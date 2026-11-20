@@ -69,10 +69,12 @@ describe("Download Station tools", () => {
     nas.on("SYNO.DownloadStation.Info", "getconfig", () => ({ default_destination: "usbshare1-2", bt_max_download: 0, bt_max_upload: 50, unzip_service_enabled: true, emule_enabled: false }));
     nas.on("SYNO.DownloadStation.Statistic", "getinfo", () => ({ speed_download: 1048576, speed_upload: 0 }));
     nas.on("SYNO.DownloadStation.Task", "list", () => ({ offset: 0, total: tasks.length, tasks }));
+    // Like DS 4.1.2: with several ids, getinfo gives the first status as a name and the rest as numbers.
+    const NUMBER: Record<string, number> = { downloading: 2, hash_checking: 6, seeding: 8, waiting: 1, error: 102 };
     nas.on("SYNO.DownloadStation.Task", "getinfo", (p) => {
       const found = tasks.filter((t) => p.id.split(",").includes(t.id));
       if (!found.length) throw new SynoError(404);
-      return { tasks: found };
+      return { tasks: found.map((t, i) => (i === 0 || typeof t.status === "number" ? t : { ...t, status: NUMBER[t.status] })) };
     });
     nas.on("SYNO.DownloadStation2.Task", "create", (p, call) => {
       const f = { ...p, ...(call.form as Record<string, string>) };
@@ -163,6 +165,10 @@ describe("Download Station tools", () => {
     const [checking] = (await h.call("downloads_get", { ids: ["dbid_h"] })).json;
     assert.equal(checking.status, "hash_checking");
     assert.deepEqual(checking.trackers, [{ url: "https://private.example/announce/<redacted>", status: "InfoHash not found.", seeds: -1, peers: -1 }]);
+
+    const several = (await h.call("downloads_get", { ids: ["dbid_1", "dbid_2", "dbid_s0"] })).json;
+    assert.deepEqual(several.map((t: { status: string }) => t.status), ["downloading", "error", "seeding"]);
+    assert.equal(several[1].error, "broken_link");
 
     const missing = await h.call("downloads_get", { ids: ["dbid_404"] });
     assert.equal(missing.isError, true);

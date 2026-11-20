@@ -310,7 +310,7 @@ Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_chec
 
 `downloads_set_destination` con una carpeta inexistente recibe un 100 genérico ("Unknown error"); el MCP añade que la causa probable es que la carpeta no existe.
 
-**Estados**: siempre por nombre (`waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_checking`, `seeding`, `filehosting_waiting`, `extracting`, `error`). La API a veces los da como número y el MCP los traduce (`normalizeStatus`).
+**Estados**: siempre por nombre. Los habituales son `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_checking`, `pre_seeding`, `seeding`, `filehosting_waiting`, `extracting` y `error`; hay además algunos internos (`preprocessing`, `downloaded`, `captcha_needed`…). La API a veces los da como número y el MCP los traduce con la tabla de la web de Download Station (`statusInfo`). Un error numérico da `status: "error"` y su causa en `error` (`broken_link`, `disk_full`…).
 
 **Datos privados**: `downloads_get` oculta las claves de las URL de origen y de los trackers (`redactUrl`), cambiándolas por `<redacted>`:
 - segmentos de ruta de 16 caracteres o más, como `/announce/<passkey>`;

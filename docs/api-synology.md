@@ -91,9 +91,13 @@ Más hallazgos de la API nueva:
 
 Al usar el MCP sobre el NAS real aparecieron dos cosas:
 
-- **El estado a veces es un número.** `Task getinfo` (con `additional=detail,transfer,file,tracker`) devolvió `"status": 6` para una tarea que `Task list` daba como `"hash_checking"`.
-  - La guía documenta los estados como cadenas, pero la numeración coincide con su orden empezando en 1 (`waiting` = 1 … `error` = 10). Así 6 es `hash_checking`, como confirma el propio `Task list`. Solo se ha observado el 6; el resto de números se deduce del orden.
-  - El MCP lo normaliza en `downloads_list` (también al contar y filtrar), en `downloads_get` y en `downloads_add`.
+- **El estado a veces es un número.** `Task getinfo` con varios ids devuelve el estado **como texto para la primera tarea y como número para las demás**, con cualquier `additional`. `Task list` siempre da texto. `SYNO.DownloadStation2.Task get` da siempre número.
+  - **Primera hipótesis (0.6.1), equivocada**: que los números seguían el orden de la guía oficial empezando en 1. Acertaba con 6 = `hash_checking`, pero convertía 8 en `filehosting_waiting`. Al volver a cargar el MCP, la tarea de Insidious, que se estaba compartiendo, salió como `filehosting_waiting`.
+  - **Comprobación**: se compararon `Task list` y `Task getinfo` para seis tareas de estado conocido. Salió 2 = `downloading`, 6 = `hash_checking` y 8 = `seeding`.
+  - **Tabla completa**: `TASK_STATUS_INT` en el JavaScript de la web de Download Station, `webman/3rdparty/DownloadStation/download.js` (4.1.2, se sirve sin sesión):
+    - estados: 1 `waiting`, 2 `downloading`, 3 `paused`, 4 `finishing`, 5 `finished`, 6 `hash_checking`, 7 `pre_seeding`, 8 `seeding`, 9 `filehosting_waiting`, 10 `extracting`, 11 `preprocessing`, 12 `preprocess_pass`, 13 `downloaded`, 14 `postprocessing`, 15 `captcha_needed`;
+    - errores: 101 error genérico, y del 102 al 134 errores con causa (102 enlace roto, 105 disco lleno, 113 torrent duplicado…).
+  - El MCP (0.6.2) usa esa tabla. Los errores numéricos se convierten en `status: "error"` más `error` con la causa.
 - **Las URL de los trackers privados llevan la clave del usuario** (`https://<tracker>/announce/<passkey de 32 hex>`). `downloads_get` las devolvía tal cual, y esa clave permite suplantar al usuario en el tracker. Ahora se ocultan; ver `redactUrl` en [herramientas.md](herramientas.md).
 - De paso: cuatro tareas llevaban en `downloading` o `hash_checking` desde 2022, con 0 pares y el tracker respondiendo `InfoHash not found.`, porque el torrent ya no existe en el tracker. Download Station no las marca como error.
 
