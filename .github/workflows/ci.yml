@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      # Unit tests and the simulated NAS only; the real-NAS suite needs credentials and is never run in CI.
+      # `npm test` rebuilds plugin/server/synology-mcp.cjs first (pretest).
+      - run: npm test
+      - name: Committed bundle is up to date
+        run: git diff --exit-code -- plugin/server
+      - run: npx mcpb validate mcpb/manifest.json

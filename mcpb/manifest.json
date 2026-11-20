@@ -1,0 +1,94 @@
+{
+  "manifest_version": "0.4",
+  "name": "synology-mcp",
+  "display_name": "Synology NAS",
+  "version": "0.6.0",
+  "description": "Use a Synology NAS (DSM 7) from Claude: files, Synology Drive, Download Station and NAS status.",
+  "long_description": "Browse, search, read and organise files on your Synology NAS (File Station), use Synology Drive labels, stars and shares, manage Download Station (URLs, magnets, .torrent files) and check the NAS status (temperature, disks, volumes; some need an admin account). Read-only unless you turn writes on. The extension only can do what the DSM user you configure is allowed to do.",
+  "author": {
+    "name": "Roberto Morgado Luengo"
+  },
+  "license": "MIT",
+  "keywords": [
+    "synology",
+    "nas",
+    "dsm",
+    "files",
+    "download-station",
+    "synology-drive"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/synology-mcp.cjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/synology-mcp.cjs"
+      ],
+      "env": {
+        "SYNOLOGY_URL": "${user_config.url}",
+        "SYNOLOGY_USERNAME": "${user_config.username}",
+        "SYNOLOGY_PASSWORD": "${user_config.password}",
+        "SYNOLOGY_READ_ONLY": "${user_config.read_only}",
+        "SYNOLOGY_INSECURE_TLS": "${user_config.insecure_tls}",
+        "SYNOLOGY_DEVICE_ID": "${user_config.device_id}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.19.0"
+    }
+  },
+  "user_config": {
+    "url": {
+      "type": "string",
+      "title": "NAS URL",
+      "description": "DSM address with port, e.g. http://192.168.1.10:5000 or https://nas.example.com:5001",
+      "required": true
+    },
+    "username": {
+      "type": "string",
+      "title": "DSM user",
+      "description": "Preferably a dedicated, non-admin user with access only to the shared folders Claude should see",
+      "required": true
+    },
+    "password": {
+      "type": "string",
+      "title": "DSM password",
+      "description": "Kept in the system keychain",
+      "required": true,
+      "sensitive": true
+    },
+    "read_only": {
+      "type": "boolean",
+      "title": "Read-only",
+      "description": "When on (default), only reading tools are available. Turn off to let Claude create, move, delete and add downloads",
+      "default": true
+    },
+    "insecure_tls": {
+      "type": "boolean",
+      "title": "Accept an invalid HTTPS certificate",
+      "description": "Only for https URLs with a self-signed or expired certificate, on a network you trust",
+      "default": false
+    },
+    "device_id": {
+      "type": "string",
+      "title": "2FA device token",
+      "description": "Only for accounts with 2-step verification: the SYNOLOGY_DEVICE_ID printed by `npx synology-mcp register-device`",
+      "required": false,
+      "sensitive": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/r03eRt/synology-mcp"
+  },
+  "homepage": "https://github.com/r03eRt/synology-mcp"
+}

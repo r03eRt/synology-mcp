@@ -1,0 +1,14 @@
+{
+  "name": "synology-mcp",
+  "owner": { "name": "Roberto Morgado Luengo" },
+  "metadata": {
+    "description": "Synology NAS for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "synology",
+      "source": "./plugin",
+      "description": "Use a Synology NAS (DSM 7) from Claude: File Station, Synology Drive, Download Station and NAS status"
+    }
+  ]
+}

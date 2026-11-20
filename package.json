@@ -1,0 +1,66 @@
+{
+  "name": "synology-mcp",
+  "version": "0.6.0",
+  "description": "MCP server that lets Claude use a Synology NAS (DSM 7.2+): File Station, Synology Drive, Download Station and system status",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "synology",
+    "dsm",
+    "nas",
+    "file-station",
+    "synology-drive",
+    "download-station"
+  ],
+  "author": "Roberto Morgado Luengo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/r03eRt/synology-mcp.git"
+  },
+  "homepage": "https://github.com/r03eRt/synology-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/r03eRt/synology-mcp/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "synology-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test": "node --import tsx --test test/unit/*.test.ts test/mock/*.test.ts",
+    "test:real": "node --import tsx --test --test-concurrency=1 test/real/*.test.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --minify --legal-comments=eof --alias:sodium-native=sodium-javascript --outfile=plugin/server/synology-mcp.cjs",
+    "pretest": "npm run bundle --silent",
+    "pack:mcpb": "npm run bundle --silent && rm -rf build/mcpb && mkdir -p build/mcpb/server && cp mcpb/manifest.json LICENSE build/mcpb/ && cp plugin/server/synology-mcp.cjs build/mcpb/server/ && mcpb pack build/mcpb build/synology-mcp-$npm_package_version.mcpb"
+  },
+  "engines": {
+    "node": ">=22.19"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "noise-protocol": "^3.0.2",
+    "undici": "^8.12.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "sodium-javascript": "^0.8.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
