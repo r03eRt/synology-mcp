@@ -38,6 +38,10 @@ For files, call `list_shares` before guessing paths.
 | Recent, starred, shared-with-me files, labels | `drive_*` tools. File Station has no such metadata |
 | Share a file with someone | `create_sharing_link` (optional password and expiry). Drive sharing is read-only here: `drive_list_permissions` |
 | Docker containers: what is running, why one is down, its logs | `docker_list`, then `docker_get` (ports, volumes, last health check) and `docker_logs` (admin only). `docker_get` shows only the names of environment variables; never try to obtain their values |
+| Free space | `get_storage_status` (which volume), then `recycle_bins`, `docker_images` (`in_use: false`), `get_dir_size` and `search_files` with `size_from`. Propose; delete only after confirmation with `empty_recycle_bin`, `docker_remove_images` or `delete` |
+| Dead downloads | `downloads_list` with `stalled: true`; remove with `downloads_delete` after confirmation |
+| Only some files of a torrent | `downloads_files`, then `downloads_set_files` with the indexes (`wanted: false` to skip) |
+| RSS feeds | `downloads_rss` (feeds, or a feed's items), `downloads_rss_add`, `downloads_rss_refresh`; add an item with `downloads_add` using its `url` |
 | Downloads, torrents, magnet links | `downloads_list` / `downloads_get` to look; `downloads_add` (URLs, magnets or local `.torrent` files) to add |
 
 Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `search_files`) wait up to a timeout. If they return `finished: false` and a `taskid`, check again later with `get_task_status` instead of starting the operation again.
@@ -46,6 +50,7 @@ Long operations (`copy_move`, `delete`, `compress`, `extract`, `get_dir_size`, `
 
 - **Read-only mode is the default.** If write tools (`delete`, `copy_move`, `create_folder`, `downloads_add`…) are missing, the server runs read-only. Tell the user to set `SYNOLOGY_READ_ONLY=false` in the server configuration. Don't try to work around it.
 - Before anything destructive, say exactly what will change and wait for the user's go-ahead. Destructive means `delete`, `copy_move` with `move: true` or `on_conflict: "overwrite"`, `overwrite: true` on uploads, writes or extracts, `delete_sharing_links`, `downloads_delete` and `drive_delete_label`. List the paths. For many files, give a count and a sample.
+- `empty_recycle_bin` is permanent: say which bins and how much (from `recycle_bins`) before emptying.
 - `delete` on the NAS may bypass the recycle bin, depending on the share's settings. Treat it as permanent.
 - Prefer moving things into a folder the user can review (for example `/home/to-delete`) over deleting, when the user is unsure.
 - Sharing links are public URLs. Create them only when asked, and mention the expiry or password options.

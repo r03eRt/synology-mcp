@@ -98,6 +98,44 @@ describe("Download Station tools", () => {
       if (p.destination === "nope") throw new SynoError(100);
       return p.id.split(",").map((id) => ({ id, error: 0 }));
     });
+    // DownloadStation2 extras: torrent files and RSS (shapes copied from the real NAS).
+    const btFiles = [
+      { index: 0, name: "film.mkv", priority: "normal", size: 1000, size_downloaded: 500, wanted: true },
+      { index: 1, name: "sample.mkv", priority: "normal", size: 100, size_downloaded: 0, wanted: true },
+    ];
+    nas.on("SYNO.DownloadStation2.Task.BT.File", "list", (p) => {
+      if (JSON.parse(p.task_id) !== "dbid_1") throw new SynoError(404);
+      return { total: btFiles.length, offset: 0, limit: Number(p.limit), items: btFiles };
+    });
+    nas.on("SYNO.DownloadStation2.Task.BT.File", "set", (p) => {
+      for (const i of JSON.parse(p.index) as number[]) {
+        if (p.wanted !== undefined) btFiles[i].wanted = p.wanted === "true";
+        if (p.priority !== undefined) btFiles[i].priority = JSON.parse(p.priority);
+      }
+      return {};
+    });
+    const feeds = [{ id: 1, title: "Distros", url: "https://feeds.example/rss?passkey=0123456789abcdef0123", last_update: 1_795_210_374, is_updating: false }];
+    nas.on("SYNO.DownloadStation2.RSS.Feed", "list", () => ({ total: feeds.length, is_updating: false, items: feeds }));
+    nas.on("SYNO.DownloadStation2.RSS.Feed", "add", (p) => {
+      const id = feeds.length + 1;
+      feeds.push({ id, title: "New", url: JSON.parse(p.url), last_update: 0, is_updating: true });
+      return { id };
+    });
+    nas.on("SYNO.DownloadStation2.RSS.Feed", "update", () => ({}));
+    nas.on("SYNO.DownloadStation2.RSS.Feed", "updateall", () => ({}));
+    nas.on("SYNO.DownloadStation2.RSS.Feed", "delete", (p) => {
+      for (const id of JSON.parse(p.id) as number[]) feeds.splice(feeds.findIndex((f) => f.id === id), 1);
+      return {};
+    });
+    nas.on("SYNO.DownloadStation2.RSS.Item", "list", () => ({
+      total: 3,
+      items: [
+        { id: 1, feed_id: 1, title: "debian-13.iso.torrent", url: "https://feeds.example/d.torrent", date: 1_795_000_000, size: 0, is_new: false },
+        { id: 2, feed_id: 1, title: "ubuntu-26.04.iso.torrent", url: "https://feeds.example/u.torrent", date: 1_795_100_000, size: 4096, is_new: true },
+        { id: 3, feed_id: 1, title: "fedora-44.iso.torrent", url: "https://feeds.example/f.torrent", date: 1_794_000_000, size: 0, is_new: false },
+      ],
+    }));
+
     const action = (p: Record<string, string>) => p.id.split(",").map((id) => ({ id, error: tasks.some((t) => t.id === id) ? 0 : 544 }));
     nas.on("SYNO.DownloadStation.Task", "pause", action);
     nas.on("SYNO.DownloadStation.Task", "resume", action);
@@ -244,5 +282,52 @@ describe("Download Station tools", () => {
     assert.equal(h.nas.callsTo("SYNO.DownloadStation.Task", "delete").at(-1)!.params.force_complete, "false");
     await h.call("downloads_delete", { ids: ["dbid_2"], move_incomplete: true });
     assert.equal(h.nas.callsTo("SYNO.DownloadStation.Task", "delete").at(-1)!.params.force_complete, "true");
+  });
+
+  test("stalled tasks are flagged, counted and filterable", async () => {
+    const all = await h.call("downloads_list", {});
+    // dbid_h: hash_checking since 1970 with no speed and no peers. dbid_1 downloads at 2 KB/s.
+    assert.equal(all.json.stalled, 1);
+    assert.equal(all.json.tasks.find((t: { id: string }) => t.id === "dbid_h").stalled, true);
+    assert.equal(all.json.tasks.find((t: { id: string }) => t.id === "dbid_1").stalled, undefined);
+    assert.deepEqual((await h.call("downloads_list", { stalled: true })).json.tasks.map((t: { id: string }) => t.id), ["dbid_h"]);
+  });
+
+  test("downloads_add passes the archive password as extract_password", async () => {
+    await h.call("downloads_add", { urls: ["http://example.com/a.rar"], unzip_password: "pw" });
+    assert.equal(h.nas.callsTo("SYNO.DownloadStation2.Task", "create").at(-1)!.params.extract_password, '"pw"');
+  });
+
+  test("downloads_files and downloads_set_files skip files and change priority", async () => {
+    const r = await h.call("downloads_files", { id: "dbid_1" });
+    assert.deepEqual(r.json.files[0], { index: 0, name: "film.mkv", size: "1000 B", progress_pct: 50, priority: "normal", wanted: true });
+    assert.equal(h.nas.callsTo("SYNO.DownloadStation2.Task.BT.File", "list").at(-1)!.params.task_id, '"dbid_1"');
+
+    const set = await h.call("downloads_set_files", { id: "dbid_1", indexes: [1], wanted: false, priority: "low" });
+    assert.deepEqual(set.json.files, [{ index: 1, name: "sample.mkv", priority: "low", wanted: false }]);
+    const calls = h.nas.callsTo("SYNO.DownloadStation2.Task.BT.File", "set");
+    assert.deepEqual([calls.at(-2)!.params.index, calls.at(-2)!.params.wanted, calls.at(-1)!.params.priority], ["[1]", "false", '"low"']);
+    assert.match((await h.call("downloads_set_files", { id: "dbid_1", indexes: [0] })).text, /wanted and\/or priority/);
+  });
+
+  test("RSS: feeds hide passkeys, items are filtered and newest first", async () => {
+    const feedsList = await h.call("downloads_rss");
+    assert.equal(feedsList.json.feeds[0].url, "https://feeds.example/rss?passkey=<redacted>");
+    assert.equal(feedsList.json.feeds[0].last_update, "2026-11-20T21:32:54.000Z");
+
+    const items = await h.call("downloads_rss", { feed_id: 1, query: "ISO", limit: 2 });
+    assert.equal(items.json.total, 3);
+    assert.deepEqual(items.json.items.map((i: { title: string }) => i.title), ["ubuntu-26.04.iso.torrent", "debian-13.iso.torrent"]);
+    assert.deepEqual(items.json.items[0], { title: "ubuntu-26.04.iso.torrent", date: "2026-11-19T14:53:20.000Z", size: "4.0 KB", url: "https://feeds.example/u.torrent", new: true });
+
+    const added = await h.call("downloads_rss_add", { url: "https://feeds.example/new.xml" });
+    assert.equal(added.json.id, 2);
+    assert.equal(h.nas.callsTo("SYNO.DownloadStation2.RSS.Feed", "add").at(-1)!.params.url, '"https://feeds.example/new.xml"');
+    await h.call("downloads_rss_refresh", { ids: [2] });
+    assert.equal(h.nas.callsTo("SYNO.DownloadStation2.RSS.Feed", "update").at(-1)!.params.id, "[2]");
+    await h.call("downloads_rss_refresh", {});
+    assert.equal(h.nas.callsTo("SYNO.DownloadStation2.RSS.Feed", "updateall").length, 1);
+    assert.deepEqual((await h.call("downloads_rss_delete", { ids: [2] })).json, { deleted: [2] });
+    assert.equal((await h.call("downloads_rss")).json.total, 1);
   });
 });

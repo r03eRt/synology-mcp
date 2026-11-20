@@ -16,6 +16,38 @@ const TASK = "SYNO.DownloadStation.Task";
 /** Newer, undocumented API used by the DSM web UI; only for create, which returns task ids and accepts .torrent uploads. */
 const TASK2 = "SYNO.DownloadStation2.Task";
 const TASK2_V = 2;
+/** Files of a BitTorrent task (DownloadStation2, v2): list/set with JSON-encoded task_id and index. */
+const BT_FILE = "SYNO.DownloadStation2.Task.BT.File";
+const RSS_FEED = "SYNO.DownloadStation2.RSS.Feed";
+const RSS_ITEM = "SYNO.DownloadStation2.RSS.Item";
+
+interface BtFile {
+  index: number;
+  name: string;
+  size: number;
+  size_downloaded: number;
+  priority: string;
+  wanted: boolean;
+}
+
+interface RssFeed {
+  id: number;
+  title: string;
+  url: string;
+  last_update?: number;
+  is_updating?: boolean;
+}
+
+interface RssItem {
+  id: number;
+  feed_id: number;
+  title: string;
+  url: string;
+  link?: string;
+  date?: number;
+  size: number;
+  is_new?: boolean;
+}
 const MAX_TORRENT_BYTES = 10 * 1024 * 1024;
 /** Status names, as Task list returns them; also what downloads_list can filter on. */
 export const STATUSES = [
@@ -189,6 +221,24 @@ const rate = (bytesPerSec: number) => `${humanSize(bytesPerSec)}/s`;
 const toDestination = (path: string) => path.replace(/^\/+/, "").replace(/\/+$/, "");
 const fromDestination = (dest?: string) => (dest ? `/${dest}` : undefined);
 
+/** States in which a task should be making progress. */
+const ACTIVE = new Set(["waiting", "downloading", "hash_checking", "finishing", "filehosting_waiting"]);
+/** A task younger than this is still allowed to be finding peers. */
+const STALL_GRACE_SECONDS = 3600;
+
+/**
+ * Stalled: should be progressing but is not, i.e. active state, no download speed,
+ * no connected peers and created more than an hour ago. On the real NAS these were
+ * torrents removed from their tracker, stuck since 2022 (see api-synology.md).
+ */
+export function isStalled(t: DsTask, nowSeconds = Date.now() / 1000): boolean {
+  const d = t.additional?.detail;
+  const x = t.additional?.transfer;
+  if (!ACTIVE.has(normalizeStatus(t.status)) || !d || !x) return false;
+  if (x.speed_download > 0 || (d.connected_peers ?? 0) > 0) return false;
+  return nowSeconds - (d.create_time ?? nowSeconds) > STALL_GRACE_SECONDS;
+}
+
 function simplifyTask(t: DsTask, withFiles = false) {
   const d = t.additional?.detail;
   const x = t.additional?.transfer;
@@ -199,6 +249,7 @@ function simplifyTask(t: DsTask, withFiles = false) {
     type: t.type,
     status: normalizeStatus(t.status),
     ...((t.status_extra?.error_detail ?? statusInfo(t.status).error) && { error: t.status_extra?.error_detail ?? statusInfo(t.status).error }),
+    ...(isStalled(t) && { stalled: true }),
     size: humanSize(t.size),
     ...(progress !== undefined && { progress_pct: progress }),
     ...(x && {
@@ -274,13 +325,17 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
     {
       title: "Download Station: list downloads",
       description:
-        "List download tasks with status, progress, size, speeds and destination. Filter by status, type or text in the title. Also returns how many tasks there are in each status.",
+        "List download tasks with status, progress, size, speeds and destination. Filter by status, type, text in the title or stalled (active but dead: no speed, no peers). Also returns how many tasks there are in each status and how many are stalled.",
       inputSchema: {
         status: z.array(z.enum(STATUSES)).optional().describe("Only tasks in these statuses, e.g. [\"downloading\",\"error\"]"),
         type: z.enum(["bt", "http", "ftp", "nzb", "emule", "https"]).optional(),
         query: z.string().optional().describe("Case-insensitive text to look for in the title"),
         offset: z.number().int().min(0).optional(),
         limit: z.number().int().min(1).max(1000).optional().describe("Max tasks to return (default 50)"),
+        stalled: z
+          .boolean()
+          .optional()
+          .describe("Only stalled tasks: active but with no speed and no peers for over an hour (usually dead torrents)"),
       },
       annotations: READ,
     },
@@ -297,11 +352,13 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
         (t) =>
           (!a.status?.length || a.status.includes(normalizeStatus(t.status) as Status)) &&
           (!a.type || t.type === a.type) &&
-          (!q || t.title.toLowerCase().includes(q)),
+          (!q || t.title.toLowerCase().includes(q)) &&
+          (!a.stalled || isStalled(t)),
       );
       const offset = a.offset ?? 0;
       const page = matched.slice(offset, offset + (a.limit ?? 50));
-      return ok({ total: tasks.length, by_status: counts, matched: matched.length, offset, returned: page.length, tasks: page.map((t) => simplifyTask(t)) });
+      const stalled = tasks.filter((t) => isStalled(t)).length;
+      return ok({ total: tasks.length, by_status: counts, ...(stalled && { stalled }), matched: matched.length, offset, returned: page.length, tasks: page.map((t) => simplifyTask(t)) });
     }),
   );
 
@@ -316,6 +373,80 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
     safe(async ({ ids }) => {
       const data = await client.request<{ tasks: DsTask[] }>(TASK, "getinfo", { id: ids.join(","), additional: "detail,transfer,file,tracker" });
       return ok(data.tasks.map((t) => simplifyTask(t, true)));
+    }),
+  );
+
+  server.registerTool(
+    "downloads_files",
+    {
+      title: "Download Station: files of a torrent",
+      description:
+        "Files inside a BitTorrent download with their index, size, progress, priority and whether they are wanted. Use the indexes with downloads_set_files to skip files or change priorities.",
+      inputSchema: {
+        id: z.string().min(1).describe('Task id, e.g. "dbid_1604"'),
+        offset: z.number().int().min(0).optional(),
+        limit: z.number().int().min(1).max(1000).optional().describe("Max files (default 200)"),
+      },
+      annotations: READ,
+    },
+    safe(async ({ id, offset, limit }) => {
+      const data = await client.request<{ total: number; items: BtFile[] }>(
+        BT_FILE,
+        "list",
+        { task_id: json(id), offset: offset ?? 0, limit: limit ?? 200 },
+        2,
+      );
+      return ok({
+        total: data.total,
+        files: data.items.map((f) => ({
+          index: f.index,
+          name: f.name,
+          size: humanSize(f.size),
+          progress_pct: f.size > 0 ? Math.round((f.size_downloaded / f.size) * 1000) / 10 : 100,
+          priority: f.priority,
+          wanted: f.wanted,
+        })),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "downloads_rss",
+    {
+      title: "Download Station: RSS feeds",
+      description:
+        "Without feed_id: the RSS feeds subscribed in Download Station. With feed_id: the items of that feed (title, date, size, download URL), newest first, optionally filtered by text. Add an item with downloads_add using its url.",
+      inputSchema: {
+        feed_id: z.number().int().optional().describe("Feed id from the feed list"),
+        query: z.string().optional().describe("Only items whose title contains this text (case-insensitive)"),
+        limit: z.number().int().min(1).max(500).optional().describe("Max items (default 50)"),
+      },
+      annotations: READ,
+    },
+    safe(async ({ feed_id, query, limit }) => {
+      if (feed_id === undefined) {
+        const f = await client.request<{ total: number; is_updating?: boolean; items: RssFeed[] }>(RSS_FEED, "list", { offset: 0, limit: 500 }, 1);
+        return ok({
+          total: f.total,
+          ...(f.is_updating && { updating: true }),
+          feeds: f.items.map((x) => ({ id: x.id, title: x.title, url: redactUrl(x.url), last_update: x.last_update ? new Date(x.last_update * 1000).toISOString() : undefined, ...(x.is_updating && { updating: true }) })),
+        });
+      }
+      // The API has no text filter: fetch the feed (it is small) and filter here.
+      const r = await client.request<{ total: number; items: RssItem[] }>(RSS_ITEM, "list", { feed_id, offset: 0, limit: 1000 }, 1);
+      const q = query?.toLowerCase();
+      const items = r.items
+        .filter((i) => !q || i.title.toLowerCase().includes(q))
+        .sort((a, b) => (b.date ?? 0) - (a.date ?? 0))
+        .slice(0, limit ?? 50)
+        .map((i) => ({
+          title: i.title,
+          date: i.date ? new Date(i.date * 1000).toISOString() : undefined,
+          ...(i.size > 0 && { size: humanSize(i.size) }),
+          url: redactUrl(i.url),
+          ...(i.is_new && { new: true }),
+        }));
+      return ok({ feed_id, total: r.total, matched: items.length, items });
     }),
   );
 
@@ -340,10 +471,11 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
           .startsWith("/", "destination starts with a shared folder, e.g. /home/Descargas")
           .optional()
           .describe("Existing NAS folder, e.g. /home/Descargas. Default: Download Station's default destination"),
+        unzip_password: z.string().min(1).optional().describe("Password to extract the downloaded archives (only if auto-extract is on in Download Station)"),
       },
       annotations: { ...WRITE, openWorldHint: true },
     },
-    safe(async ({ urls = [], torrent_files = [], destination }) => {
+    safe(async ({ urls = [], torrent_files = [], destination, unzip_password }) => {
       if (!urls.length && !torrent_files.length) throw new Error("Give at least one URL or .torrent file");
       for (const path of torrent_files) {
         const info = await stat(path).catch(() => null);
@@ -360,7 +492,8 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
 
       // SYNO.DownloadStation2.Task create returns the new task ids (the classic API does not).
       const ids: string[] = [];
-      const common = { destination: json(dest), create_list: false };
+      // extract_password: what the web UI sends (JSON-encoded) when the user types an archive password.
+      const common = { destination: json(dest), create_list: false, ...(unzip_password && { extract_password: json(unzip_password) }) };
       if (urls.length) {
         const r = await client.request<{ task_id?: string[] }>(TASK2, "create", { type: json("url"), url: json(urls), ...common }, TASK2_V);
         ids.push(...(r.task_id ?? []));
@@ -446,5 +579,73 @@ export function registerDownloadStationTools(server: McpServer, client: Synology
     safe(async ({ ids, move_incomplete }) =>
       ok(actionSummary(await client.request<ActionResult>(TASK, "delete", { id: ids.join(","), force_complete: move_incomplete ?? false }))),
     ),
+  );
+
+  server.registerTool(
+    "downloads_set_files",
+    {
+      title: "Download Station: choose torrent files",
+      description:
+        "Choose which files of a BitTorrent download are downloaded (wanted: false skips them; files already downloaded stay on disk) and/or set their priority. Get the indexes from downloads_files.",
+      inputSchema: {
+        id: z.string().min(1).describe("Task id"),
+        indexes: z.array(z.number().int().min(0)).min(1).describe("File indexes from downloads_files"),
+        wanted: z.boolean().optional().describe("true to download these files, false to skip them"),
+        priority: z.enum(["low", "normal", "high"]).optional(),
+      },
+      annotations: { ...WRITE, idempotentHint: true },
+    },
+    safe(async ({ id, indexes, wanted, priority }) => {
+      if (wanted === undefined && priority === undefined) throw new Error("Give wanted and/or priority");
+      // The web UI sends one change per call: {task_id, index, wanted} or {task_id, index, priority}.
+      if (wanted !== undefined) await client.request(BT_FILE, "set", { task_id: json(id), index: json(indexes), wanted }, 2);
+      if (priority !== undefined) await client.request(BT_FILE, "set", { task_id: json(id), index: json(indexes), priority: json(priority) }, 2);
+      const after = await client.request<{ items: BtFile[] }>(BT_FILE, "list", { task_id: json(id), offset: 0, limit: 1000 }, 2);
+      const set = new Set(indexes);
+      return ok({ id, files: after.items.filter((f) => set.has(f.index)).map((f) => ({ index: f.index, name: f.name, priority: f.priority, wanted: f.wanted })) });
+    }),
+  );
+
+  server.registerTool(
+    "downloads_rss_add",
+    {
+      title: "Download Station: subscribe to an RSS feed",
+      description: "Subscribe Download Station to an RSS feed URL. Download Station fetches it right away; list its items with downloads_rss.",
+      inputSchema: { url: z.string().url().describe("Feed URL") },
+      annotations: { ...WRITE, openWorldHint: true },
+    },
+    safe(async ({ url }) => {
+      const r = await client.request<{ id: number }>(RSS_FEED, "add", { url: json(url) }, 1);
+      return ok({ id: r.id, url: redactUrl(url) });
+    }),
+  );
+
+  server.registerTool(
+    "downloads_rss_refresh",
+    {
+      title: "Download Station: refresh RSS feeds",
+      description: "Ask Download Station to fetch RSS feeds again: the given ones, or all of them.",
+      inputSchema: { ids: z.array(z.number().int()).optional().describe("Feed ids; default all") },
+      annotations: { ...WRITE, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ ids }) => {
+      if (ids?.length) await client.request(RSS_FEED, "update", { id: json(ids) }, 1);
+      else await client.request(RSS_FEED, "updateall", {}, 1);
+      return ok({ refreshing: ids?.length ? ids : "all" });
+    }),
+  );
+
+  server.registerTool(
+    "downloads_rss_delete",
+    {
+      title: "Download Station: unsubscribe RSS feeds",
+      description: "Remove RSS feed subscriptions from Download Station (downloads already added from them are not affected).",
+      inputSchema: { ids: z.array(z.number().int()).min(1).describe("Feed ids") },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    },
+    safe(async ({ ids }) => {
+      await client.request(RSS_FEED, "delete", { id: json(ids) }, 1);
+      return ok({ deleted: ids });
+    }),
   );
 }

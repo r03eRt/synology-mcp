@@ -15,6 +15,7 @@ src/
                            (SYNO.Core.System.Utilization), get_storage_status
                            (SYNO.Storage.CGI.Storage); adminOnly()
   tools/docker.ts          herramientas de Container Manager (docker_*)
+  tools/space.ts           papeleras (recycle_bins, empty_recycle_bin)
   tools/health.ts          get_disk_health, check_updates, get_notifications,
                            get_system_logs (APIs de la web de DSM; usan adminOnly)
   tools/drive.ts           herramientas de Synology Drive (drive_*)

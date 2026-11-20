@@ -76,7 +76,7 @@ Necesaria antes de que lo use nadie más.
 
 ## Fase 3: completar lo que ya existe
 
-- [ ] **3.1 Download Station** (M):
+- [~] **3.1 Download Station** (M). En 0.9.0: elegir ficheros, contraseña de extracción, RSS y descargas muertas. Pendiente: límites y horario, y BTSearch.
   - elegir qué ficheros de un torrent bajar;
   - contraseña de extracción con la API nueva;
   - límites de velocidad y horario;

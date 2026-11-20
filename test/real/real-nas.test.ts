@@ -80,6 +80,17 @@ describe("real NAS", { skip }, () => {
     }
   });
 
+  test("space and RSS read-only tools answer", async () => {
+    for (const [name, args] of [["recycle_bins", {}], ["downloads_rss", {}], ["downloads_list", { stalled: true, limit: 5 }]] as const) {
+      const r = await h.call(name, args);
+      if (name === "recycle_bins" && !isAdmin) {
+        assert.match(r.text, /administrator account/);
+        continue;
+      }
+      assert.equal(r.isError, false, `${name}: ${r.text}`);
+    }
+  });
+
   test("Container Manager read-only tools answer (if installed)", async (t) => {
     const list = await h.call("docker_list");
     if (list.isError && /not installed|code 102|code 105/.test(list.text)) return t.skip("Container Manager not available to this user");
@@ -155,7 +166,8 @@ describe("real NAS", { skip }, () => {
     assert.ok(folderCreated, "runs after the write cycle, which creates the temporary folder");
     assert.equal((await h.call("create_folder", { parent_path: folder, name: "descargas" })).isError, false);
     const url = `${process.env.SYNOLOGY_URL!.replace(/\/+$/, "")}/webman/index.cgi?mcp-test=${folder.split("-").pop()}`;
-    const added = await h.call("downloads_add", { urls: [url], destination: `${folder}/descargas` });
+    // unzip_password checks that the NAS accepts extract_password (ignored for a non-archive).
+    const added = await h.call("downloads_add", { urls: [url], destination: `${folder}/descargas`, unzip_password: "mcp-test" });
     assert.equal(added.isError, false, added.text);
     assert.equal(added.json.added.length, 1, added.text);
     const id = added.json.added[0].id as string;

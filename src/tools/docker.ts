@@ -291,4 +291,50 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
     },
     safe(action("restart")),
   );
+
+  server.registerTool(
+    "docker_remove_images",
+    {
+      title: "Container Manager: remove images",
+      description:
+        "Delete Docker images to free space, by \"repository:tag\" (or just \"repository\" for an image without tags) as docker_images shows them. Images used by a container (running or stopped) are refused. Cannot be undone, but an image can be downloaded again; confirm with the user first.",
+      inputSchema: {
+        images: z.array(z.string().min(1)).min(1).describe('e.g. ["ghcr.io/immich-app/immich-server:v3.3.5"]'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    },
+    safe(async ({ images: wanted }) => {
+      const [{ images }, { containers }] = await Promise.all([
+        client.request<{ images: { id: string; repository: string; tags: string[]; size: number }[] }>("SYNO.Docker.Image", "list", { limit: -1, offset: 0, show_dsm: false }, 1),
+        listContainers(),
+      ]);
+      const used = new Map<string, string[]>();
+      for (const c of containers as (ListedContainer & { ImageID?: string })[]) if (c.ImageID) used.set(c.ImageID, [...(used.get(c.ImageID) ?? []), c.name]);
+
+      const done: { image: string; freed: string }[] = [];
+      const failed: { image: string; error: string }[] = [];
+      for (const ref of wanted) {
+        // "repo:tag", but registries can have a port ("host:5000/repo:tag"): the tag is after the last ":" that follows the last "/".
+        const slash = ref.lastIndexOf("/");
+        const colon = ref.lastIndexOf(":");
+        const [repository, tag] = colon > slash ? [ref.slice(0, colon), ref.slice(colon + 1)] : [ref, undefined];
+        const image = images.find((i) => i.repository === repository && (tag ? i.tags.includes(tag) : true));
+        if (!image) {
+          failed.push({ image: ref, error: "No such image (check docker_images)" });
+          continue;
+        }
+        if (used.has(image.id)) {
+          failed.push({ image: ref, error: `In use by ${used.get(image.id)!.join(", ")}; remove or recreate those containers first` });
+          continue;
+        }
+        try {
+          await client.request("SYNO.Docker.Image", "delete", { images: json([{ repository, tags: [tag ?? image.tags[0] ?? "<none>"] }]) }, 1, { timeoutMs: 120_000 });
+          done.push({ image: ref, freed: humanSize(image.size) });
+        } catch (err) {
+          failed.push({ image: ref, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      return ok({ removed: done, ...(failed.length && { failed }) });
+    }),
+  );
 }

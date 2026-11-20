@@ -171,6 +171,23 @@ Fuente: `webman/3rdparty/ContainerManager/MainVue.js` (2,6 MB). Los métodos se 
 - `Image list` con `show_dsm=false` da `repository`, `tags` (`<none>` si no tiene), `size`, `created` y `upgradable`.
 - `Project list` devuelve `{}` si los proyectos Compose no se crearon desde Container Manager.
 
+## Liberar espacio y extras de Download Station (0.9.0)
+
+Fuentes: `webman/3rdparty/DownloadStation/download.js` y `webman/modules/AdminCenter/admin_center.js` (papeleras); para las imágenes, la misma de Container Manager. Probado contra el NAS real el 2026-11-20 sin cambiar nada: el feed de prueba se añadió y se borró, se vació una papelera vacía y se repitieron valores que ya tenían.
+
+- **Ficheros de un torrent**: `SYNO.DownloadStation2.Task.BT.File` v2.
+  - `list` con `task_id`, `offset` y `limit` devuelve `items` con `index`, `name`, `size`, `size_downloaded`, `priority` y `wanted`. Acepta `task_id` con y sin codificar en JSON.
+  - `set` con `task_id` e `index` (lista), más `wanted` **o** `priority` (`low`, `normal` o `high`); la web los manda por separado.
+- **RSS**: `SYNO.DownloadStation2.RSS.Feed` v1 tiene `list` (`items`, `total`, `is_updating`), `add` (`url` en JSON, devuelve `{id}`), `update` (`id` lista), `updateall` y `delete` (`id` lista). `RSS.Item list` con `feed_id`, `offset` y `limit` devuelve `items` (`title`, `url`, `link`, `date`, `size` (0 si el feed no lo da), `is_new`). No filtra por texto.
+- **Contraseña de extracción**: la web manda `extract_password` codificado en JSON en `Task create`. El NAS lo acepta (lo comprueba la suite real); la descompresión no se ha probado.
+- **Descargas muertas**: `Task list` con `additional=detail` da `connected_peers`, `total_peers` y `create_time`. Las 4 tareas atascadas tienen 0 pares, velocidad 0 y tracker "InfoHash not found".
+- **Papeleras**:
+  - `SYNO.Core.Share list` con `additional=["recyclebin"]` da `enable_recycle_bin` y `recycle_bin_admin_only` por carpeta.
+  - El tamaño se mide con `FileStation.DirSize` sobre `/<carpeta>/#recycle`; un `getinfo` del directorio solo da el tamaño del propio directorio, no su contenido.
+  - `SYNO.Core.RecycleBin start` con `{id: nombre}` (con o sin JSON) vacía la papelera y responde `{is_cleaning}`. Con una carpeta inexistente da **5801** ("share not exists").
+  - En el NAS de pruebas las papeleras sumaban 6,7 GB, casi todo en `Descargas`.
+- **Borrar imágenes**: `SYNO.Docker.Image delete` con `images=[{repository, tags:[tag]}]` en JSON. Una imagen inexistente da **1004**. `Image prune` existe pero no se usa.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

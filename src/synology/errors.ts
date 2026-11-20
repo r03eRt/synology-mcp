@@ -104,6 +104,12 @@ const DOWNLOAD_STATION: Record<number, string> = {
 /** Container Manager (SYNO.Docker.*) codes seen on the real NAS. */
 const DOCKER: Record<number, string> = {
   117: "No such container (or a parameter that is not JSON-encoded)",
+  1004: "No such image",
+};
+
+/** SYNO.Core.RecycleBin codes seen on the real NAS. */
+const RECYCLE_BIN: Record<number, string> = {
+  5801: "No such shared folder",
 };
 
 /** DSM packages behind each API family, to explain 102 (not installed) and 105 (no application privilege). */
@@ -136,6 +142,7 @@ export function describeError(code: number, api: string): string {
   if (api.startsWith("SYNO.SynologyDrive.") && DRIVE[code]) return DRIVE[code];
   if (/^SYNO\.DownloadStation2?\./.test(api) && DOWNLOAD_STATION[code]) return DOWNLOAD_STATION[code];
   if (api.startsWith("SYNO.Docker.") && DOCKER[code]) return DOCKER[code];
+  if (api === "SYNO.Core.RecycleBin" && RECYCLE_BIN[code]) return RECYCLE_BIN[code];
   // Other APIs (DSM, Drive, ...) have their own undocumented code tables.
   return `Error code ${code} of ${api}`;
 }

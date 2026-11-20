@@ -36,7 +36,7 @@ El resultado queda en `dist/index.js`.
 | `SYNOLOGY_USERNAME` | sí | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | sí | — | Contraseña |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` acepta un certificado HTTPS no válido (autofirmado, caducado o emitido para otro nombre). Solo en una red de confianza |
-| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 37 herramientas de lectura (12 de File Station, 7 de estado y salud del NAS, 11 de Drive, 3 de Download Station y 4 de Container Manager). `false` registra también las 23 de escritura |
+| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 40 herramientas de lectura (12 de File Station, 7 de estado y salud del NAS, 1 de papeleras, 11 de Drive, 5 de Download Station y 4 de Container Manager). `false` registra también las 29 de escritura |
 | `SYNOLOGY_DEVICE_ID` | no | — | Token de dispositivo para cuentas con 2FA (lo da `synology-mcp register-device`). Es secreto, como la contraseña |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Nombre con el que se registró el dispositivo; tiene que coincidir con el del registro |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | no | `60000` | Tiempo máximo que una herramienta espera a una tarea en segundo plano antes de devolver su `taskid` |

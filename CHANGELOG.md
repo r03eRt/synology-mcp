@@ -4,6 +4,29 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-20
 
+### 0.9.0: liberar espacio y extras de Download Station
+- **Liberar espacio** (solo admin):
+  - `recycle_bins`: cuánto ocupa cada papelera;
+  - `empty_recycle_bin`: vaciarlas (destructiva);
+  - `docker_remove_images`: borrar imágenes que no usa ningún contenedor (destructiva; las que están en uso se rechazan).
+- **Download Station**:
+  - `downloads_list` marca y filtra las descargas muertas (`stalled`);
+  - `downloads_files` y `downloads_set_files`: elegir los ficheros de un torrent y su prioridad;
+  - RSS: `downloads_rss`, `downloads_rss_add`, `downloads_rss_refresh` y `downloads_rss_delete`;
+  - `downloads_add` vuelve a aceptar `unzip_password` (`extract_password` en la API nueva).
+- Las APIs se sacaron de la web de DSM y se probaron contra el NAS real sin cambiar nada: un feed de prueba que se borró, una papelera vacía y valores que ya tenían.
+- Textos de error: 5801 de `Core.RecycleBin` (carpeta inexistente) y 1004 de `Docker.Image` (imagen inexistente).
+- **README reescrito** para que quede claro todo:
+  - requisitos;
+  - qué puede hacer cada tipo de cuenta;
+  - las tres formas de instalarlo, con el aviso de que npm aún no está publicado;
+  - configuración y modelo de seguridad;
+  - las 69 herramientas por áreas, con su tipo y si necesitan admin;
+  - ejemplos de peticiones;
+  - tabla de problemas frecuentes;
+  - cómo actualizar, desarrollo y limitaciones.
+- 69 herramientas (40 en solo lectura). Pruebas: 101; suite real: 7/7.
+
 ### 0.8.0: Container Manager (Docker)
 - 7 herramientas en `src/tools/docker.ts`:
   - lectura: `docker_list` (estado, salud, proyecto, CPU y memoria en vivo), `docker_get` (puertos, volúmenes, redes, *health check*, nombres de las variables de entorno), `docker_logs` e `docker_images`;

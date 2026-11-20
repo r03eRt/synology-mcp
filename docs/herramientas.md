@@ -1,6 +1,6 @@
 # Herramientas
 
-60 herramientas en cinco grupos: File Station (22), estado y salud del NAS (7), Synology Drive (16), Download Station (8) y Container Manager (7). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 11 + 3 + 4 = 37); con `SYNOLOGY_READ_ONLY=false` registra las 60.
+69 herramientas en seis grupos: File Station (22), estado y salud del NAS (7), papeleras (2), Synology Drive (16), Download Station (14) y Container Manager (8). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 7 + 1 + 11 + 5 + 4 = 40); con `SYNOLOGY_READ_ONLY=false` registra las 69. El [README](../README.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -232,6 +232,17 @@ Las cuatro herramientas siguientes son de solo lectura y **necesitan una cuenta 
 | `get_notifications` | `Core.DSMNotify notify` (`action=load`) | `limit` (por defecto 30), `level` (`info`/`warning`/`error`) | Notificaciones del escritorio de DSM, las más recientes primero: `time`, `level`, `event` (clave de DSM, p. ej. `DownloadCompleted`, `DSMAutoUpdateNotifyNewImportantVersion`), `app` y `details` (parámetros decodificados, sin los repetidos: nombre del NAS, sistema, fecha y hora) |
 | `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (fecha ISO; una fecha sola es el día entero en hora local), `offset`, `limit` (por defecto 50, máx. 500) | `total` coincidente, `returned` y `entries` (`time`, `level`, `who`, `message`), lo más reciente primero |
 
+# Papeleras
+
+Código: [src/tools/space.ts](../src/tools/space.ts), desde 0.9.0. Las dos necesitan una cuenta administradora.
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `recycle_bins` | `Core.Share list` (`additional=["recyclebin"]`) + `FileStation.List getinfo` + `FileStation.DirSize` por papelera | — | Para cada carpeta compartida con papelera: `path` (`/<carpeta>/#recycle`), `size`, `bytes`, `files` y `admin_only`, de mayor a menor; el `total`; y `without_recycle_bin`, las carpetas que no tienen papelera. Una papelera nunca usada todavía no existe y cuenta como 0 |
+| `empty_recycle_bin` | `Core.RecycleBin start` (`id` = nombre de la carpeta) | `shares` (nombres sin `/`) | Vacía las papeleras indicadas. **Permanente.** Se busca el nombre exacto sin distinguir mayúsculas; las carpetas inexistentes o sin papelera van a `failed`. DSM la vacía en segundo plano. Destructiva |
+
+La carpeta `homes` tiene una papelera por usuario (`/homes/<usuario>/#recycle`); en el NAS de pruebas no tiene la papelera activada.
+
 # Synology Drive
 
 Código: [src/tools/drive.ts](../src/tools/drive.ts). Basado en la especificación oficial *Synology Drive* v2 de la Office Suite API; cada operación se llama por `entry.cgi` con la misma sesión que File Station (`SYNO.SynologyDrive.Files` v11, `Labels` v3, `Sharing` v2, `TeamFolders` v1, `Tasks` v1).
@@ -285,39 +296,47 @@ De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y b
 
 # Download Station
 
-Código: [src/tools/downloadstation.ts](../src/tools/downloadstation.ts). Casi todo usa la API clásica documentada en la guía oficial *Download Station Web API* (`SYNO.DownloadStation.Info`, `.Statistic` y `.Task` v3, por `DownloadStation/*.cgi`) con la misma sesión que File Station. **Solo `downloads_add` usa la API nueva `SYNO.DownloadStation2.Task create` (v2, por `entry.cgi`)**, sin documentar, la que usa la web de DSM: devuelve los ids de las tareas creadas y es la única que acepta subir un `.torrent` (ver [api-synology.md](api-synology.md#download-station)).
+Código: [src/tools/downloadstation.ts](../src/tools/downloadstation.ts). Casi todo usa la API clásica documentada en la guía oficial *Download Station Web API* (`SYNO.DownloadStation.Info`, `.Statistic` y `.Task` v3, por `DownloadStation/*.cgi`) con la misma sesión que File Station. **`downloads_add`, los ficheros de un torrent y RSS usan la API nueva `SYNO.DownloadStation2.*`** (por `entry.cgi`), sin documentar, la que usa la web de DSM: `Task create` devuelve los ids de las tareas creadas y es la única que acepta subir un `.torrent` (ver [api-synology.md](api-synology.md#download-station)).
 
 **Destinos**: el MCP usa rutas del NAS (`/home/Descargas`). Download Station las quiere sin la barra inicial (`home/Descargas`); la conversión es automática en las dos direcciones. La carpeta tiene que existir.
 
 **Permisos**: el usuario necesita acceso a la aplicación Download Station (*Panel de control → Privilegios de aplicaciones*). Un administrador ve y gestiona las tareas de todos los usuarios (`is_manager: true`); un usuario normal, solo las suyas.
 
-## Lectura (3)
+## Lectura (5)
 
 | Herramienta | API | Parámetros | Qué hace |
 |---|---|---|---|
 | `downloads_info` | `Info getinfo` + `Info getconfig` + `Statistic getinfo` | — | Versión, `is_manager`, destino por defecto, límites de velocidad (KB/s, 0 = sin límite), velocidad total actual, eMule y extracción automática |
-| `downloads_list` | `Task list` (`additional=detail,transfer`) | `status` (lista), `type`, `query` (texto en el título), `offset`, `limit` (50 por defecto) | Tareas con estado, progreso, tamaño, bajado/subido, velocidades, destino y fechas. Devuelve también `by_status` (cuántas hay en cada estado) |
+| `downloads_list` | `Task list` (`additional=detail,transfer`) | `status` (lista), `type`, `query` (texto en el título), `stalled`, `offset`, `limit` (50 por defecto) | Tareas con estado, progreso, tamaño, bajado/subido, velocidades, destino y fechas. Devuelve también `by_status` (cuántas hay en cada estado) y `stalled` (cuántas están muertas). Cada tarea muerta lleva `stalled: true` |
 | `downloads_get` | `Task getinfo` (`detail,transfer,file,tracker`) | `ids` | Detalle completo: URL de origen, propietario, pares, ficheros del torrent y trackers. Las claves privadas de las URL se ocultan (`<redacted>`) |
+| `downloads_files` | `DownloadStation2.Task.BT.File list` v2 | `id`, `offset`, `limit` (200) | Ficheros de un torrent con `index`, `name`, `size`, `progress_pct`, `priority` y `wanted` |
+| `downloads_rss` | `DownloadStation2.RSS.Feed list` / `RSS.Item list` | `feed_id`, `query`, `limit` (50) | Sin `feed_id`: los feeds suscritos (`id`, `title`, `url` sin claves, `last_update`). Con `feed_id`: sus elementos (`title`, `date`, `size`, `url`, `new`), los más recientes primero y filtrados por texto en el MCP. Para descargar uno: `downloads_add` con su `url` |
+
+**Descargas muertas (`stalled`)**: estado activo (`waiting`, `downloading`, `hash_checking`, `finishing`, `filehosting_waiting`), sin velocidad de bajada, sin pares conectados y creada hace más de una hora (`isStalled`). Download Station no las marca como error. En el NAS de pruebas eran 4 torrents retirados del tracker ("InfoHash not found"), parados desde 2022.
 
 Estados: `waiting`, `downloading`, `paused`, `finishing`, `finished`, `hash_checking`, `seeding`, `filehosting_waiting`, `extracting`, `error` (con `error` = `status_extra.error_detail`).
 
 `downloads_list` descarga la lista entera y filtra y pagina en el MCP, porque la API no filtra por estado ni por texto y su `total` paginado no da el número real de tareas. Con 300 tareas tarda menos de un segundo.
 
-## Escritura (5)
+## Escritura (9)
 
 | Herramienta | API | Parámetros | Qué hace |
 |---|---|---|---|
-| `downloads_add` | `DownloadStation2.Task create` (+ `Info getconfig` si no hay destino) | `urls` (http/https/ftp/magnet/ed2k), `torrent_files` (rutas de `.torrent` en este ordenador), `destination` (opcional) | Añade descargas y devuelve sus ids, título, tamaño y destino. Sale al exterior (`openWorldHint: true`): el NAS descarga de Internet |
+| `downloads_add` | `DownloadStation2.Task create` (+ `Info getconfig` si no hay destino) | `urls` (http/https/ftp/magnet/ed2k), `torrent_files` (rutas de `.torrent` en este ordenador), `destination` y `unzip_password` (opcionales) | Añade descargas y devuelve sus ids, título, tamaño y destino. Sale al exterior (`openWorldHint: true`): el NAS descarga de Internet |
 | `downloads_pause` | `Task pause` | `ids` | Pausar |
 | `downloads_resume` | `Task resume` | `ids` | Reanudar |
 | `downloads_delete` | `Task delete` | `ids`, `move_incomplete` (`force_complete`, por defecto `false`) | Quitar tareas. Lo ya descargado en el destino se conserva; lo incompleto se descarta salvo `move_incomplete`. Destructiva |
 | `downloads_set_destination` | `Task edit` | `ids`, `destination` | Cambiar la carpeta de destino. La carpeta tiene que existir |
+| `downloads_set_files` | `DownloadStation2.Task.BT.File set` v2 | `id`, `indexes`, `wanted`, `priority` (`low`/`normal`/`high`) | Saltar o volver a descargar ficheros de un torrent y cambiar su prioridad. Como la web, manda una llamada para `wanted` y otra para `priority`; devuelve cómo quedan los ficheros. Idempotente |
+| `downloads_rss_add` | `DownloadStation2.RSS.Feed add` | `url` | Suscribirse a un feed; devuelve su `id`. El NAS lo descarga al momento. *Open world* |
+| `downloads_rss_refresh` | `RSS.Feed update` (`id`) / `updateall` | `ids` (opcional) | Volver a leer los feeds indicados o todos |
+| `downloads_rss_delete` | `RSS.Feed delete` | `ids` | Quitar suscripciones. Las descargas ya añadidas desde ellas no se tocan. Destructiva |
 
 `downloads_add`:
 - Las URL van en una sola llamada (`type="url"`, `url=[...]`). Cada `.torrent` va en su propia llamada multipart, con el fichero en una parte llamada `torrent` y `file=["torrent"]`.
 - La API nueva exige destino: si no se da, se usa el destino por defecto de Download Station (`Info getconfig`). Si tampoco hay, error.
 - Los `.torrent` se comprueban antes de enviarlos: que existan, que acaben en `.torrent` y que pesen menos de 10 MB.
-- Ya no admite `unzip_password` (la versión 0.4.0 sí, con la API clásica): no se ha comprobado qué nombre tiene ese parámetro en la API nueva.
+- `unzip_password` vuelve en 0.9.0: la web lo manda como `extract_password` (codificado en JSON) en `Task create`. El NAS real lo acepta, aunque descomprimir de verdad no se ha probado.
 
 `downloads_set_destination` con una carpeta inexistente recibe un 100 genérico ("Unknown error"); el MCP añade que la causa probable es que la carpeta no existe.
 
@@ -333,7 +352,7 @@ Los nombres de fichero no se tocan.
 
 Pausar, reanudar y borrar devuelven `{ done: [ids], failed: [{ id, error }] }`: la API responde por cada id, y un id inexistente no hace fallar a los demás.
 
-No incluido (por ahora): elegir qué ficheros de un torrent descargar, RSS, búsqueda de torrents (`BTSearch`), programación y contraseña de extracción.
+No incluido (por ahora): búsqueda de torrents (`BTSearch`), filtros RSS de descarga automática, límites de velocidad y horario.
 
 # Container Manager (Docker)
 
@@ -354,15 +373,16 @@ Código: [src/tools/docker.ts](../src/tools/docker.ts), desde 0.8.0. `SYNO.Docke
 | `docker_logs` | `Container.Log get` | `name`, `keyword`, `from`/`to` (`YYYY-MM-DD`), `limit` (50), `offset` | `total`, `returned` y `lines` (`time`, `stream` si no es stdout, `text`), lo más reciente primero. Espera hasta 120 s, porque Container Manager tarda 20–60 s con registros largos |
 | `docker_images` | `Image list` (`show_dsm=false`) + `Container list` | — | `total`, `total_size` e imágenes con `repository`, `tags`, `size`, `created`, `in_use` (si algún contenedor la usa) y `update_available` |
 
-## Escritura (3)
+## Escritura (4)
 
-Solo con `SYNOLOGY_READ_ONLY=false`. Devuelven `{ done: [...], failed: [{ name, error }] }`: un contenedor que falla no impide los demás.
+Solo con `SYNOLOGY_READ_ONLY=false`. Arrancar, parar y reiniciar devuelven `{ done: [...], failed: [{ name, error }] }`: un contenedor que falla no impide los demás.
 
 | Herramienta | API | Anotaciones | Notas |
 |---|---|---|---|
 | `docker_start` | `Container start` | no destructiva, idempotente | Arrancar uno que ya está en marcha no hace nada |
 | `docker_stop` | `Container stop` | **destructiva**, idempotente | No borra datos, pero corta el servicio del contenedor (DNS, gestor de contraseñas…). Se marca destructiva para que el cliente pida confirmación |
 | `docker_restart` | `Container restart` | **destructiva** | Corte breve del servicio |
+| `docker_remove_images` | `Image list` + `Container list` + `Image delete` (`images=[{repository, tags:[tag]}]`) | **destructiva** | Recibe `"repositorio:etiqueta"`, o solo el repositorio para una imagen sin etiqueta. Entiende registros con puerto (`registry.local:5000/tool:1.0`). **Rechaza las imágenes que usa algún contenedor**, aunque esté parado, diciendo cuáles. Devuelve `removed` (con el espacio liberado) y `failed`. Desde 0.9.0 |
 
-No incluido (por ahora): crear, borrar o editar contenedores, descargar o borrar imágenes, y proyectos Compose. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
+No incluido (por ahora): crear, borrar o editar contenedores, descargar imágenes, `Image prune` y proyectos Compose. `prune` no se expone porque borra de golpe sin decir qué; `docker_images` más `docker_remove_images` hacen lo mismo de forma explícita. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
 

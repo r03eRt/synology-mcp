@@ -27,6 +27,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 | `test/mock/bundle.test.ts` | El servidor en un solo fichero (`plugin/server/synology-mcp.cjs`) por stdio con un entorno mínimo: 29 herramientas (solo lectura), `get_info`, login Noise v7 con `sodium-javascript` |
 | `test/mock/health.test.ts` | `compareVersions` y `decodeNotifyParams`. Con el NAS simulado: `get_disk_health` (ruta del dispositivo, o 117 como DSM; sin números de serie; tendencia estable y creciendo; atributos clave y que fallan; filtro por disco y disco inexistente), `check_updates` (DSM de seguridad; paquetes más nuevos, sin betas ni versiones más antiguas), `get_notifications` (decodificación, orden y filtro), `get_system_logs` (filtros, fechas locales, `total` por nivel) y el mensaje del 105 en las cuatro |
 | `test/mock/docker.test.ts` | `cpuPercent` y `memoryUsed`. Con el NAS simulado (que, como DSM, da 117 a nombres sin codificar o inexistentes): `docker_list` (salud, inicio, proyecto, CPU y memoria, filtro), `docker_get` (nombre en JSON, **sin valores de entorno**, puertos, volúmenes, *health check*, 117 explicado), `docker_logs` (parámetros de la web, orden, fecha mal formada), `docker_images` (en uso, actualización, sin `<none>`), `docker_start`/`stop`/`restart` con resultados por contenedor |
+| `test/mock/space.test.ts` | `recycle_bins` (medida de cada papelera, orden, papeleras que aún no existen, carpetas sin papelera) y `empty_recycle_bin` (nombre exacto sin distinguir mayúsculas; inexistentes, sin papelera y rutas rechazadas) |
 | `test/mock/stdio.test.ts` | El punto de entrada real (`src/index.ts`) por stdio: sin `SYNOLOGY_READ_ONLY` expone solo las 29 de lectura; con `false` lista 49 y llama a `get_info`; `register-device <código>` contra un NAS con 2FA imprime `SYNOLOGY_DEVICE_ID=…`; sin variables de entorno sale con código 1 y el mensaje de error |
 
 **NAS simulado** (`test/helpers/mock-nas.ts`): servidor HTTP en un puerto libre de `127.0.0.1` que implementa `SYNO.API.Info`, `SYNO.API.Auth` v6 y v7 con el **lado servidor del handshake Noise IK** (usa la misma librería `noise-protocol`), sesiones y comprobación de `X-SYNO-TOKEN` (si falta o no coincide, responde 119 como DSM). Cada prueba registra las respuestas de las APIs que usa con `on(api, method, handler)`; el handler puede devolver datos, lanzar `SynoError(code, errors)` o devolver `RawBody` para descargas. Todas las llamadas quedan en `calls` para comprobar los parámetros enviados, incluidos los campos multipart de las subidas. Sustituye al simulador antiguo (puerto 5999, solo v6), que no estaba en el repositorio.
@@ -94,6 +95,20 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - `npm test`: 94/94. `test:real`: 6/6. Nueva prueba real de solo lectura: lista, imágenes y detalle, comprobando que no salen valores de entorno.
 - Contra el NAS real, con el bundle: 12 contenedores (7 en marcha y 5 parados), detalle de `immich_server` y `pihole`, registro de Pi-hole en 2 s y 16 imágenes. En la salida no aparece ninguna variable de entorno con valor.
 - Escritura probada sin efecto: `docker_stop` sobre Sonarr (ya parado) y `docker_start` sobre jackett (ya en marcha).
+
+### Resultado 2026-11-20, versión 0.9.0 (liberar espacio y extras de Download Station)
+
+- `npm test`: 101/101. Nuevas pruebas simuladas:
+  - descargas muertas, `extract_password`, ficheros de torrent y RSS (con la clave oculta);
+  - papeleras;
+  - `docker_remove_images`, que rechaza imágenes en uso y entiende registros con puerto.
+- `test:real`: 7/7. Nueva prueba de lectura (papeleras, RSS y descargas muertas). `downloads_add` lleva ahora `unzip_password`.
+- Con el bundle contra el NAS real, sin cambiar nada:
+  - 4 descargas muertas detectadas (las de 2022);
+  - ficheros del torrent de Insidious, con la prioridad y `wanted` que ya tenían;
+  - feed de DistroWatch añadido, leído, actualizado y borrado, sin dejar feeds;
+  - papeleras medidas (6,7 GB) y vaciada la de Games, que estaba vacía;
+  - `docker_remove_images` rechazó `pihole/pihole:latest` (en uso) y una imagen inexistente.
 
 ## Pruebas manuales anteriores (históricas)
 

@@ -187,4 +187,33 @@ describe("Container Manager tools", () => {
     await h.call("docker_restart", { names: ["pihole"] });
     assert.equal(h.nas.callsTo("SYNO.Docker.Container", "restart").at(-1)!.params.name, '"pihole"');
   });
+
+  test("docker_remove_images refuses images in use and parses registry ports", async () => {
+    h.nas.on("SYNO.Docker.Image", "list", () => ({
+      images: [
+        { id: "sha256:aaa", repository: "pihole/pihole", tags: ["latest"], size: 100 * 1024 * 1024, created: 1 },
+        { id: "sha256:old", repository: "ghcr.io/immich-app/immich-server", tags: ["v3.3.5"], size: 1_700_000_000, created: 1 },
+        { id: "sha256:reg", repository: "registry.local:5000/tool", tags: ["1.0"], size: 1024, created: 1 },
+      ],
+    }));
+    const deleted: unknown[] = [];
+    h.nas.on("SYNO.Docker.Image", "delete", (p) => {
+      deleted.push(...JSON.parse(p.images));
+      return {};
+    });
+    const r = await h.call("docker_remove_images", {
+      images: ["ghcr.io/immich-app/immich-server:v3.3.5", "registry.local:5000/tool:1.0", "pihole/pihole:latest", "nope:1"],
+    });
+    assert.deepEqual(r.json.removed, [
+      { image: "ghcr.io/immich-app/immich-server:v3.3.5", freed: "1.6 GB" },
+      { image: "registry.local:5000/tool:1.0", freed: "1.0 KB" },
+    ]);
+    assert.deepEqual(deleted, [
+      { repository: "ghcr.io/immich-app/immich-server", tags: ["v3.3.5"] },
+      { repository: "registry.local:5000/tool", tags: ["1.0"] },
+    ]);
+    assert.match(r.json.failed[0].error, /In use by pihole/);
+    assert.match(r.json.failed[1].error, /No such image/);
+  });
 });
+
