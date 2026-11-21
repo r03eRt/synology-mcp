@@ -273,6 +273,26 @@ Sources: `webman/modules/PkgManApp/PkgManApp.js` and, for Drive, `webman/3rdpart
   - `create` with `path=id:<file_id>`, `title`, `identifier` (`create_folder` = a subfolder per uploader, or `add_prefix` = their name before the file), `description`, `protect_password`, `due_date` and `has_due_date_hour`. `list` with `status` (`any`) and sorting; `delete` with `sharing_link`, one per call.
   - Hypotheses ruled out for the 1076 that `list` gave: missing parameters (`path`, `status`, sorting, `filter`; every combination was tried) or a permission. The `create` response made it clear: `"protocol error, reason = 'file request is disabled'"`. They are disabled in this NAS's Drive Admin Console.
 
+## Synology Photos, starting packages and editing file requests (0.14.0)
+
+Photos source: `webman/3rdparty/SynologyPhotos/react_bundle.js` (3.5 MB). `pkg_index.min.js` only mounts the React app. The API names don't appear whole: the bundle has a table `{Browse: {Item: {list: 7, …}, Album: {…}}, Search: {…}}` with each method's version, and builds `SYNO.Foto.<group>.<api>` or `SYNO.FotoTeam.…` when calling. Tested against the real NAS on 2026-11-21.
+
+- **Two spaces**: `SYNO.Foto.*` is the personal one (`/home/Photos`) and `SYNO.FotoTeam.*` the shared one (`/photo`). On this NAS the personal one has 2 items and one album ("test caras"), and the shared one **229,027**.
+- **Items**: `Browse.Item list` v7 with `offset`, `limit` and, optionally, `album_id`, `person_id`, `geocoding_id`, `general_tag_id` and `additional` (`address`, `resolution`, `exif`, `tag`, `description`, `rating`…). It returns `id`, `filename`, `filesize`, `time`, `owner_user_id` (0 = shared), `folder_id` and `type`.
+- **Dates**: `list_with_filter` v7 with `time=[{start_time, end_time}]` (seconds) filters well: 8045 photos in 2020, and a 2009 range returned a photo from 2009-12-31. `time` is local time written as if it were UTC: a photo with `time` 19:30:50 had `modified` 18:30:50Z in File Station.
+- **Hypotheses ruled out when combining filters**:
+  - `list_with_filter` with `geocoding=[16]` gave 52 photos, against 2381 with `list` and `geocoding_id=16` (what the place says). The filter uses other ids, so places go through `list`.
+  - `geocoding` + `time` gave 0.
+  - `Search.Search count_item` with `keyword` and `time` gave the same as without `time` (93,983): the search ignores dates.
+  - That's why the MCP filters the dates itself when there is another filter.
+- **Search**: `Search.Search list_item` / `count_item` v7 with `keyword`: it searches file names and other data ("DSC": 93,983; "2013": 130).
+- **Groupings**: `Browse.Geocoding list` (760 places in the shared space, with `item_count` and `country`), `Browse.GeneralTag list` (empty) and `Browse.Person list`. The last one gives **901** in the shared space, although `Setting.TeamSpace get` says `enable_person: true`; in the personal one, 0 people. Not investigated further: it is treated as "no faces".
+- **Folders**: `Browse.Folder get` v2 with `id` returns `name` as a path from the space root (`/Marta/Familia`). With `/photo` or `/home/Photos` in front you get the File Station path: checked with `get_file_info` in both spaces.
+- **Albums**: `Browse.Album list` v4 (`category="shared"` for the ones shared with me). `NormalAlbum create` v1 with `name` and `item` returns `{album}`. `add_item` / `delete_item` v1 with `id` and `item` (`add_item` returns `error_list`). `Album delete` v1 with `id=[…]`. A personal album can hold photos from the shared space. Tested with a temporary album: create with 2 photos, add 1 and remove 1, list it (2) and delete it. `NormalAlbum get` with `id` didn't answer as expected, so it isn't used.
+- `Browse.Timeline get` v6 with `timeline_group_unit` gave 120: not used.
+- **Packages**: `SYNO.Core.Package.Control start` v1 with `id` and `dsm_apps` (the package's list, from `Core.Package list` with `additional=["dsm_apps"]`), and `stop` v1 with `id`. The web UI waits up to an hour and calls `feasibility_check` first; the MCP doesn't call it. Tested by stopping and starting Text Editor; File Station (`startable: false`) and WordPress (`version_limit`) are refused before calling.
+- **File requests**: editing is `FileRequest update` v1 with `sharing_link`, `path` (`id:<folder>` or `link:<permanent_link>`) and the whole form (`title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour`). Closing and reopening is `update` with just `sharing_link`, `path` and `file_request_status`, which is `inactive` (close, in `synodrive.js`) or `active` (`w0` in the bundle). It couldn't be tested on the real NAS because they are disabled there (1076).
+
 ## Common error codes
 
 | Code | Meaning |

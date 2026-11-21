@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">90 herramientas</a> ·
+  <a href="#6-herramientas">98 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -48,10 +48,11 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | | Área | Lo más útil |
 |---|---|---|
 | 📁 | **Ficheros** | Buscar por nombre, tipo, tamaño o fecha · leer documentos e imágenes · subir y descargar · mover, comprimir · compartir con enlace |
+| 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · crear álbumes y añadir fotos |
 | ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
 | 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · limpiar imágenes |
-| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados · notificaciones y registros · volúmenes |
+| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
 | 🛠️ | **Administración** | Usuarios (crear, desactivar, borrar), grupos, permisos de carpetas, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) |
 | 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
@@ -217,7 +218,7 @@ Con `SYNOLOGY_NAS_FILE=/ruta/nas.json` (permisos `600`):
 - **Globales**: `SYNOLOGY_READ_ONLY` y `SYNOLOGY_TASK_TIMEOUT_MS` valen para todos.
 - **Herramientas**: aparecen `list_nas` (qué NAS hay, cuál está activo y por dónde se llega a cada uno) y `use_nas` (cambiar de NAS); el resto actúa sobre el activo. Pídele a Claude «cambia al NAS de mis padres».
 - **2FA**: `register-device --nas <nombre>` registra el dispositivo en uno concreto.
-- **Dónde funciona**: de momento solo en la instalación manual; el plugin y la extensión configuran un NAS.
+- **En el plugin o la extensión**: su formulario tiene un **segundo NAS** (nombre, URL, usuario, contraseña, token de 2FA) y un campo para la ruta de este fichero JSON, para tres o más. Fuera de ellos, el mismo segundo NAS se configura con `SYNOLOGY_NAS2_URL`, `_USERNAME`, `_PASSWORD`, `_NAME`, `_DEVICE_ID` e `_INSECURE_TLS`, más `SYNOLOGY_NAS_NAME` para el primero.
 
 Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracion.md](docs/configuracion.md).
 
@@ -273,7 +274,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | `create_sharing_link` | E | Enlace público, con contraseña y caducidad opcionales |
 | `delete_sharing_links` | **D** | Borrar enlaces públicos |
 
-### Estado y salud del NAS: 8
+### Estado y salud del NAS: 9
 
 | Herramienta | Tipo | Admin | Qué hace |
 |---|---|---|---|
@@ -284,6 +285,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | `check_updates` | L | sí | Actualización de DSM (y si es de seguridad) y paquetes con versión nueva. Solo consulta |
 | `get_notifications` | L | sí | Notificaciones de la campana de DSM (errores, avisos, descargas terminadas…) |
 | `get_packages` | L | sí | Paquetes instalados y su estado; señala los que no funcionan (por ejemplo, incompatibles con este DSM) y avisa si falta Hyper Backup |
+| `package_control` | **D** | sí | Arrancar o parar un paquete. No para los del sistema ni arranca los averiados |
 | `get_system_logs` | L | sí | Registro del sistema o de conexiones, filtrable por nivel, texto y fechas |
 
 ### Liberar espacio: 2 (más `docker_remove_images`)
@@ -295,7 +297,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`, `search_files` (con `size_from`) y `docker_images`.
 
-### Synology Drive: 21
+### Synology Drive: 22
 
 | Herramienta | Tipo | Qué hace |
 |---|---|---|
@@ -313,9 +315,23 @@ Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`,
 | `drive_delete_label` | **D** | Borrar una etiqueta (los ficheros se quedan) |
 | `drive_convert_to_office` | E | Convertir Word, Excel, PowerPoint o CSV a Synology Office |
 | `drive_create_file_request` | E | Crear un enlace de subida a una carpeta para gente sin cuenta en el NAS, con contraseña y caducidad opcionales |
+| `drive_update_file_request` | E | Cambiar una *file request* (título, contraseña, caducidad), cerrarla o reabrirla |
 | `drive_share` | **D** | Dar, cambiar o quitar el rol de un usuario o grupo (lector, editor, gestor…) |
 | `drive_link` | **D** | Activar el enlace para compartir (usuarios del NAS o cualquiera) o quitarlo; con contraseña o caducidad, un enlace protegido |
 | `drive_delete_file_request` | **D** | Borrar *file requests* (lo subido se queda) |
+
+### Synology Photos: 6
+
+Espacio `shared` = la carpeta `/photo` (espacio compartido); `personal` = tu `/home/Photos`. Cada foto viene con su ruta en el NAS, así que Claude puede abrirla con `read_file`.
+
+| Herramienta | Tipo | Qué hace |
+|---|---|---|
+| `photos_albums` | L | Tus álbumes (o los compartidos contigo): fotos, fechas, si están compartidos |
+| `photos_browse` | L | Lugares, personas o etiquetas, con cuántas fotos tiene cada uno |
+| `photos_list` | L | Fotos de un álbum, de una persona, de un lugar, con una etiqueta, entre dos fechas o que coinciden con una búsqueda; con `details`, lugar, cámara y resolución |
+| `photos_create_album` | E | Crear un álbum, con fotos si se quiere |
+| `photos_album_items` | E | Añadir fotos a un álbum o sacarlas (siguen en la biblioteca) |
+| `photos_delete_album` | **D** | Borrar álbumes (las fotos se quedan) |
 
 ### Descargas (Download Station): 17
 
@@ -418,6 +434,11 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 - «Quita a marta el acceso a Documents.»
 - «Crea un usuario para Lucía con acceso de solo lectura a photo.»
 
+**Fotos**
+- «Enséñame las fotos de Escocia de julio de 2025.»
+- «Haz un álbum con las mejores de Madrid.»
+- «Abre la última foto que ha subido Marta.»
+
 **Docker**
 - «¿Qué contenedores están parados? Enséñame los últimos errores de pihole.»
 - «Reinicia jellyfin.»
@@ -478,6 +499,7 @@ src/
   tools/health.ts          SMART, actualizaciones, notificaciones y registros
   tools/space.ts           papeleras
   tools/drive.ts           Synology Drive
+  tools/photos.ts          Synology Photos
   tools/downloadstation.ts Download Station (tareas, ficheros de torrent, RSS, búsqueda, límites, horario)
   tools/docker.ts          Container Manager
   tools/nas.ts             list_nas y use_nas (con varios NAS)
@@ -503,7 +525,6 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 
 ## 11. Limitaciones y próximos pasos
 
-- **Varios NAS** solo en la instalación manual (`SYNOLOGY_NAS_FILE`); el plugin y la extensión configuran uno.
 - **npm**: el paquete no está publicado todavía.
 - **Sin probar en la práctica**: 2FA (probado solo con el NAS simulado) y la extensión de Claude Desktop instalada.
-- **No incluido**: Synology Photos, Hyper Backup, crear o borrar grupos y carpetas compartidas, cambiar servicios, crear o editar contenedores, reiniciar o apagar el NAS. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), las personas y caras de Synology Photos, subir a Photos, crear o borrar grupos y carpetas compartidas, cambiar servicios, crear o editar contenedores, reiniciar o apagar el NAS. Ver la [hoja de ruta](docs/hoja-de-ruta.md).

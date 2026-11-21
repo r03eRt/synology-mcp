@@ -6,6 +6,18 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-21
 
+### 0.14.0: Synology Photos, arrancar y parar paquetes, editar *file requests* y segundo NAS desde el plugin
+- **Synology Photos** (4.1 de la hoja de ruta). Seis herramientas:
+  - `photos_albums`, `photos_browse` (lugares, personas, etiquetas) y `photos_list` (por álbum, persona, lugar, etiqueta, fechas o texto);
+  - `photos_create_album`, `photos_album_items` y `photos_delete_album`.
+  - Cada foto lleva su **ruta en File Station**, para abrirla con `read_file`; comprobado en los dos espacios.
+  - Por defecto busca en el espacio compartido (`/photo`), que en el NAS de pruebas tiene 229.027 fotos.
+  - La API se sacó de la tabla de métodos de la web de Photos. Al combinar filtros se descartaron dos hipótesis, que quedan explicadas en `docs/api-synology.md`.
+- **`package_control`**: arrancar o parar un paquete, con las mismas comprobaciones que la web. No para los del sistema ni arranca los averiados.
+- **`drive_update_file_request`**: cambiar, cerrar o reabrir una *file request*. Cerrar es `inactive`, como en la web. `drive_file_requests` ya no mandaba bien el filtro `closed`.
+- **Varios NAS desde el plugin y la extensión**: campos para un segundo NAS (la contraseña, en el llavero) y para la ruta del JSON con más. Por debajo, variables nuevas `SYNOLOGY_NAS2_*`. Probado con el bundle del plugin contra el NAS real.
+- 98 herramientas (52 en solo lectura; 100 con dos NAS). Pruebas: 165.
+
 ### 0.13.0: paquetes instalados y compartir en Drive; Hyper Backup, bloqueado
 - **`get_packages`** (3.4 de la hoja de ruta): paquetes instalados y su estado, con los averiados primero y qué hacer. En el NAS real aparecieron **WordPress y PHP 8.0 parados por `version_limit`**: no son compatibles con este DSM y la web de WordPress no funciona. Avisa también si falta Hyper Backup.
 - **Drive** (3.2):

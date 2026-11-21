@@ -52,6 +52,8 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | RSS feeds | `downloads_rss` (feeds, or a feed's items), `downloads_rss_add`, `downloads_rss_refresh`; add an item with `downloads_add` using its `url` |
 | Broken or stopped packages, do I have backups? | `get_packages` (problems first; warns if Hyper Backup is missing) |
 | Share in Drive | `drive_share` (users/groups, roles), `drive_link` (internal/public link, password and expiry give a protected link), `drive_create_file_request` (upload link for people without an account); confirm first |
+| Photos: trips, places, dates, albums | `photos_browse` (places/people/tags), `photos_list` (album, person, place, tag, dates or keyword; each result has a NAS `path` to open with `read_file`), `photos_albums`; `photos_create_album` / `photos_album_items` to build albums |
+| Start or stop a package | `package_control` after confirming (stopping takes its service down); `get_packages` first |
 | Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |
 | Download speed, only at night | `downloads_info` shows limits, queue and schedule; `downloads_set_limits`, `downloads_set_schedule` (rules per day and hour: full, limited, off) |
 | Downloads, torrents, magnet links | `downloads_list` / `downloads_get` to look; `downloads_add` (URLs, magnets or local `.torrent` files) to add |

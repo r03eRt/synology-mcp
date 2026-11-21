@@ -6,6 +6,18 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-21
 
+### 0.14.0: Synology Photos, starting and stopping packages, editing file requests and a second NAS from the plugin
+- **Synology Photos** (roadmap 4.1). Six tools:
+  - `photos_albums`, `photos_browse` (places, people, tags) and `photos_list` (by album, person, place, tag, dates or text);
+  - `photos_create_album`, `photos_album_items` and `photos_delete_album`.
+  - Each photo comes with its **File Station path**, to open it with `read_file`; checked in both spaces.
+  - By default it searches the shared space (`/photo`), which has 229,027 photos on the test NAS.
+  - The API was taken from the Photos web UI's method table. Two hypotheses were ruled out when combining filters, explained in `docs/en/api-synology.md`.
+- **`package_control`**: start or stop a package, with the same checks as the web UI. It won't stop system packages or start broken ones.
+- **`drive_update_file_request`**: change, close or reopen a file request. Closing is `inactive`, as in the web UI. `drive_file_requests` was not sending the `closed` filter correctly.
+- **Several NAS from the plugin and the extension**: fields for a second NAS (password in the keychain) and for the path of the JSON with more. Underneath, new `SYNOLOGY_NAS2_*` variables. Tested with the plugin bundle against the real NAS.
+- 98 tools (52 in read-only mode; 100 with two NAS). Tests: 165.
+
 ### 0.13.0: installed packages and Drive sharing; Hyper Backup blocked
 - **`get_packages`** (roadmap 3.4): installed packages and their status, with broken ones first and what to do. On the real NAS it found **WordPress and PHP 8.0 stopped by `version_limit`**: they are not compatible with this DSM and the WordPress site is down. It also warns if Hyper Backup is missing.
 - **Drive** (3.2):

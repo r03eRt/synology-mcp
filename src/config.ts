@@ -106,7 +106,21 @@ export function loadNasList(rawEnv: NodeJS.ProcessEnv = process.env, readFile: (
   const env = cleanEnv(rawEnv);
   if (!env.SYNOLOGY_NAS_FILE) {
     const name = env.SYNOLOGY_NAS_NAME ?? "default";
-    return { entries: [{ name, config: loadConfig(rawEnv) }], defaultName: name };
+    const main = { name, config: loadConfig(rawEnv) };
+    // A second NAS from SYNOLOGY_NAS2_* (the plugin and extension forms have a fixed set of fields).
+    if (!env.SYNOLOGY_NAS2_URL) return { entries: [main], defaultName: name };
+    const name2 = env.SYNOLOGY_NAS2_NAME ?? "nas2";
+    if (!/^[\w.-]+$/.test(name2)) throw new Error(`SYNOLOGY_NAS2_NAME "${name2}": letters, digits, . _ - only`);
+    if (name2.toLowerCase() === name.toLowerCase()) throw new Error(`SYNOLOGY_NAS2_NAME "${name2}" is the same as SYNOLOGY_NAS_NAME; give them different names`);
+    const second = withPrefix("Second NAS (SYNOLOGY_NAS2_URL, _USERNAME, _PASSWORD)", () => loadConfig({
+      ...rawEnv,
+      SYNOLOGY_URL: env.SYNOLOGY_NAS2_URL,
+      SYNOLOGY_USERNAME: env.SYNOLOGY_NAS2_USERNAME,
+      SYNOLOGY_PASSWORD: env.SYNOLOGY_NAS2_PASSWORD,
+      SYNOLOGY_DEVICE_ID: env.SYNOLOGY_NAS2_DEVICE_ID,
+      SYNOLOGY_INSECURE_TLS: env.SYNOLOGY_NAS2_INSECURE_TLS ?? env.SYNOLOGY_INSECURE_TLS,
+    }));
+    return { entries: [main, { name: name2, config: second }], defaultName: name };
   }
 
   const path = env.SYNOLOGY_NAS_FILE;
@@ -142,6 +156,14 @@ export function loadNasList(rawEnv: NodeJS.ProcessEnv = process.env, readFile: (
   const defaultName = parsed.default ?? entries[0].name;
   if (!entries.some((e) => e.name === defaultName)) throw new Error(`SYNOLOGY_NAS_FILE ${path}: default "${defaultName}" is not in the list`);
   return { entries, defaultName };
+}
+
+function withPrefix<T>(prefix: string, fn: () => T): T {
+  try {
+    return fn();
+  } catch (err) {
+    throw new Error(`${prefix}: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 function defaultReadFile(path: string): string {

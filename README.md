@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">90 tools</a> ·
+  <a href="#6-tools">98 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -48,10 +48,11 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | | Area | Most useful |
 |---|---|---|
 | 📁 | **Files** | Search by name, type, size or date · read documents and images · upload and download · move, compress · share with a link |
+| 🖼️ | **Synology Photos** | Albums · places · find photos by date, place or text, each with its path to open it · create albums and add photos |
 | ☁️ | **Synology Drive** | Recent, starred, labels, shared · share with people, links with password and expiry, file requests · convert to Synology Office |
 | ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
 | 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · clean up images |
-| 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages · notifications and logs · volumes |
+| 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages (and start or stop them) · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
 | 🛠️ | **Administration** | Users (create, disable, delete), groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
 | 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
@@ -217,7 +218,7 @@ With `SYNOLOGY_NAS_FILE=/path/to/nas.json` (permissions `600`):
 - **Global**: `SYNOLOGY_READ_ONLY` and `SYNOLOGY_TASK_TIMEOUT_MS` apply to all of them.
 - **Tools**: `list_nas` (which NAS exist, which is active and how each one is reached) and `use_nas` (switch NAS) appear; the rest act on the active one. Ask Claude "switch to my parents' NAS".
 - **2FA**: `register-device --nas <nombre>` registers the device on a specific one.
-- **Where it works**: for now only in the manual install; the plugin and the extension configure a single NAS.
+- **In the plugin or the extension**: their form has a **second NAS** (name, URL, user, password, 2FA token), and a field for the path of this JSON file for three or more. Outside them, the same second NAS can be set with `SYNOLOGY_NAS2_URL`, `_USERNAME`, `_PASSWORD`, `_NAME`, `_DEVICE_ID` and `_INSECURE_TLS`, plus `SYNOLOGY_NAS_NAME` for the first one.
 
 Details, and how it's registered on the author's machine, in [docs/en/configuracion.md](docs/en/configuracion.md).
 
@@ -273,7 +274,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | `create_sharing_link` | E | Public link, with optional password and expiry |
 | `delete_sharing_links` | **D** | Delete public links |
 
-### NAS status and health: 8
+### NAS status and health: 9
 
 | Tool | Type | Admin | What it does |
 |---|---|---|---|
@@ -285,6 +286,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | `get_notifications` | L | yes | DSM bell notifications (errors, warnings, finished downloads…) |
 | `get_packages` | L | yes | Installed packages and their status; flags the ones not working (e.g. incompatible with this DSM) and warns if Hyper Backup is missing |
 | `get_system_logs` | L | yes | System or connection log, filterable by level, text and dates |
+| `package_control` | **D** | yes | Start or stop a package. Won't stop system packages or start broken ones |
 
 ### Freeing up space: 2 (plus `docker_remove_images`)
 
@@ -295,7 +297,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 To find what else is taking up space, use `get_storage_status`, `get_dir_size`, `search_files` (with `size_from`) and `docker_images`.
 
-### Synology Drive: 21
+### Synology Drive: 22
 
 | Tool | Type | What it does |
 |---|---|---|
@@ -313,9 +315,23 @@ To find what else is taking up space, use `get_storage_status`, `get_dir_size`, 
 | `drive_delete_label` | **D** | Delete a label (files stay) |
 | `drive_convert_to_office` | E | Convert Word, Excel, PowerPoint or CSV to Synology Office |
 | `drive_create_file_request` | E | Create an upload link to a folder for people without a NAS account, with optional password and expiry |
+| `drive_update_file_request` | E | Change a file request (title, password, expiry), close it or reopen it |
 | `drive_share` | **D** | Give, change or remove a user's or group's role (viewer, editor, manager…) |
 | `drive_link` | **D** | Turn the sharing link on (NAS users or anyone) or off; with password or expiry, a protected link |
 | `drive_delete_file_request` | **D** | Delete file requests (uploaded files stay) |
+
+### Synology Photos: 6
+
+`shared` space = the `/photo` folder (shared space); `personal` = your `/home/Photos`. Each photo comes with its NAS path, so Claude can open it with `read_file`.
+
+| Tool | Type | What it does |
+|---|---|---|
+| `photos_albums` | L | Your albums (or the ones shared with you): photos, dates, whether they're shared |
+| `photos_browse` | L | Places, people or tags, with how many photos each has |
+| `photos_list` | L | Photos in an album, of a person, at a place, with a tag, between two dates or matching a text search; with `details`, place, camera and resolution |
+| `photos_create_album` | E | Create an album, optionally with photos |
+| `photos_album_items` | E | Add photos to an album or take them out (they stay in the library) |
+| `photos_delete_album` | **D** | Delete albums (the photos stay) |
 
 ### Downloads (Download Station): 17
 
@@ -418,6 +434,11 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 - "Remove marta's access to Documents."
 - "Create a user for Lucía with read-only access to photo."
 
+**Photos**
+- "Show me the photos from Scotland in July 2025."
+- "Make an album with the best ones from Madrid."
+- "Open the latest photo Marta uploaded."
+
 **Docker**
 - "Which containers are stopped? Show me pihole's latest errors."
 - "Restart jellyfin."
@@ -478,6 +499,7 @@ src/
   tools/health.ts          SMART, updates, notifications and logs
   tools/space.ts           recycle bins
   tools/drive.ts           Synology Drive
+  tools/photos.ts          Synology Photos
   tools/downloadstation.ts Download Station (tasks, torrent files, RSS, search, limits, schedule)
   tools/docker.ts          Container Manager
   tools/nas.ts             list_nas and use_nas (with multiple NAS)
@@ -503,7 +525,6 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 
 ## 11. Limitations and next steps
 
-- **Multiple NAS** only in the manual install (`SYNOLOGY_NAS_FILE`); the plugin and the extension configure one.
 - **npm**: the package isn't published yet.
 - **Not tested in practice**: 2FA (tested only with the simulated NAS) and the installed Claude Desktop extension.
-- **Not included**: Synology Photos, Hyper Backup, creating or deleting groups and shared folders, changing services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).
+- **Not included**: Hyper Backup (not installed on the test NAS, so its API couldn't be taken), Synology Photos people and face management, uploading to Photos, creating or deleting groups and shared folders, changing services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).

@@ -1,7 +1,7 @@
 {
   "name": "synology",
-  "version": "0.13.0",
-  "description": "Use a Synology NAS (DSM 7) from Claude: files (File Station), Synology Drive, Download Station, Container Manager (Docker) and NAS status. Read-only unless you turn writes on.",
+  "version": "0.14.0",
+  "description": "Use a Synology NAS (DSM 7) from Claude: files (File Station), Synology Drive, Synology Photos, Download Station, Container Manager (Docker) and NAS status. Read-only unless you turn writes on.",
   "author": {
     "name": "Roberto Morgado Luengo"
   },
@@ -51,6 +51,43 @@
       "title": "2FA device token",
       "description": "Only for accounts with 2-step verification: the SYNOLOGY_DEVICE_ID printed by `npx synology-mcp register-device`",
       "sensitive": true
+    },
+    "nas_name": {
+      "type": "string",
+      "title": "Name of this NAS",
+      "description": "Only with a second NAS: a short name to tell them apart (e.g. home). Default: default"
+    },
+    "nas2_name": {
+      "type": "string",
+      "title": "Second NAS: name",
+      "description": "Optional second NAS, e.g. office. Claude switches between them with use_nas"
+    },
+    "nas2_url": {
+      "type": "string",
+      "title": "Second NAS: URL",
+      "description": "Leave empty for a single NAS. Same format as the NAS URL"
+    },
+    "nas2_username": {
+      "type": "string",
+      "title": "Second NAS: DSM user",
+      "description": "Only with a second NAS: the DSM user on it"
+    },
+    "nas2_password": {
+      "type": "string",
+      "title": "Second NAS: DSM password",
+      "sensitive": true,
+      "description": "Only with a second NAS: its password, stored in the system credential store"
+    },
+    "nas2_device_id": {
+      "type": "string",
+      "title": "Second NAS: 2FA device token",
+      "description": "Only if that account uses 2-step verification: the SYNOLOGY_DEVICE_ID that `npx synology-mcp register-device` prints when run against the second NAS",
+      "sensitive": true
+    },
+    "nas_file": {
+      "type": "string",
+      "title": "NAS list file (3 or more NAS)",
+      "description": "Optional: path to a JSON file listing several NAS (see the README, Multiple NAS). Overrides the fields above"
     }
   },
   "mcpServers": {
@@ -65,7 +102,14 @@
         "SYNOLOGY_PASSWORD": "${user_config.password}",
         "SYNOLOGY_READ_ONLY": "${user_config.read_only}",
         "SYNOLOGY_INSECURE_TLS": "${user_config.insecure_tls}",
-        "SYNOLOGY_DEVICE_ID": "${user_config.device_id}"
+        "SYNOLOGY_DEVICE_ID": "${user_config.device_id}",
+        "SYNOLOGY_NAS_NAME": "${user_config.nas_name}",
+        "SYNOLOGY_NAS2_NAME": "${user_config.nas2_name}",
+        "SYNOLOGY_NAS2_URL": "${user_config.nas2_url}",
+        "SYNOLOGY_NAS2_USERNAME": "${user_config.nas2_username}",
+        "SYNOLOGY_NAS2_PASSWORD": "${user_config.nas2_password}",
+        "SYNOLOGY_NAS2_DEVICE_ID": "${user_config.nas2_device_id}",
+        "SYNOLOGY_NAS_FILE": "${user_config.nas_file}"
       }
     }
   },

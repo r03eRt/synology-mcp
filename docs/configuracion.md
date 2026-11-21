@@ -38,10 +38,11 @@ El resultado queda en `dist/index.js`.
 | `SYNOLOGY_USERNAME` | sí | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | sí | — | Contraseña |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` acepta un certificado HTTPS no válido (autofirmado, caducado o emitido para otro nombre). Solo en una red de confianza |
-| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 49 herramientas de lectura (12 de File Station, 8 de estado y salud del NAS, 1 de papeleras, 12 de Drive, 6 de Download Station, 4 de Container Manager y 6 de administración). `false` registra también las 41 de escritura |
+| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 52 herramientas de lectura (12 de File Station, 8 de estado y salud del NAS, 1 de papeleras, 12 de Drive, 3 de Photos, 6 de Download Station, 4 de Container Manager y 6 de administración). `false` registra también las 46 de escritura |
 | `SYNOLOGY_DEVICE_ID` | no | — | Token de dispositivo para cuentas con 2FA (lo da `synology-mcp register-device`). Es secreto, como la contraseña |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Nombre con el que se registró el dispositivo; tiene que coincidir con el del registro |
 | `SYNOLOGY_NAS_FILE` | no | — | JSON con varios NAS (ver "Varios NAS"). Sustituye a `SYNOLOGY_URL`, `SYNOLOGY_USERNAME` y `SYNOLOGY_PASSWORD` |
+| `SYNOLOGY_NAS2_URL`, `_USERNAME`, `_PASSWORD`, `_NAME`, `_DEVICE_ID`, `_INSECURE_TLS` | no | nombre `nas2` | Un segundo NAS sin fichero (0.14.0). Es lo que rellenan el plugin y la extensión. Se ignora si hay `SYNOLOGY_NAS_FILE` |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | no | `60000` | Tiempo máximo que una herramienta espera a una tarea en segundo plano antes de devolver su `taskid` |
 
 Se leen en [src/config.ts](../src/config.ts).
@@ -88,7 +89,8 @@ Ventaja añadida: todas las direcciones de QuickConnect tienen certificado váli
 - `url` admite `quickconnect:<ID>`.
 - `password_env` y `device_id_env` nombran variables de entorno, para que los secretos no estén en el fichero. Si la variable no existe, el arranque falla con un mensaje claro.
 - `SYNOLOGY_READ_ONLY` y `SYNOLOGY_TASK_TIMEOUT_MS` siguen siendo globales, porque deciden qué herramientas existen. `SYNOLOGY_INSECURE_TLS` y `SYNOLOGY_DEVICE_NAME` sirven de valor por defecto para cada NAS.
-- Sin `SYNOLOGY_NAS_FILE` hay un solo NAS (`SYNOLOGY_URL`…), llamado `default` o `SYNOLOGY_NAS_NAME`.
+- Sin `SYNOLOGY_NAS_FILE` hay un solo NAS (`SYNOLOGY_URL`…), llamado `default` o `SYNOLOGY_NAS_NAME`, más un segundo si está `SYNOLOGY_NAS2_URL` (llamado `nas2` o `SYNOLOGY_NAS2_NAME`). Si al segundo le falta el usuario o la contraseña, o tiene el mismo nombre que el primero, el arranque falla diciendo que es el segundo NAS.
+- **Desde el plugin o la extensión** (0.14.0): un formulario no admite listas, así que tiene los campos de un segundo NAS (`nas_name`, `nas2_name`, `nas2_url`, `nas2_username`, `nas2_password` sensible y `nas2_device_id` sensible) y `nas_file` con la ruta del JSON, para tres o más. Probado con el bundle del plugin contra el NAS real: `list_nas` muestra los dos y `use_nas` cambia de uno a otro.
 - Con más de uno aparecen `list_nas` y `use_nas` ([herramientas.md](herramientas.md#varios-nas)).
 - `register-device --nas <nombre>` registra el dispositivo 2FA en un NAS concreto del fichero.
 

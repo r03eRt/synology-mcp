@@ -55,6 +55,9 @@ interface AdvSharing {
 
 interface FileRequestInfo {
   title: string;
+  file_id?: string;
+  permanent_link?: string;
+  has_due_date_hour?: boolean;
   description?: string;
   display_path?: string;
   url?: string;
@@ -119,7 +122,7 @@ function simplifyFileRequest(f: FileRequestInfo) {
     folder: f.display_path,
     url: f.url,
     sharing_link: f.sharing_link,
-    status: f.is_expired ? "expired" : f.file_request_status,
+    status: f.is_expired ? "expired" : f.file_request_status === "inactive" ? "closed" : f.file_request_status,
     password: Boolean(f.protect_password),
     expires: f.due_date ? iso(f.due_date) : undefined,
     ...(f.identifier && { uploader_files: f.identifier === "add_prefix" ? "name prefix" : "folder per uploader" }),
@@ -349,14 +352,14 @@ export function registerDriveTools(server: McpServer, client: SynologyClient, op
       title: "Drive: file requests",
       description:
         "File requests the user created: links where anyone can upload files into a Drive folder. Title, folder, upload URL, status, whether they have a password and when they expire.",
-      inputSchema: { status: z.enum(["any", "active", "closed"]).optional().describe("Default any") },
+      inputSchema: { status: z.enum(["any", "active", "closed"]).optional().describe("Default any; closed = no longer accepting uploads") },
       annotations: READ,
     },
     safe(async ({ status }) => {
       const r = await client.request<{ items: FileRequestInfo[]; total: number }>(
         FILE_REQUEST,
         "list",
-        { path: json("/mydrive"), offset: 0, limit: 500, status: json(status ?? "any"), sort_by: json("created_time"), sort_direction: json("desc") },
+        { path: json("/mydrive"), offset: 0, limit: 500, status: json(status === "closed" ? "inactive" : (status ?? "any")), sort_by: json("created_time"), sort_direction: json("desc") },
         1,
       );
       return ok({ total: r.total, file_requests: r.items.map(simplifyFileRequest) });
@@ -628,6 +631,70 @@ export function registerDriveTools(server: McpServer, client: SynologyClient, op
         1,
       );
       return ok({ title, folder: f.display_path, url: r.url, sharing_link: r.sharing_link, password: Boolean(password), ...(due && { expires: iso(due) }) });
+    }),
+  );
+
+  server.registerTool(
+    "drive_update_file_request",
+    {
+      title: "Drive: change, close or reopen a file request",
+      description:
+        "Change a file request's title, description, password or expiry, close it (stops accepting uploads, the link stays) or reopen it. Only the fields given change.",
+      inputSchema: {
+        sharing_link: z.string().min(1).describe("sharing_link from drive_file_requests"),
+        status: z.enum(["active", "closed"]).optional().describe("closed stops uploads; active reopens it"),
+        title: z.string().min(1).max(255).optional(),
+        description: z.string().max(1000).optional(),
+        password: z.string().max(127).optional().describe("New password; empty string removes it"),
+        expires: z.string().optional().describe("New expiry date (e.g. 2026-12-31), or \"never\""),
+      },
+      annotations: { ...WRITE, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ sharing_link, status, title, description, password, expires }) => {
+      if ([status, title, description, password, expires].every((v) => v === undefined)) throw new Error("Nothing to change");
+      const { items } = await client.request<{ items: FileRequestInfo[] }>(
+        FILE_REQUEST,
+        "list",
+        { path: json("/mydrive"), offset: 0, limit: 500, status: json("any"), sort_by: json("created_time"), sort_direction: json("desc") },
+        1,
+      );
+      const fr = items.find((f) => f.sharing_link === sharing_link);
+      if (!fr) throw new Error(`No file request with sharing_link ${sharing_link}; see drive_file_requests`);
+      // The web UI addresses the request by its folder (id:) or permanent link (link:).
+      const path = fr.file_id ? `id:${fr.file_id}` : `link:${fr.permanent_link}`;
+      const editsContent = [title, description, password, expires].some((v) => v !== undefined);
+      if (editsContent) {
+        // Like the edit dialog: send the whole form, with the changes applied.
+        const due = expires === undefined ? (fr.due_date ?? 0) : expires === "never" ? 0 : dateSeconds(expires);
+        await client.request(
+          FILE_REQUEST,
+          "update",
+          {
+            sharing_link: json(sharing_link),
+            path: json(path),
+            title: json(title ?? fr.title),
+            identifier: json(fr.identifier ?? "create_folder"),
+            description: json(description ?? fr.description ?? ""),
+            protect_password: json(password ?? fr.protect_password ?? ""),
+            due_date: due,
+            has_due_date_hour: fr.has_due_date_hour ?? false,
+            ...(status === "active" && { file_request_status: json("active") }),
+          },
+          1,
+        );
+      }
+      if (status === "closed" || (status === "active" && !editsContent)) {
+        await client.request(FILE_REQUEST, "update", { sharing_link: json(sharing_link), path: json(path), file_request_status: json(status === "closed" ? "inactive" : "active") }, 1);
+      }
+      const after = (
+        await client.request<{ items: FileRequestInfo[] }>(
+          FILE_REQUEST,
+          "list",
+          { path: json("/mydrive"), offset: 0, limit: 500, status: json("any"), sort_by: json("created_time"), sort_direction: json("desc") },
+          1,
+        )
+      ).items.find((f) => f.sharing_link === sharing_link);
+      return ok(after ? simplifyFileRequest(after) : { sharing_link, updated: true });
     }),
   );
 

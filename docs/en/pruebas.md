@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-150 tests, ~8 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+165 tests, ~9 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -122,6 +122,27 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-21, version 0.14.0 (Synology Photos, packages, file requests, second NAS)
+
+- `npm test`: 165/165. New: `test/mock/photos-and-more.test.ts`. It covers:
+  - Photos dates;
+  - the second NAS through `SYNOLOGY_NAS2_*` (unsubstituted fields, half-filled, clashing names);
+  - the six Photos tools, with paths from both spaces, text plus dates filtered in the MCP, two filters at once refused and albums end to end;
+  - `package_control`: stop, start, "already", system package, broken and unknown;
+  - `drive_update_file_request`: edit keeping the rest, close, reopen and errors.
+- `claude plugin validate` and `mcpb validate` pass. They required a `description` on the new fields.
+- Against the real NAS:
+  - Photos, read-only:
+    - `photos_albums` (1 album) and `photos_browse` (760 places; people, no-faces note);
+    - `photos_list` with no filters, by place, by dates (August 2020), by text plus dates (6 s) and by album;
+    - paths checked in File Station: `/photo/Marta/Familia/…` and `/home/Photos/Moments/…`, with the same size.
+  - Temporary album `mcp-test-<base36>`: create with 2 photos, add 1 and remove 1, list and delete. At the end the NAS still had a single album.
+  - `package_control`:
+    - stop Text Editor, stop it again ("already") and start it; it was left running;
+    - File Station and WordPress refused before calling.
+  - Second NAS: the plugin bundle over stdio, with `SYNOLOGY_NAS2_*` pointing at the same NAS. `list_nas` shows `casa` and `oficina`; `use_nas` and `get_system_info` work on both. 100 tools.
+  - `drive_update_file_request`: couldn't be tested, because file requests are disabled on the NAS.
 
 ### Result 2026-11-21, version 0.13.0 (packages and Drive sharing)
 

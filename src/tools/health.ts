@@ -103,7 +103,7 @@ export function decodeNotifyParams(msg: unknown): Record<string, string> {
   return out;
 }
 
-export function registerHealthTools(server: McpServer, client: SynologyClient) {
+export function registerHealthTools(server: McpServer, client: SynologyClient, opts: { readOnly: boolean } = { readOnly: true }) {
   const READ = { readOnlyHint: true, openWorldHint: false } as const;
 
   server.registerTool(
@@ -348,13 +348,49 @@ export function registerHealthTools(server: McpServer, client: SynologyClient) {
       }),
     ),
   );
+
+  if (opts.readOnly) return;
+
+  server.registerTool(
+    "package_control",
+    {
+      title: "Start or stop a package",
+      description:
+        "Start a stopped package or stop a running one (Package Center). Stopping takes down everything that package serves (a website, a database, containers, a media server…): say what will stop and wait for confirmation. System packages cannot be stopped. Needs a DSM administrator account.",
+      inputSchema: {
+        id: z.string().min(1).describe("Package id from get_packages, e.g. \"WordPress\""),
+        action: z.enum(["start", "stop"]),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ id, action }) =>
+      adminOnly(async () => {
+        const list = async () =>
+          (await client.request<{ packages: RawPackage[] }>("SYNO.Core.Package", "list", { additional: json(["status", "startable", "installed_info", "dsm_apps"]) }, 2)).packages;
+        const pkg = (await list()).find((p) => p.id.toLowerCase() === id.toLowerCase());
+        if (!pkg) throw new Error(`No installed package with id ${id}; see get_packages`);
+        const before = describePackage(pkg);
+        // The web UI offers start only for "stop" and stop only for running, startable packages.
+        if (action === "stop" && pkg.additional?.startable === false) throw new Error(`${pkg.name} is a system package and cannot be stopped`);
+        if (action === "start" && before.status === "running") return ok({ id: pkg.id, name: pkg.name, status: "running", note: "It was already running" });
+        if (action === "stop" && before.status === "stopped") return ok({ id: pkg.id, name: pkg.name, status: "stopped", note: "It was already stopped" });
+        if (action === "start" && before.problem) throw new Error(`${pkg.name} cannot simply be started: ${before.problem}`);
+        const params =
+          action === "start" ? { id: json(pkg.id), dsm_apps: json(pkg.additional?.dsm_apps?.trim() ? pkg.additional.dsm_apps.trim().split(/\s+/) : []) } : { id: json(pkg.id) };
+        // The web UI allows up to an hour; most packages take seconds.
+        await client.request("SYNO.Core.Package.Control", action, params, 1, { timeoutMs: 600_000 });
+        const after = (await list()).find((p) => p.id === pkg.id);
+        return ok({ ...(after ? describePackage(after) : { id: pkg.id, name: pkg.name }), was: before.status });
+      }),
+    ),
+  );
 }
 
 interface RawPackage {
   id: string;
   name: string;
   version: string;
-  additional?: { status?: string; status_origin?: string; startable?: boolean; installed_info?: { is_broken?: boolean; is_brick?: boolean } };
+  additional?: { status?: string; status_origin?: string; startable?: boolean; dsm_apps?: string; installed_info?: { is_broken?: boolean; is_brick?: boolean } };
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "synology-mcp",
-  "version": "0.13.0",
-  "description": "MCP server that lets Claude use a Synology NAS (DSM 7.2+): File Station, Synology Drive, Download Station, Container Manager and system health",
+  "version": "0.14.0",
+  "description": "MCP server that lets Claude use a Synology NAS (DSM 7.2+): File Station, Synology Drive, Synology Photos, Download Station, Container Manager and system health",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -11,7 +11,8 @@
     "nas",
     "file-station",
     "synology-drive",
-    "download-station"
+    "download-station",
+    "synology-photos"
   ],
   "author": "Roberto Morgado Luengo",
   "license": "MIT",

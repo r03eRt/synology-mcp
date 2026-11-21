@@ -39,6 +39,7 @@ plugin/server/synology-mcp.cjs     (generated, in git)
 - `userConfig`:
   - Required: `url`, `username` and `password` (sensitive).
   - Optional: `read_only` (boolean, default `true`), `insecure_tls` (boolean) and `device_id` (sensitive).
+  - Several NAS (0.14.0): `nas_name`, `nas2_name`, `nas2_url`, `nas2_username`, `nas2_password` (sensitive), `nas2_device_id` (sensitive) and `nas_file`. They go as `SYNOLOGY_NAS_NAME`, `SYNOLOGY_NAS2_*` and `SYNOLOGY_NAS_FILE`; see [configuracion.md](configuracion.md#several-nas). Both validators require a `description` on every field.
   - They are passed as `SYNOLOGY_*` variables with `${user_config.x}`.
 - The Claude Code documentation doesn't say what the server receives when an optional field is left empty. That's why `loadConfig` treats both an empty string and an unsubstituted placeholder (`${user_config.device_id}`) as "undefined". It has a test.
 - **The skill** (`synology-nas`) is written in English, like the tool descriptions: Claude reads it, not the user, and that way it works for any user. Contents:

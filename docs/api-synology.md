@@ -273,6 +273,26 @@ Fuentes: `webman/modules/PkgManApp/PkgManApp.js` y, de Drive, `webman/3rdparty/S
   - `create` con `path=id:<file_id>`, `title`, `identifier` (`create_folder` = una subcarpeta por quien sube, o `add_prefix` = su nombre delante del fichero), `description`, `protect_password`, `due_date` y `has_due_date_hour`. `list` con `status` (`any`) y orden; `delete` con `sharing_link`, uno por llamada.
   - Hipótesis descartadas para el 1076 que daba `list`: faltaban parámetros (`path`, `status`, orden, `filter`; se probaron todas las combinaciones) o era un permiso. La respuesta de `create` lo aclaró: `"protocol error, reason = 'file request is disabled'"`. Están desactivadas en la consola de administración de Drive de este NAS.
 
+## Synology Photos, arrancar paquetes y editar *file requests* (0.14.0)
+
+Fuente de Photos: `webman/3rdparty/SynologyPhotos/react_bundle.js` (3,5 MB). `pkg_index.min.js` solo monta la aplicación React. Los nombres de las APIs no aparecen enteros: el bundle tiene una tabla `{Browse: {Item: {list: 7, …}, Album: {…}}, Search: {…}}` con la versión de cada método, y construye `SYNO.Foto.<grupo>.<api>` o `SYNO.FotoTeam.…` al llamar. Probado contra el NAS real el 2026-11-21.
+
+- **Dos espacios**: `SYNO.Foto.*` es el personal (`/home/Photos`) y `SYNO.FotoTeam.*` el compartido (`/photo`). En este NAS el personal tiene 2 elementos y un álbum ("test caras"), y el compartido **229.027**.
+- **Elementos**: `Browse.Item list` v7 con `offset`, `limit` y, opcionalmente, `album_id`, `person_id`, `geocoding_id`, `general_tag_id` y `additional` (`address`, `resolution`, `exif`, `tag`, `description`, `rating`…). Devuelve `id`, `filename`, `filesize`, `time`, `owner_user_id` (0 = compartido), `folder_id` y `type`.
+- **Fechas**: `list_with_filter` v7 con `time=[{start_time, end_time}]` (segundos) filtra bien: 8045 fotos en 2020, y un rango de 2009 devolvió una foto del 31-12-2009. `time` es hora local escrita como si fuera UTC: una foto con `time` 19:30:50 tenía en File Station `modified` 18:30:50Z.
+- **Hipótesis descartadas al combinar filtros**:
+  - `list_with_filter` con `geocoding=[16]` dio 52 fotos, frente a 2381 con `list` y `geocoding_id=16` (las que dice el lugar). El filtro usa otros identificadores, así que los lugares van por `list`.
+  - `geocoding` + `time` dio 0.
+  - `Search.Search count_item` con `keyword` y `time` dio lo mismo que sin `time` (93.983): la búsqueda ignora las fechas.
+  - Por eso el MCP filtra él mismo las fechas cuando hay otro filtro.
+- **Búsqueda**: `Search.Search list_item` / `count_item` v7 con `keyword`: busca en nombres de fichero y otros datos ("DSC": 93.983; "2013": 130).
+- **Agrupaciones**: `Browse.Geocoding list` (760 lugares en el espacio compartido, con `item_count` y `country`), `Browse.GeneralTag list` (vacío) y `Browse.Person list`. Esta última da **901** en el espacio compartido, aunque `Setting.TeamSpace get` dice `enable_person: true`; en el personal, 0 personas. No se investigó más: se trata como "sin caras".
+- **Carpetas**: `Browse.Folder get` v2 con `id` devuelve `name` como ruta desde la raíz del espacio (`/Marta/Familia`). Con `/photo` o `/home/Photos` delante sale la ruta de File Station: comprobado con `get_file_info` en los dos espacios.
+- **Álbumes**: `Browse.Album list` v4 (`category="shared"` para los compartidos conmigo). `NormalAlbum create` v1 con `name` e `item` devuelve `{album}`. `add_item` / `delete_item` v1 con `id` e `item` (`add_item` devuelve `error_list`). `Album delete` v1 con `id=[…]`. Un álbum personal puede tener fotos del espacio compartido. Probado con un álbum temporal: crear con 2 fotos, añadir 1 y quitar 1, listarlo (2) y borrarlo. `NormalAlbum get` con `id` no respondió como se esperaba, así que no se usa.
+- `Browse.Timeline get` v6 con `timeline_group_unit` dio 120: no se usa.
+- **Paquetes**: `SYNO.Core.Package.Control start` v1 con `id` y `dsm_apps` (la lista del paquete, que da `Core.Package list` con `additional=["dsm_apps"]`), y `stop` v1 con `id`. La web espera hasta una hora y antes llama a `feasibility_check`; el MCP no lo llama. Probado parando y arrancando Text Editor; File Station (`startable: false`) y WordPress (`version_limit`) se rechazan antes de llamar.
+- ***File requests***: editar es `FileRequest update` v1 con `sharing_link`, `path` (`id:<carpeta>` o `link:<permanent_link>`) y el formulario entero (`title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour`). Cerrar y reabrir es `update` solo con `sharing_link`, `path` y `file_request_status`, que vale `inactive` (cerrar, en `synodrive.js`) o `active` (`w0` en el bundle). No se pudo probar en el NAS real porque las tiene desactivadas (1076).
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

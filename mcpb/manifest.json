@@ -2,8 +2,8 @@
   "manifest_version": "0.4",
   "name": "synology-mcp",
   "display_name": "Synology NAS",
-  "version": "0.13.0",
-  "description": "Use a Synology NAS (DSM 7) from Claude: files, Synology Drive, Download Station, Container Manager (Docker) and NAS status.",
+  "version": "0.14.0",
+  "description": "Use a Synology NAS (DSM 7) from Claude: files, Synology Drive, Synology Photos, Download Station, Container Manager (Docker) and NAS status.",
   "long_description": "Browse, search, read and organise files on your Synology NAS (File Station), use Synology Drive labels, stars and shares, manage Download Station (URLs, magnets, .torrent files) and check the NAS status (temperature, disks, volumes; some need an admin account). Read-only unless you turn writes on. The extension only can do what the DSM user you configure is allowed to do.",
   "author": {
     "name": "Roberto Morgado Luengo"
@@ -31,7 +31,14 @@
         "SYNOLOGY_PASSWORD": "${user_config.password}",
         "SYNOLOGY_READ_ONLY": "${user_config.read_only}",
         "SYNOLOGY_INSECURE_TLS": "${user_config.insecure_tls}",
-        "SYNOLOGY_DEVICE_ID": "${user_config.device_id}"
+        "SYNOLOGY_DEVICE_ID": "${user_config.device_id}",
+        "SYNOLOGY_NAS_NAME": "${user_config.nas_name}",
+        "SYNOLOGY_NAS2_NAME": "${user_config.nas2_name}",
+        "SYNOLOGY_NAS2_URL": "${user_config.nas2_url}",
+        "SYNOLOGY_NAS2_USERNAME": "${user_config.nas2_username}",
+        "SYNOLOGY_NAS2_PASSWORD": "${user_config.nas2_password}",
+        "SYNOLOGY_NAS2_DEVICE_ID": "${user_config.nas2_device_id}",
+        "SYNOLOGY_NAS_FILE": "${user_config.nas_file}"
       }
     }
   },
@@ -84,6 +91,50 @@
       "description": "Only for accounts with 2-step verification: the SYNOLOGY_DEVICE_ID printed by `npx synology-mcp register-device`",
       "required": false,
       "sensitive": true
+    },
+    "nas_name": {
+      "type": "string",
+      "title": "Name of this NAS",
+      "description": "Only with a second NAS: a short name to tell them apart (e.g. home). Default: default",
+      "required": false
+    },
+    "nas2_name": {
+      "type": "string",
+      "title": "Second NAS: name",
+      "description": "Optional second NAS, e.g. office. Claude switches between them with use_nas",
+      "required": false
+    },
+    "nas2_url": {
+      "type": "string",
+      "title": "Second NAS: URL",
+      "description": "Leave empty for a single NAS. Same format as the NAS URL",
+      "required": false
+    },
+    "nas2_username": {
+      "type": "string",
+      "title": "Second NAS: DSM user",
+      "required": false,
+      "description": "Only with a second NAS: the DSM user on it"
+    },
+    "nas2_password": {
+      "type": "string",
+      "title": "Second NAS: DSM password",
+      "sensitive": true,
+      "required": false,
+      "description": "Only with a second NAS: its password, stored in the system credential store"
+    },
+    "nas2_device_id": {
+      "type": "string",
+      "title": "Second NAS: 2FA device token",
+      "description": "Only if that account uses 2-step verification: the SYNOLOGY_DEVICE_ID that `npx synology-mcp register-device` prints when run against the second NAS",
+      "sensitive": true,
+      "required": false
+    },
+    "nas_file": {
+      "type": "string",
+      "title": "NAS list file (3 or more NAS)",
+      "description": "Optional: path to a JSON file listing several NAS (see the README, Multiple NAS). Overrides the fields above",
+      "required": false
     }
   },
   "repository": {

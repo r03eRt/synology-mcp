@@ -2,7 +2,7 @@
 
 # Tools
 
-90 tools in seven groups (92 with several NAS, see the end): File Station (22), NAS status and health (8), recycle bins (2), Synology Drive (21), Download Station (17), Container Manager (8) and DSM administration (12). By default (since 0.6.0) the server is read-only and registers only the read tools (12 + 8 + 1 + 12 + 6 + 4 + 6 = 49); with `SYNOLOGY_READ_ONLY=false` it registers all 90. The [README](../../README.md#6-tools) has the summary with the type of each one.
+98 tools in eight groups (100 with several NAS, see the end): File Station (22), NAS status and health (9), recycle bins (2), Synology Drive (22), Synology Photos (6), Download Station (17), Container Manager (8) and DSM administration (12). By default (since 0.6.0) the server is read-only and registers only the read tools (12 + 8 + 1 + 12 + 3 + 6 + 4 + 6 = 52); with `SYNOLOGY_READ_ONLY=false` it registers all 98. The [README](../../README.md#6-tools) has the summary with the type of each one.
 
 # File Station
 
@@ -235,6 +235,12 @@ The following five tools are read-only and **need an administrator account**, wi
 | `get_packages` (0.13.0) | `Core.Package list` v2 (`additional=["status", "startable", "installed_info"]`) | `status` (`running`/`stopped`/`problem`), `query` | Installed packages with `version` and `status`. The ones with a problem come first, with `problem` explaining what to do: `version_limit` (not compatible with this DSM version and not working), `start_failed`, `stopped_by_dep_limit`, `volume_unmounted`, `broken`, `broken_by_other` or `license_error`. `can_stop: false` marks system packages. Counts `running`/`stopped`/`problems`, and `warning` if Hyper Backup is not installed |
 | `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (ISO date; a date alone is the whole day in local time), `offset`, `limit` (default 50, max. 500) | Matching `total`, `returned` and `entries` (`time`, `level`, `who`, `message`), most recent first |
 
+**Write** (0.14.0), only with `SYNOLOGY_READ_ONLY=false`:
+
+| Tool | API | Parameters | What it does |
+|---|---|---|---|
+| `package_control` | `Core.Package list` v2 + `Core.Package.Control start` v1 (`id`, `dsm_apps`) or `stop` v1 (`id`), waiting up to 10 minutes | `id`, `action` (`start`/`stop`) | Starts or stops a package and returns its status before and after. Like the web UI, it only stops running packages that aren't system ones (`startable: false` → error) and doesn't start broken ones (it says why). If it was already like that, it says so without calling. **Destructive**: stopping a package takes down what it serves. Needs an administrator |
+
 # Recycle bins
 
 Code: [src/tools/space.ts](../../src/tools/space.ts), since 0.9.0. Both need an administrator account.
@@ -282,7 +288,7 @@ Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, 
 | `drive_list_team_folders` | `TeamFolders list` | — | Accessible team folders |
 | `drive_file_requests` | `FileRequest list` (`path=/mydrive`, `status`, sorted by creation date) | `status` (`any`/`active`/`closed`) | The user's file requests: `title`, `folder`, `url`, `sharing_link`, `status` (or `expired`), `password` (yes/no, never the password), `expires`, `uploader_files` and `created` |
 
-## Write (9)
+## Write (10)
 
 | Tool | Method | Parameters | What it does |
 |---|---|---|---|
@@ -295,6 +301,7 @@ Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, 
 | `drive_share` (0.13.0) | `Sharing update` v1 (`permissions=[{action: "update", member: {type, name}, role}]` or `{action: "delete", member}`) + `Files get` | `path`, `members` (`[{type: user/group, name, role}]`) | Give, change or remove (`role: none`) access for users or groups. Roles: `previewer` (view without download), `preview_commenter`, `viewer`, `commenter`, `editor` and `organizer` (manager: can also share). Returns the resulting `shared_with`. **Destructive** |
 | `drive_link` (0.13.0) | `Sharing list` + `Sharing update` (member `internal` or `public`) + `Sharing create_link`; with a password or expiry, `AdvanceSharing get`/`create` + `update` (`role`, `protect_password`, `due_date`) | `path`, `access` (`internal`/`public`/`none`), `role` (`viewer`/`commenter`/`editor`), `allow_download` (default `true`), `password`, `expires` (date) | Sharing link. `internal`: only signed-in NAS users; `public`: anyone with the link. Without download, `viewer` becomes `previewer` and `commenter` becomes `preview_commenter`, as in the web UI. With `password` or `expires` it also creates a **protected link** (another URL, `protected_link`): that is the one to share, because the plain `url` has no password. `none` removes the link and the protected one. **Destructive** and *open world* |
 | `drive_create_file_request` (0.13.0) | `Files get` + `FileRequest create` v1 (`path=id:<file_id>`, `title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour=false`) | `folder`, `title`, `description`, `password`, `expires`, `uploader_files` (`folder_per_uploader` by default, or `name_prefix`) | A link for anyone, without a NAS account, to upload files to that folder. Returns `url` and `sharing_link`. *Open world* |
+| `drive_update_file_request` (0.14.0) | `FileRequest list` + `FileRequest update` v1 | `sharing_link`, `status` (`active`/`closed`), `title`, `description`, `password` (`""` removes it), `expires` (date or `never`) | Changes what is given and keeps the rest, like the edit dialog (which sends the whole form, with `path=id:<folder>`). Closing is `file_request_status="inactive"` (the web UI) and the MCP shows it as `closed`; reopening, `"active"` |
 | `drive_delete_file_request` (0.13.0) | `FileRequest delete` v1 (`sharing_link`), one call each, like the web UI | `sharing_links` | The link stops working; what was uploaded stays. **Destructive** |
 
 `drive_label` never sends an empty label list: according to the specification, that would remove all labels from the files.
@@ -308,7 +315,37 @@ Common listing parameters: `sort_by` (`name`, `modified_time`, `size`, `owner`, 
 
 ## Not included (for now)
 
-From the Drive specification the following are left out: upload, download, copy, move and delete (already covered by File Station on `/home/Drive`), editing or reopening a file request, webhooks and administration operations.
+From the Drive specification the following are left out: upload, download, copy, move and delete (already covered by File Station on `/home/Drive`), webhooks and administration operations.
+
+# Synology Photos
+
+Code: [src/tools/photos.ts](../../src/tools/photos.ts), since 0.14.0. The API is undocumented: the names, methods and versions come from the table in the Photos web UI (`webman/3rdparty/SynologyPhotos/react_bundle.js`); see [api-synology.md](api-synology.md).
+
+**Spaces**: `SYNO.Foto.*` is the user's personal space (`/home/Photos`) and `SYNO.FotoTeam.*` the shared one (the `/photo` folder). The `space` parameter picks one (`shared` by default, because that's usually where almost everything is). Albums are always personal, but they can hold photos from both spaces.
+
+**Paths**: each photo comes with `path`, its File Station path, to open it with `read_file` or `download_file`. It is built from its Photos folder name (`Browse.Folder get`, one call per folder) on top of `/photo` (if `owner_user_id` is 0, the shared space) or `/home/Photos` (if it is the user's own). Other users' personal photos, which arrive through shared albums, get no path.
+
+**Dates**: Photos stores the photo's time as local time written as if it were UTC. The MCP returns it without a zone (`taken: "2026-11-10T19:30:50"`) and reads `from`/`to` the same way.
+
+## Read (3)
+
+| Tool | API | Parameters | What it does |
+|---|---|---|---|
+| `photos_albums` | `Foto.Browse.Album list` v4 (`category="shared"` for the ones shared with me) | `shared_with_me`, `limit` (100) | Albums: `id`, `name`, `items`, `type` (`normal` or `conditional`), `shared`, `from`/`to` |
+| `photos_browse` | `Browse.Geocoding list` v1, `Browse.Person list` v1 or `Browse.GeneralTag list` v2 | `kind` (`places`/`people`/`tags`), `space`, `query`, `limit` (100) | Groupings with `id`, `name` and `photos`, most photos first. People: if the list gives 901 (no face recognition), it returns an empty list with a note |
+| `photos_list` | `Browse.Item list` v7 (with `album_id`, `person_id`, `geocoding_id` or `general_tag_id`), `Browse.Item list_with_filter` v7 (`time=[{start_time, end_time}]`) or `Search.Search list_item` v7 (`keyword`) | one of `album_id`/`person_id`/`place_id`/`tag_id`/`keyword`, plus `from`/`to`, `space`, `details`, `offset`, `limit` (50) | Photos and videos, newest first: `id`, `filename`, `type`, `taken`, `size`, `space` and `path`. With `details` (`additional=[address, resolution, exif, tag, description, rating]`), also `place`, `resolution`, `camera`, `description`, `tags` and `rating` |
+
+`photos_list` with dates **and** another filter: the search ignores `time` and `list_with_filter` doesn't combine well with the ids (see [api-synology.md](api-synology.md)). So the MCP asks for pages of 500 and filters the dates itself, up to 5000 items; if it reaches the limit, it says so in `note`.
+
+## Write (3)
+
+| Tool | API | Parameters | What it does |
+|---|---|---|---|
+| `photos_create_album` | `Foto.Browse.NormalAlbum create` v1 (`name`, `item`) | `name`, `item_ids` | Creates a normal album. The photos are not moved or copied |
+| `photos_album_items` | `NormalAlbum add_item` / `delete_item` v1 (`id`, `item`) | `album_id`, `add`, `remove` | Add or take out photos. `add_item` returns `error_list` with the ones it couldn't add (`not_added`). Conditional albums fill themselves |
+| `photos_delete_album` | `Foto.Browse.Album delete` v1 (`id=[...]`) | `album_ids` | Deletes the albums, not the photos. **Destructive** |
+
+Not included: managing people and faces (naming, merging, hiding), uploading photos (already possible with `upload_file` to `/photo` or `/home/Photos`), sharing albums, creating conditional albums, moving or deleting photos (that's File Station) and similar photos.
 
 # Download Station
 

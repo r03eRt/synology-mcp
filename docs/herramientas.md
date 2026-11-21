@@ -2,7 +2,7 @@
 
 # Herramientas
 
-90 herramientas en siete grupos (92 con varios NAS, ver el final): File Station (22), estado y salud del NAS (8), papeleras (2), Synology Drive (21), Download Station (17), Container Manager (8) y administración de DSM (12). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 6 + 4 + 6 = 49); con `SYNOLOGY_READ_ONLY=false` registra las 90. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
+98 herramientas en ocho grupos (100 con varios NAS, ver el final): File Station (22), estado y salud del NAS (9), papeleras (2), Synology Drive (22), Synology Photos (6), Download Station (17), Container Manager (8) y administración de DSM (12). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 3 + 6 + 4 + 6 = 52); con `SYNOLOGY_READ_ONLY=false` registra las 98. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -235,6 +235,12 @@ Las cinco herramientas siguientes son de solo lectura y **necesitan una cuenta a
 | `get_packages` (0.13.0) | `Core.Package list` v2 (`additional=["status", "startable", "installed_info"]`) | `status` (`running`/`stopped`/`problem`), `query` | Paquetes instalados con `version` y `status`. Los que tienen un problema van primero, con `problem` explicando qué hacer: `version_limit` (no es compatible con esta versión de DSM y no funciona), `start_failed`, `stopped_by_dep_limit`, `volume_unmounted`, `broken`, `broken_by_other` o `license_error`. `can_stop: false` marca los paquetes del sistema. Recuentos `running`/`stopped`/`problems`, y `warning` si Hyper Backup no está instalado |
 | `get_system_logs` | `Core.SyslogClient.Log list` | `type` (`system`/`connection`), `level` (`info`/`warn`/`err`), `keyword`, `from`/`to` (fecha ISO; una fecha sola es el día entero en hora local), `offset`, `limit` (por defecto 50, máx. 500) | `total` coincidente, `returned` y `entries` (`time`, `level`, `who`, `message`), lo más reciente primero |
 
+**Escritura** (0.14.0), solo con `SYNOLOGY_READ_ONLY=false`:
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `package_control` | `Core.Package list` v2 + `Core.Package.Control start` v1 (`id`, `dsm_apps`) o `stop` v1 (`id`), con hasta 10 minutos de espera | `id`, `action` (`start`/`stop`) | Arranca o para un paquete y devuelve su estado antes y después. Como la web, solo para paquetes en marcha que no sean del sistema (`startable: false` → error) y no arranca los averiados (dice por qué). Si ya estaba así, lo dice sin llamar. **Destructiva**: parar un paquete tumba lo que sirve. Necesita administrador |
+
 # Papeleras
 
 Código: [src/tools/space.ts](../src/tools/space.ts), desde 0.9.0. Las dos necesitan una cuenta administradora.
@@ -282,7 +288,7 @@ Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`,
 | `drive_list_team_folders` | `TeamFolders list` | — | Carpetas de equipo accesibles |
 | `drive_file_requests` | `FileRequest list` (`path=/mydrive`, `status`, orden por fecha de creación) | `status` (`any`/`active`/`closed`) | *File requests* del usuario: `title`, `folder`, `url`, `sharing_link`, `status` (o `expired`), `password` (sí/no, nunca la contraseña), `expires`, `uploader_files` y `created` |
 
-## Escritura (9)
+## Escritura (10)
 
 | Herramienta | Método | Parámetros | Qué hace |
 |---|---|---|---|
@@ -295,6 +301,7 @@ Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`,
 | `drive_share` (0.13.0) | `Sharing update` v1 (`permissions=[{action: "update", member: {type, name}, role}]` o `{action: "delete", member}`) + `Files get` | `path`, `members` (`[{type: user/group, name, role}]`) | Dar, cambiar o quitar (`role: none`) el acceso de usuarios o grupos. Roles: `previewer` (ver sin descargar), `preview_commenter`, `viewer`, `commenter`, `editor` y `organizer` (gestor: también puede compartir). Devuelve cómo queda `shared_with`. **Destructiva** |
 | `drive_link` (0.13.0) | `Sharing list` + `Sharing update` (miembro `internal` o `public`) + `Sharing create_link`; con contraseña o caducidad, `AdvanceSharing get`/`create` + `update` (`role`, `protect_password`, `due_date`) | `path`, `access` (`internal`/`public`/`none`), `role` (`viewer`/`commenter`/`editor`), `allow_download` (por defecto `true`), `password`, `expires` (fecha) | Enlace para compartir. `internal`: solo usuarios del NAS con sesión; `public`: cualquiera con el enlace. Sin descarga, `viewer` pasa a `previewer` y `commenter` a `preview_commenter`, como en la web. Con `password` o `expires` crea además un **enlace protegido** (otra URL, `protected_link`): es el que hay que compartir, porque el `url` normal no lleva contraseña. `none` quita el enlace y el protegido. **Destructiva** y *open world* |
 | `drive_create_file_request` (0.13.0) | `Files get` + `FileRequest create` v1 (`path=id:<file_id>`, `title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour=false`) | `folder`, `title`, `description`, `password`, `expires`, `uploader_files` (`folder_per_uploader` por defecto, o `name_prefix`) | Enlace para que cualquiera, sin cuenta en el NAS, suba ficheros a esa carpeta. Devuelve `url` y `sharing_link`. *Open world* |
+| `drive_update_file_request` (0.14.0) | `FileRequest list` + `FileRequest update` v1 | `sharing_link`, `status` (`active`/`closed`), `title`, `description`, `password` (`""` la quita), `expires` (fecha o `never`) | Cambia lo que se da y deja el resto como estaba, como el diálogo de edición (que manda el formulario entero, con `path=id:<carpeta>`). Cerrar es `file_request_status="inactive"` (la web) y el MCP lo muestra como `closed`; reabrir, `"active"` |
 | `drive_delete_file_request` (0.13.0) | `FileRequest delete` v1 (`sharing_link`), una llamada por cada uno, como la web | `sharing_links` | El enlace deja de funcionar; lo ya subido se queda. **Destructiva** |
 
 `drive_label` nunca envía la lista vacía de etiquetas: según la especificación, eso quitaría todas las etiquetas de los ficheros.
@@ -308,7 +315,37 @@ Parámetros comunes de los listados: `sort_by` (`name`, `modified_time`, `size`,
 
 ## No incluido (por ahora)
 
-De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y borrar (ya los cubre File Station sobre `/home/Drive`), editar una *file request* o volver a abrirla, webhooks y las operaciones de administración.
+De la especificación de Drive quedan fuera: subir, descargar, copiar, mover y borrar (ya los cubre File Station sobre `/home/Drive`), webhooks y las operaciones de administración.
+
+# Synology Photos
+
+Código: [src/tools/photos.ts](../src/tools/photos.ts), desde 0.14.0. La API no está documentada: los nombres, métodos y versiones salen de la tabla de la web de Photos (`webman/3rdparty/SynologyPhotos/react_bundle.js`); ver [api-synology.md](api-synology.md).
+
+**Espacios**: `SYNO.Foto.*` es el espacio personal del usuario (`/home/Photos`) y `SYNO.FotoTeam.*` el compartido (la carpeta `/photo`). El parámetro `space` elige uno (`shared` por defecto, porque es donde suele estar casi todo). Los álbumes son siempre personales, pero pueden tener fotos de los dos espacios.
+
+**Rutas**: cada foto lleva `path`, su ruta en File Station, para abrirla con `read_file` o `download_file`. Se monta con el nombre de su carpeta en Photos (`Browse.Folder get`, una llamada por carpeta) sobre `/photo` (si `owner_user_id` es 0, el espacio compartido) o sobre `/home/Photos` (si es el propio usuario). Las fotos personales de otros usuarios, que llegan por álbumes compartidos, no llevan ruta.
+
+**Fechas**: Photos guarda la hora de la foto como hora local escrita como si fuera UTC. El MCP la devuelve sin zona (`taken: "2026-11-10T19:30:50"`) y lee `from`/`to` del mismo modo.
+
+## Lectura (3)
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `photos_albums` | `Foto.Browse.Album list` v4 (`category="shared"` para los compartidos conmigo) | `shared_with_me`, `limit` (100) | Álbumes: `id`, `name`, `items`, `type` (`normal` o `conditional`), `shared`, `from`/`to` |
+| `photos_browse` | `Browse.Geocoding list` v1, `Browse.Person list` v1 o `Browse.GeneralTag list` v2 | `kind` (`places`/`people`/`tags`), `space`, `query`, `limit` (100) | Agrupaciones con `id`, `name` y `photos`, de más a menos fotos. Personas: si la lista da 901 (sin reconocimiento de caras), devuelve una lista vacía con una nota |
+| `photos_list` | `Browse.Item list` v7 (con `album_id`, `person_id`, `geocoding_id` o `general_tag_id`), `Browse.Item list_with_filter` v7 (`time=[{start_time, end_time}]`) o `Search.Search list_item` v7 (`keyword`) | uno de `album_id`/`person_id`/`place_id`/`tag_id`/`keyword`, más `from`/`to`, `space`, `details`, `offset`, `limit` (50) | Fotos y vídeos, los más recientes primero: `id`, `filename`, `type`, `taken`, `size`, `space` y `path`. Con `details` (`additional=[address, resolution, exif, tag, description, rating]`), también `place`, `resolution`, `camera`, `description`, `tags` y `rating` |
+
+`photos_list` con fechas **y** otro filtro: la búsqueda ignora `time` y `list_with_filter` no combina bien con los ids (ver [api-synology.md](api-synology.md)). Por eso el MCP pide páginas de 500 y filtra las fechas él mismo, hasta 5000 elementos; si llega al límite, lo dice en `note`.
+
+## Escritura (3)
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `photos_create_album` | `Foto.Browse.NormalAlbum create` v1 (`name`, `item`) | `name`, `item_ids` | Crea un álbum normal. Las fotos no se mueven ni se copian |
+| `photos_album_items` | `NormalAlbum add_item` / `delete_item` v1 (`id`, `item`) | `album_id`, `add`, `remove` | Añadir o sacar fotos. `add_item` devuelve `error_list` con las que no pudo añadir (`not_added`). Los álbumes condicionales se llenan solos |
+| `photos_delete_album` | `Foto.Browse.Album delete` v1 (`id=[...]`) | `album_ids` | Borra los álbumes, no las fotos. **Destructiva** |
+
+No incluido: gestionar personas y caras (nombrar, fusionar, ocultar), subir fotos (ya se puede con `upload_file` a `/photo` o `/home/Photos`), compartir álbumes, crear álbumes condicionales, mover o borrar fotos (es File Station) y las fotos similares.
 
 # Download Station
 
