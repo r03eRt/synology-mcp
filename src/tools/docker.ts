@@ -452,16 +452,17 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
     {
       title: "Container Manager: change a container",
       description:
-        "Change a stopped container's settings: rename, set or remove environment variables, replace its ports or mounted folders, restart policy, command. Stop it first with docker_stop (that takes its service down), then start it again. Only the given settings change.",
+        "Change a stopped container. Name and restart policy change in place. Environment variables, ports, mounted folders and command cannot be changed on an existing container (DSM ignores them, as Docker does): with recreate: true the container is deleted and created again with the new settings, which loses anything stored inside it outside its mounted folders. Say so and wait for confirmation before using recreate. Stop it first with docker_stop.",
       inputSchema: {
         name: z.string().min(1),
         new_name: containerName.optional(),
-        env_set: z.record(z.string(), z.string()).optional(),
-        env_unset: z.array(z.string().min(1)).optional(),
-        ports: z.array(portSchema).optional().describe("Replaces all port mappings"),
-        volumes: z.array(volumeSchema).optional().describe("Replaces all mounted folders"),
         restart_always: z.boolean().optional(),
-        command: z.string().optional(),
+        env_set: z.record(z.string(), z.string()).optional().describe("Needs recreate"),
+        env_unset: z.array(z.string().min(1)).optional().describe("Needs recreate"),
+        ports: z.array(portSchema).optional().describe("Replaces all port mappings. Needs recreate"),
+        volumes: z.array(volumeSchema).optional().describe("Replaces all mounted folders. Needs recreate"),
+        command: z.string().optional().describe("Needs recreate"),
+        recreate: z.boolean().optional().describe("Delete and create the container again to apply env, ports, folders or command"),
       },
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
@@ -470,9 +471,18 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
       if (!c) throw new Error(`No container called ${a.name}; see docker_list`);
       if (c.is_package) throw new Error(`${a.name} belongs to a DSM package; change it from that package`);
       if (c.status === "running") throw new Error(`${a.name} is running: stop it first with docker_stop (after confirming), then try again`);
+      const needsRecreate = Boolean(a.env_set || a.env_unset || a.ports || a.volumes || a.command !== undefined);
+      if (needsRecreate && !a.recreate) {
+        throw new Error(
+          "Environment variables, ports, folders and command can only change by recreating the container (DSM silently ignores them on an existing one). Anything stored inside the container outside its mounted folders would be lost. Confirm with the user, then call again with recreate: true.",
+        );
+      }
+      if (!needsRecreate && a.new_name === undefined && a.restart_always === undefined) throw new Error("Nothing to change");
+      if (a.new_name && (await listAll()).some((x) => x.name.toLowerCase() === a.new_name!.toLowerCase() && x.name !== a.name)) throw new Error(`A container called ${a.new_name} already exists`);
       const { profile } = await client.request<{ profile: Profile }>(CONTAINER, "get", { name: json(a.name) }, 1);
       const next: Profile = { ...profile };
       if (a.new_name) next.name = a.new_name;
+      if (a.restart_always !== undefined) next.enable_restart_policy = a.restart_always;
       if (a.env_set || a.env_unset) {
         const env = new Map((profile.env_variables ?? []).map((e) => [e.key, e.value]));
         for (const k of a.env_unset ?? []) env.delete(k);
@@ -481,14 +491,43 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
       }
       if (a.ports) next.port_bindings = toPorts(a.ports);
       if (a.volumes) next.volume_bindings = await toVolumes(a.volumes);
-      if (a.restart_always !== undefined) next.enable_restart_policy = a.restart_always;
       if (a.command !== undefined) next.cmd_v2 = a.command;
-      await client.request(CONTAINER, "set", { name: json(a.name), edit_name: json(next.name), profile: json(next) }, 1, { timeoutMs: 120_000 });
+
+      if (!needsRecreate) {
+        // In place: DSM applies name and restart policy (seen on the real NAS; it answers with a task_id).
+        await client.request(CONTAINER, "set", { name: json(a.name), edit_name: json(next.name), profile: json(next) }, 1, { timeoutMs: 120_000 });
+      } else {
+        // Recreate: delete, then create with the new profile; if creating fails, put the old one back.
+        const createProfile = (p: Profile) => {
+          const { id: _id, exporting: _e, is_package: _p, is_ddsm: _d, enabled: _en, version: _v, ...rest } = p as Profile & Record<string, unknown>;
+          return rest;
+        };
+        await client.request(CONTAINER, "delete", { force: false, preserve_profile: false, name: json(a.name) }, 1, { timeoutMs: 120_000 });
+        try {
+          await client.request(CONTAINER, "create", { is_run_instantly: false, profile: json(createProfile(next)) }, 1, { timeoutMs: 120_000 });
+        } catch (err) {
+          await client.request(CONTAINER, "create", { is_run_instantly: false, profile: json(createProfile(profile)) }, 1, { timeoutMs: 120_000 }).catch(() => undefined);
+          throw new Error(`Creating ${next.name} with the new settings failed, so the old container was created again: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+
+      // Check what DSM really kept.
+      const after = (await client.request<{ profile: Profile }>(CONTAINER, "get", { name: json(next.name) }, 1)).profile;
+      const envKeys = (after.env_variables ?? []).map((e) => e.key);
+      const notApplied: string[] = [];
+      for (const k of Object.keys(a.env_set ?? {})) if (!envKeys.includes(k)) notApplied.push(`env ${k}`);
+      for (const k of a.env_unset ?? []) if (envKeys.includes(k)) notApplied.push(`env ${k} still set`);
+      if (a.restart_always !== undefined && after.enable_restart_policy !== a.restart_always) notApplied.push("restart_always");
+      if (a.ports && (after.port_bindings ?? []).length !== a.ports.length) notApplied.push("ports");
       return ok({
-        container: next.name,
+        container: after.name,
         ...(a.new_name && { renamed_from: a.name }),
-        changed: Object.keys(a).filter((k) => k !== "name" && (a as Record<string, unknown>)[k] !== undefined),
-        note: "Start it again with docker_start.",
+        ...(needsRecreate && { recreated: true }),
+        env: envKeys,
+        restart_always: after.enable_restart_policy,
+        ports: (after.port_bindings ?? []).map((p) => `${p.host_port}:${p.container_port}/${p.type}`),
+        ...(notApplied.length && { not_applied: notApplied }),
+        note: "It is stopped: start it with docker_start.",
       });
     }),
   );

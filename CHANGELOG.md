@@ -6,6 +6,16 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-21
 
+### 0.15.1: arreglo de `docker_update_container` y pruebas reales de la 0.15.0
+- **Arreglado**: `docker_update_container` decía haber cambiado variables, puertos, carpetas o comando, pero DSM solo aplica el nombre y el reinicio automático en un contenedor existente (comprobado en el NAS real). Ahora:
+  - cambia en el sitio el nombre y el reinicio;
+  - para lo demás exige `recreate: true`, que borra y vuelve a crear el contenedor y, si falla, recrea el original;
+  - al final comprueba lo que quedó (`not_applied`).
+- Probados en el NAS real, a petición del usuario:
+  - grupos y carpetas compartidas (crear, borrar y los rechazos);
+  - Docker con `hello-world`: descargar (DSM avisa del fin con `finished: true`), crear, renombrar, recrear y borrar.
+- Pruebas: 179.
+
 ### 0.15.0: acciones de más riesgo (todas con confirmación) y más Photos
 - **Photos**:
   - `photos_create_condition_album`: álbum que se llena solo, por lugar, fechas y/o texto. El lugar se busca por nombre en el árbol de lugares del filtro, que usa otros ids que la lista de lugares;

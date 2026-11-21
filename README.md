@@ -376,7 +376,7 @@ All require an administrator account: DSM doesn't let other users use Container 
 | `docker_remove_images` | **D** | Delete images no container uses (images in use are rejected) |
 | `docker_pull_image` | E | Download an image from Docker Hub |
 | `docker_create_container` | E | Create a container: ports, folders, variables, restart policy, network |
-| `docker_update_container` | **D** | Change a stopped container (variables, ports, folders, name…) |
+| `docker_update_container` | **D** | Rename a stopped container or change its restart policy; variables, ports or folders by recreating it (asks first) |
 | `docker_delete_container` | **D** | Delete stopped containers (mounted folders keep their data) |
 
 ### DSM administration: 18

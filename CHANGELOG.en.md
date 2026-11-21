@@ -6,6 +6,16 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-21
 
+### 0.15.1: `docker_update_container` fix and 0.15.0's real tests
+- **Fixed**: `docker_update_container` claimed to change variables, ports, folders or command, but DSM only applies the name and the restart policy on an existing container (checked on the real NAS). Now it:
+  - changes the name and restart policy in place;
+  - requires `recreate: true` for the rest, which deletes and creates the container again and, if that fails, recreates the original;
+  - checks at the end what stuck (`not_applied`).
+- Tested on the real NAS, at the user's request:
+  - groups and shared folders (create, delete and the refusals);
+  - Docker with `hello-world`: pull (DSM signals the end with `finished: true`), create, rename, recreate and delete.
+- Tests: 179.
+
 ### 0.15.0: higher-risk actions (all with confirmation) and more Photos
 - **Photos**:
   - `photos_create_condition_album`: a self-filling album by place, dates and/or text. The place is looked up by name in the filter's place tree, which uses different ids from the place list;

@@ -322,6 +322,10 @@ Sources: the Photos bundle (again), `admin_center.js`, `ContainerManager/MainVue
   - Without `force`, if there are tasks, the answer fails with `errors.runningTasks` (the web UI asks for confirmation and repeats with `force: true`) or `errors.blockingTasks` (it won't).
   - `SynologyApiError` now keeps `errors` as-is (before, only a string), so those lists can be read.
   - Never tested on the real NAS.
+- **Tests on the real NAS (after publishing 0.15.0, at the user's request)**:
+  - Temporary group and shared folder: created and deleted; the new folder had only `#recycle` and access for `administrators`. `photo` (with content), `homes`, `administrators` and the HTTPS redirect were refused.
+  - Docker, with the official `hello-world` image (about 10 KB, deleted at the end): `pull_status` first answers `{}`, then `{current, total, finished: false…}` and finally `finished: true`, so the assumption was right. Creating (stopped, with a read-only mounted folder), renaming and deleting work.
+  - **Bug found**: `Docker.Container set` returns `{task_id}` and only applies the name and the restart policy. Variables and ports didn't change, neither in the profile nor in the real container, not even 33 s later nor when sending the profile shaped like the create wizard's. The web UI sends exactly the same (`updateContainer({name, profile})`), so the limitation is DSM's, as in Docker, where those settings only change by recreating the container. Fixed in 0.15.1: `docker_update_container` changes in place what DSM applies, and for the rest requires `recreate: true` (delete and create). Checked: after recreating, the real container has the new variables and port `18080:80`.
 
 ## Common error codes
 

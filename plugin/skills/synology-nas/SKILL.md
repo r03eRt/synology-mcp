@@ -56,7 +56,7 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Self-filling album, share an album | `photos_create_condition_album` (place by name, dates, keyword), `photos_share_album` (public link: confirm first) |
 | Groups, shared folders | `dsm_create_group` / `dsm_delete_group`, `dsm_create_shared_folder` / `dsm_delete_shared_folder` (deletes everything inside: show get_dir_size and get an explicit yes) |
 | Fix insecure services | `dsm_services` warnings, then `dsm_set_services` (SMB2 minimum, FTP or Telnet off) after confirming: old devices may need SMB1 |
-| New container | `docker_images` / `docker_pull_image`, then `docker_create_container`; change a stopped one with `docker_update_container` |
+| New container | `docker_images` / `docker_pull_image`, then `docker_create_container`; change a stopped one with `docker_update_container` (env, ports, folders or command need `recreate: true`, which loses data kept inside the container outside its mounted folders: ask first) |
 | Restart or shut down the NAS | `dsm_power` only when the user explicitly asks; it lists running tasks first |
 | Start or stop a package | `package_control` after confirming (stopping takes its service down); `get_packages` first |
 | Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |

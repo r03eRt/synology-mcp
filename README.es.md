@@ -375,7 +375,7 @@ Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a 
 | `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
 | `docker_pull_image` | E | Descargar una imagen de Docker Hub |
 | `docker_create_container` | E | Crear un contenedor: puertos, carpetas, variables, reinicio automático, red |
-| `docker_update_container` | **D** | Cambiar un contenedor parado (variables, puertos, carpetas, nombre…) |
+| `docker_update_container` | **D** | Renombrar un contenedor parado o cambiar su reinicio automático; variables, puertos o carpetas recreándolo (pregunta antes) |
 | `docker_delete_container` | **D** | Borrar contenedores parados (las carpetas montadas conservan sus datos) |
 | `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
 

@@ -231,15 +231,19 @@ describe("Docker: create, change, delete, pull", () => {
     nas.on("SYNO.FileStation.List", "getinfo", (p) => ({ files: JSON.parse(p.path).map((path: string) => (path.startsWith("/docker/") ? { path, isdir: true } : { path, code: 408 })) }));
     nas.on("SYNO.Docker.Container", "create", (p) => {
       created = { is_run_instantly: p.is_run_instantly, profile: JSON.parse(p.profile) };
+      profiles[created.profile.name] = created.profile;
       containers.push({ name: created.profile.name, image: created.profile.image, status: p.is_run_instantly === "true" ? "running" : "stopped" });
       return {};
     });
     nas.on("SYNO.Docker.Container", "get", (p) => ({ profile: profiles[JSON.parse(p.name)] }));
     nas.on("SYNO.Docker.Container", "set", (p) => {
+      // Like the real NAS: only the name and the restart policy are applied in place.
       const prof = JSON.parse(p.profile);
-      profiles[JSON.parse(p.edit_name)] = prof;
+      const old = profiles[JSON.parse(p.name)];
+      delete profiles[JSON.parse(p.name)];
+      profiles[JSON.parse(p.edit_name)] = { ...old, name: prof.name, enable_restart_policy: prof.enable_restart_policy };
       containers.find((c) => c.name === JSON.parse(p.name)).name = JSON.parse(p.edit_name);
-      return {};
+      return { task_id: "x" };
     });
     nas.on("SYNO.Docker.Container", "delete", (p) => {
       assert.equal(p.preserve_profile, "false");
@@ -277,13 +281,26 @@ describe("Docker: create, change, delete, pull", () => {
     assert.equal(created.profile.enable_restart_policy, true);
   });
 
-  test("update: only stopped containers; env set/unset keeps the rest; rename", async () => {
-    assert.match((await h.call("docker_update_container", { name: "pihole", env_set: { A: "b" } })).text, /is running/);
-    const r = await h.call("docker_update_container", { name: "jellyfin", env_set: { TZ: "Europe/Madrid" }, env_unset: ["OLD"], new_name: "jelly" });
+  test("update: only stopped containers; rename and restart in place", async () => {
+    assert.match((await h.call("docker_update_container", { name: "pihole", restart_always: false })).text, /is running/);
+    const r = await h.call("docker_update_container", { name: "jellyfin", new_name: "jelly", restart_always: false });
     assert.equal(r.isError, false, r.text);
-    assert.deepEqual(profiles.jelly.env_variables, [{ key: "TZ", value: "Europe/Madrid" }]);
-    assert.deepEqual(profiles.jelly.network, [{ name: "host", driver: "host" }]);
     assert.equal(r.json.renamed_from, "jellyfin");
+    assert.equal(r.json.restart_always, false);
+    assert.equal(r.json.recreated, undefined);
+  });
+
+  test("update: env needs recreate; with it, delete + create keeps the rest of the profile", async () => {
+    const no = await h.call("docker_update_container", { name: "jelly", env_set: { TZ: "Europe/Madrid" } });
+    assert.equal(no.isError, true);
+    assert.match(no.text, /recreate: true/);
+    const r = await h.call("docker_update_container", { name: "jelly", env_set: { TZ: "Europe/Madrid" }, env_unset: ["OLD"], recreate: true });
+    assert.equal(r.isError, false, r.text);
+    assert.equal(r.json.recreated, true);
+    assert.deepEqual(r.json.env, ["TZ"]);
+    assert.equal(r.json.not_applied, undefined);
+    assert.deepEqual(profiles.jelly.network, [{ name: "host", driver: "host" }]);
+    assert.equal(created.is_run_instantly, "false");
   });
 
   test("delete: refuses running and unknown containers", async () => {

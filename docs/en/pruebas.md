@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-178 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+179 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -122,6 +122,16 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-21, version 0.15.1 (0.15.0's pending real tests)
+
+- At the user's request, against the real NAS:
+  - temporary group and shared folder, created and deleted;
+  - refusals: `photo`, `homes`, `administrators` and the HTTPS redirect over HTTP;
+  - Docker with `hello-world`: pull, create, rename, recreate with variables and a port, start, stop and delete. At the end neither the container, the image nor the folder was left.
+- Bug found and fixed: `docker_update_container` claimed to change variables and ports that DSM ignores (see [api-synology.md](api-synology.md)).
+- `npm test`: 179/179. The Docker mock test now mimics the real NAS (`set` only applies name and restart) and covers recreating.
+- Still not tested on the real NAS, on purpose: `dsm_set_services`, `dsm_power` and `photos_edit_person`.
 
 ### Result 2026-11-21, version 0.15.0 (risky actions)
 

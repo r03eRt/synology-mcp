@@ -322,6 +322,10 @@ Fuentes: el bundle de Photos (otra vez), `admin_center.js`, `ContainerManager/Ma
   - Sin `force`, si hay tareas, la respuesta falla con `errors.runningTasks` (la web pide confirmación y repite con `force: true`) o `errors.blockingTasks` (no deja).
   - `SynologyApiError` guarda ahora `errors` tal cual (antes solo un texto), para poder leer esas listas.
   - Nunca probado en el NAS real.
+- **Pruebas en el NAS real (después de publicar la 0.15.0, a petición del usuario)**:
+  - Grupo y carpeta compartida temporales: creados y borrados; la carpeta nueva solo tenía `#recycle` y acceso para `administrators`. Se rechazaron `photo` (con contenido), `homes`, `administrators` y la redirección HTTPS.
+  - Docker, con la imagen oficial `hello-world` (unos 10 KB, borrada al final): `pull_status` responde primero `{}`, después `{current, total, finished: false…}` y por último `finished: true`, así que la suposición era correcta. Crear (parado, con carpeta montada en solo lectura), renombrar y borrar funcionan.
+  - **Fallo encontrado**: `Docker.Container set` devuelve `{task_id}` y solo aplica el nombre y el reinicio automático. Las variables y los puertos no cambiaron, ni en el perfil ni en el contenedor real, ni siquiera 33 s después ni mandando el perfil con la forma del asistente de creación. La web manda exactamente lo mismo (`updateContainer({name, profile})`), así que la limitación es de DSM, como en Docker, donde esos ajustes solo cambian recreando el contenedor. Corregido en 0.15.1: `docker_update_container` cambia en el sitio lo que DSM aplica, y para el resto exige `recreate: true` (borrar y crear). Comprobado: tras recrear, el contenedor real lleva las variables nuevas y el puerto `18080:80`.
 
 ## Códigos de error frecuentes
 
