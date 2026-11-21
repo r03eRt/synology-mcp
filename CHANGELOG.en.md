@@ -6,6 +6,28 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-21
 
+### 0.16.0: extended real suite, shorter README and new areas
+- **Real suite** (`test:real`): new `test/real/real-nas-areas.test.ts`, covering Photos (checking that the paths exist), Drive, packages, Download Station, administration and the refusals. Anything that creates accounts or goes to the Internet is separate, with opt-in variables (`SYNOLOGY_REAL_ADMIN_WRITES`, `SYNOLOGY_REAL_DOCKER`, `SYNOLOGY_REAL_SEARCH`).
+- **README**: from 556 to about 390 lines.
+  - The tool tables move to a new catalog (`docs/catalogo.md` and `docs/en/catalogo.md`), and the README keeps a summary by area.
+  - The source tree is replaced by a link to the architecture doc.
+- **17 new tools**:
+  - Photos: `photos_upload`, which uploads photos and, optionally, adds them to an album.
+  - Administration:
+    - `dsm_update_group`;
+    - `dsm_app_access` and `dsm_set_app_access` (app privileges);
+    - `dsm_quota` and `dsm_set_quota`;
+    - `dsm_unlock_shared_folder` and `dsm_lock_shared_folder` (encrypted folders);
+    - `dsm_network` and `dsm_firewall`, read-only, because changing the firewall or the network could leave the NAS unreachable;
+    - `dsm_block_ip` and `dsm_unblock_ip`, which refuses private IPs.
+  - Docker: `docker_networks`, `docker_projects`, and CPU and memory limits in `docker_update_container`, which DSM applies without recreating.
+  - Surveillance Station: `surveillance_cameras`, `surveillance_recordings` and `surveillance_set_home_mode`.
+- **Fixed**:
+  - A user's groups (`dsm_create_user` with `groups`, `dsm_update_user`) returned the old groups since 0.12.0. `User.Group join` is a background task and the MCP didn't wait for it to finish. Now it does, and changes from the group side use `Group.Member change`.
+  - **0.15.0 documentation**: editing it lost four roadmap items (a literal `\1` was left) and three tool-reference rows (`photos_delete_album`, `docker_remove_images`, `dsm_delete_user`). They were recovered from git history.
+- Tested against the real NAS (writes only on temporary items), leaving nothing behind.
+- 128 tools (60 in read-only mode). Tests: 192.
+
 ### README brought up to date
 - After 0.15.1: the README (in both languages) was out of date in several places.
 - Tagline, requirements and DSM account permissions: they now include Synology Photos.

@@ -11,7 +11,8 @@ Servidor MCP para un NAS Synology con DSM 7.2 o superior (probado en DSM 7.4.1).
 | [configuracion.md](configuracion.md) | Instalación, variables de entorno, registro en Claude Code, usuario recomendado y seguridad de credenciales |
 | [arquitectura.md](arquitectura.md) | Módulos, flujo de una petición, sesión, tareas en segundo plano |
 | [autenticacion.md](autenticacion.md) | Login Noise v7 de DSM 7.2, fallback v6, SynoToken, y cómo se descubrió |
-| [herramientas.md](herramientas.md) | Referencia de las 111 herramientas: parámetros, API que llaman, comportamiento |
+| [catalogo.md](catalogo.md) | Catálogo para usuarios: todas las herramientas por área, con su tipo (lectura, escritura, destructiva) y qué hacen |
+| [herramientas.md](herramientas.md) | Referencia de las 128 herramientas: parámetros, API que llaman, comportamiento |
 | [api-synology.md](api-synology.md) | Particularidades de la WebAPI de Synology encontradas al probar contra el NAS real |
 | [pruebas.md](pruebas.md) | Cómo se ha probado (NAS simulado y NAS real) y resultados |
 | [analisis-apis.md](analisis-apis.md) | Análisis de las APIs de Drive, Spreadsheet, MailPlus y Calendar, paquetes del NAS y propuesta de siguientes pasos |
@@ -21,7 +22,7 @@ Servidor MCP para un NAS Synology con DSM 7.2 o superior (probado en DSM 7.4.1).
 
 ## Estado actual
 
-- 111 herramientas (0.15.0): 22 de File Station, 9 de estado y salud del NAS, 2 de papeleras, 22 de Drive, 9 de Photos, 17 de Download Station, 12 de Container Manager y 18 de administración de DSM (más 2 con varios NAS). Resumen para usuarios en el [README](../README.es.md).
+- 128 herramientas (0.16.0): 22 de File Station, 9 de estado y salud del NAS, 2 de papeleras, 22 de Drive, 10 de Photos, 17 de Download Station, 14 de Container Manager, 29 de administración de DSM y 3 de Surveillance Station (más 2 con varios NAS). Resumen para usuarios en el [README](../README.es.md).
 - Se instala como plugin de Claude Code (con una skill), extensión de Claude Desktop o paquete npm: ver [distribucion.md](distribucion.md). Publicado en [GitHub](https://github.com/r03eRt/synology-mcp); npm pendiente.
 - Desde 0.6.0 arranca en solo lectura salvo `SYNOLOGY_READ_ONLY=false`, soporta cuentas con verificación en dos pasos (`register-device`) y explica los errores de certificado y de conexión. Plan hacia una librería instalable: [hoja-de-ruta.md](hoja-de-ruta.md).
 - Conexión por IP o nombre, o por QuickConnect (`quickconnect:<ID>`: red local, directa o relé). Varios NAS con `SYNOLOGY_NAS_FILE` (desde 0.10.0).

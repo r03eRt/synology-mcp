@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">111 herramientas</a> ·
+  <a href="#6-herramientas">128 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -48,13 +48,14 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | | Área | Lo más útil |
 |---|---|---|
 | 📁 | **Ficheros** | Buscar por nombre, tipo, tamaño o fecha · leer documentos e imágenes · subir y descargar · mover, comprimir · compartir con enlace |
-| 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · álbumes normales y que se llenan solos · compartir álbumes con enlace |
+| 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · subir a un álbum · álbumes normales y que se llenan solos · compartir álbumes con enlace |
 | ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
 | 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · crear, editar y borrar contenedores · descargar y limpiar imágenes |
 | 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
-| 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas y sus permisos, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) y desactivarlos · reiniciar o apagar |
+| 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas, permisos, privilegios de aplicaciones y cuotas, tareas programadas · servicios inseguros (SMB1, FTP…) y desactivarlos · cortafuegos, bloqueo automático y bloquear IPs · reiniciar o apagar |
+| 📹 | **Surveillance Station** | Cámaras y su estado, grabaciones, modo en casa |
 | 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
 
 ## Instalación rápida
@@ -90,7 +91,7 @@ Después, en Claude Code: `/plugin configure synology@synology-mcp`. Pon la dire
   - por su IP o nombre, en la misma red, por VPN o con un puerto abierto;
   - o por **QuickConnect** (`quickconnect:<tu ID>`), que funciona desde cualquier sitio sin abrir puertos.
 - **Node.js 22.19 o superior** en ese ordenador, para Claude Code o la instalación manual. Claude Desktop trae su propio Node.
-- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Synology Photos, Download Station o Container Manager. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
+- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Synology Photos, Download Station, Container Manager o Surveillance Station. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
 
 ## 2. Prepara un usuario en DSM
 
@@ -182,7 +183,7 @@ claude mcp add synology -s user -- node --env-file=/ruta/.env /ruta/a/synology-m
 | `SYNOLOGY_URL` | NAS URL | — | Dirección de DSM con puerto (`http://IP:5000`, `https://nombre:5001`) o `quickconnect:<ID>` |
 | `SYNOLOGY_USERNAME` | DSM user | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | DSM password | — | Contraseña |
-| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 59 herramientas de escritura (crear, mover, borrar, descargar, compartir, crear contenedores, cambiar permisos o servicios, reiniciar el NAS…) |
+| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 68 herramientas de escritura (crear, mover, borrar, descargar, compartir, crear contenedores, cambiar permisos o servicios, reiniciar el NAS…) |
 | `SYNOLOGY_INSECURE_TLS` | Accept an invalid HTTPS certificate | `false` | Acepta un certificado HTTPS autofirmado, caducado o de otro nombre. Solo en una red de confianza |
 | `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token de `register-device`, para cuentas con 2FA |
 | `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Nombre con el que se registró el dispositivo |
@@ -240,7 +241,8 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
   - no desactiva, quita de administradores ni borra la cuenta con la que entra, ni borra `admin`, `guest`, los grupos del sistema o carpetas del sistema como `homes`;
   - no borra una carpeta compartida que aún tenga ficheros salvo que se pida expresamente, ni activa la redirección a HTTPS mientras entra por HTTP;
   - reiniciar o apagar exige repetir la palabra (`confirm: "reboot"`), y antes enseña las tareas que DSM tiene en marcha;
-  - cambiar las variables, puertos o carpetas de un contenedor obliga a recrearlo, y lo pide expresamente (`recreate: true`).
+  - cambiar las variables, puertos o carpetas de un contenedor obliga a recrearlo, y lo pide expresamente (`recreate: true`);
+  - no bloquea IPs privadas o locales, ni deniega aplicaciones a la cuenta con la que entra.
 - **Secretos que nunca devuelve**, aunque la API del NAS los dé:
   - los **valores** de las variables de entorno de los contenedores (contraseñas de bases de datos, claves de API); solo da sus nombres;
   - las **claves privadas (passkeys)** de los trackers en las URL de torrents, RSS y enlaces magnet, y las credenciales dentro de URLs; salen como `<redacted>`;
@@ -252,172 +254,24 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 ## 6. Herramientas
 
-**Tipo**: *L* = lectura, *E* = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (escritura que pide confirmación). **Admin**: necesita una cuenta administradora de DSM.
+128 herramientas, 60 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
 
-**Rutas**: las de ficheros empiezan por una carpeta compartida (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` es la carpeta personal del usuario. Synology Drive usa `/mydrive/…` (la misma carpeta que `/home/Drive`), `/team-folders/<nombre>/…` o `id:<file_id>`. Los destinos de descargas son carpetas del NAS (`/home/Descargas`), y los contenedores se nombran como en Container Manager.
-
-### Ficheros (File Station): 22
-
-| Herramienta | Tipo | Qué hace |
+| Área | Herramientas | Lo principal |
 |---|---|---|
-| `get_info` | L | Nombre del NAS, si el usuario es admin, soporte de enlaces |
-| `list_shares` | L | Carpetas compartidas con espacio libre y total |
-| `list_files` | L | Contenido de una carpeta (orden, filtro, paginación) |
-| `get_file_info` | L | Detalles de ficheros o carpetas |
-| `search_files` | L | Búsqueda recursiva por nombre, extensión, tamaño, fecha o propietario |
-| `get_dir_size` | L | Tamaño total y número de ficheros de carpetas |
-| `get_md5` | L | MD5 de un fichero |
-| `read_file` | L | Contenido de un fichero de texto o una imagen (hasta 1 MB por defecto) |
-| `download_file` | L | Descargar al ordenador (varios ficheros o una carpeta llegan en ZIP) |
-| `list_sharing_links` | L | Enlaces públicos creados |
-| `list_background_tasks` / `get_task_status` | L | Operaciones largas en curso y su progreso |
-| `create_folder` | E | Crear una carpeta (y sus padres) |
-| `rename` | E | Renombrar |
-| `copy_move` | **D** | Copiar o mover (puede sobrescribir) |
-| `delete` | **D** | Borrar (recursivo; trátalo como permanente) |
-| `upload_file` | **D** | Subir un fichero del ordenador (puede sobrescribir) |
-| `write_text_file` | **D** | Crear o reemplazar un fichero de texto |
-| `compress` | E | Comprimir en ZIP o 7z (con contraseña opcional) |
-| `extract` | **D** | Extraer un archivo (puede sobrescribir) |
-| `create_sharing_link` | E | Enlace público, con contraseña y caducidad opcionales |
-| `delete_sharing_links` | **D** | Borrar enlaces públicos |
+| Ficheros (File Station) | 22 (12 L) | listar, buscar, leer texto e imágenes, subir y bajar, copiar, mover, borrar, comprimir, enlaces públicos |
+| Estado y salud del NAS | 9 (8 L) | sistema, CPU y RAM, almacenamiento, SMART, actualizaciones, notificaciones, registros, paquetes |
+| Liberar espacio | 2 (1 L) | papeleras: cuánto ocupan y vaciarlas |
+| Synology Drive | 22 (12 L) | recientes, estrellas, etiquetas, búsqueda, compartir con personas, enlaces, *file requests*, convertir a Office |
+| Synology Photos | 10 (3 L) | álbumes, lugares y personas, buscar por fecha, lugar o texto (con la ruta de cada foto), subir, álbumes que se llenan solos, compartir |
+| Download Station | 17 (6 L) | descargas, torrents (elegir ficheros), RSS, búsqueda, límites y horario, descargas muertas |
+| Docker (Container Manager) | 14 (6 L) | estado y registros, arrancar y parar, crear, editar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose |
+| Administración de DSM | 29 (10 L) | usuarios, grupos, carpetas y permisos, privilegios de aplicaciones, cuotas, carpetas cifradas, tareas programadas, servicios, red y cortafuegos (lectura), bloquear IPs, reiniciar y apagar |
+| Surveillance Station | 3 (2 L) | cámaras y su estado, grabaciones, modo en casa |
+| Varios NAS | 2 (2 L) | qué NAS hay y cambiar de uno a otro (solo con más de uno) |
 
-### Estado y salud del NAS: 9
+**Rutas**: las de ficheros empiezan por una carpeta compartida (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` es la carpeta personal del usuario. Synology Drive usa `/mydrive/…` (la misma carpeta que `/home/Drive`), `/team-folders/<nombre>/…` o `id:<file_id>`.
 
-| Herramienta | Tipo | Admin | Qué hace |
-|---|---|---|---|
-| `get_system_info` | L | | Modelo, DSM, RAM, temperatura, tiempo encendido, veredicto de salud de DSM y qué paquetes hay |
-| `get_system_utilization` | L | sí | CPU, RAM, red y E/S de discos en vivo |
-| `get_storage_status` | L | sí | Grupos de almacenamiento, RAID, volúmenes (ocupación, avisos) y discos |
-| `get_disk_health` | L | sí | SMART de cada disco: sectores defectuosos y si aumentan, horas encendido, temperatura, atributos que fallan |
-| `check_updates` | L | sí | Actualización de DSM (y si es de seguridad) y paquetes con versión nueva. Solo consulta |
-| `get_notifications` | L | sí | Notificaciones de la campana de DSM (errores, avisos, descargas terminadas…) |
-| `get_packages` | L | sí | Paquetes instalados y su estado; señala los que no funcionan (por ejemplo, incompatibles con este DSM) y avisa si falta Hyper Backup |
-| `package_control` | **D** | sí | Arrancar o parar un paquete. No para los del sistema ni arranca los averiados |
-| `get_system_logs` | L | sí | Registro del sistema o de conexiones, filtrable por nivel, texto y fechas |
-
-### Liberar espacio: 2 (más `docker_remove_images`)
-
-| Herramienta | Tipo | Admin | Qué hace |
-|---|---|---|---|
-| `recycle_bins` | L | sí | Cuánto ocupa la papelera de cada carpeta compartida (de mayor a menor) y cuáles no tienen papelera |
-| `empty_recycle_bin` | **D** | sí | Vaciar las papeleras indicadas. **No se puede deshacer** |
-
-Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`, `search_files` (con `size_from`) y `docker_images`.
-
-### Synology Drive: 22
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `drive_list` / `drive_get_info` | L | Listar una carpeta / detalles de un elemento |
-| `drive_recent` / `drive_starred` | L | Recientes / con estrella |
-| `drive_shared_with_me` / `drive_shared_with_others` | L | Compartido contigo / por ti |
-| `drive_search` | L | Búsqueda por nombre, contenido, tipo, etiqueta, tamaño o fecha |
-| `drive_list_labels` / `drive_list_labelled` | L | Etiquetas / elementos con una etiqueta |
-| `drive_list_permissions` | L | Quién tiene acceso a un elemento |
-| `drive_list_team_folders` | L | Carpetas de equipo |
-| `drive_file_requests` | L | Tus *file requests* (enlaces de subida) y su estado |
-| `drive_star` | E | Poner o quitar estrella |
-| `drive_label` | E | Añadir o quitar etiquetas por nombre (crea las que falten) |
-| `drive_create_label` | E | Crear una etiqueta |
-| `drive_delete_label` | **D** | Borrar una etiqueta (los ficheros se quedan) |
-| `drive_convert_to_office` | E | Convertir Word, Excel, PowerPoint o CSV a Synology Office |
-| `drive_create_file_request` | E | Crear un enlace de subida a una carpeta para gente sin cuenta en el NAS, con contraseña y caducidad opcionales |
-| `drive_update_file_request` | E | Cambiar una *file request* (título, contraseña, caducidad), cerrarla o reabrirla |
-| `drive_share` | **D** | Dar, cambiar o quitar el rol de un usuario o grupo (lector, editor, gestor…) |
-| `drive_link` | **D** | Activar el enlace para compartir (usuarios del NAS o cualquiera) o quitarlo; con contraseña o caducidad, un enlace protegido |
-| `drive_delete_file_request` | **D** | Borrar *file requests* (lo subido se queda) |
-
-### Synology Photos: 9
-
-Espacio `shared` = la carpeta `/photo` (espacio compartido); `personal` = tu `/home/Photos`. Cada foto viene con su ruta en el NAS, así que Claude puede abrirla con `read_file`.
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `photos_albums` | L | Tus álbumes (o los compartidos contigo): fotos, fechas, si están compartidos |
-| `photos_browse` | L | Lugares, personas o etiquetas, con cuántas fotos tiene cada uno |
-| `photos_list` | L | Fotos de un álbum, de una persona, de un lugar, con una etiqueta, entre dos fechas o que coinciden con una búsqueda; con `details`, lugar, cámara y resolución |
-| `photos_create_album` | E | Crear un álbum, con fotos si se quiere |
-| `photos_album_items` | E | Añadir fotos a un álbum o sacarlas (siguen en la biblioteca) |
-| `photos_delete_album` | **D** | Borrar álbumes (las fotos se quedan) |
-| `photos_create_condition_album` | E | Álbum que se llena solo por lugar (por nombre), fechas y/o texto, por ejemplo «Madrid 2025»; dice cuántas fotos entran |
-| `photos_share_album` | **D** | Enlace público a un álbum (ver o descargar), con contraseña y caducidad, o quitarlo |
-| `photos_edit_person` | **D** | Nombrar, ocultar o fusionar personas del reconocimiento de caras |
-
-### Descargas (Download Station): 17
-
-Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `downloads_info` | L | Versión, carpeta por defecto, límites, velocidad actual, cola y horario de velocidad |
-| `downloads_search` | L | Buscar torrents con los motores de búsqueda de Download Station; resultados ordenados por semillas, listos para `downloads_add` |
-| `downloads_list` | L | Descargas con estado, progreso y velocidad. Filtra por estado, tipo, texto o **descargas muertas** (`stalled`: activas pero sin velocidad ni pares durante más de una hora, normalmente torrents retirados del tracker) |
-| `downloads_get` | L | Detalle: origen, ficheros, pares y trackers |
-| `downloads_files` | L | Ficheros de un torrent con su índice, progreso, prioridad y si se descargan |
-| `downloads_rss` | L | Feeds RSS suscritos, o los elementos de uno (filtrables por texto) |
-| `downloads_add` | E | Añadir URLs, magnets o `.torrent` del ordenador, con carpeta de destino y contraseña para descomprimir opcionales |
-| `downloads_pause` / `downloads_resume` | E | Pausar o reanudar |
-| `downloads_set_destination` | E | Cambiar la carpeta de destino |
-| `downloads_set_files` | E | Elegir qué ficheros de un torrent descargar y su prioridad |
-| `downloads_rss_add` / `downloads_rss_refresh` | E | Suscribirse a un feed / actualizar feeds |
-| `downloads_set_limits` | E | Límites de velocidad por protocolo (KB/s) y cuántas descargas van a la vez |
-| `downloads_set_schedule` | E | Horario semanal: horas a toda velocidad, limitadas o en pausa (por ejemplo, solo de noche) |
-| `downloads_delete` | **D** | Quitar descargas. Lo ya completado se conserva; con `move_incomplete`, también lo incompleto |
-| `downloads_rss_delete` | **D** | Quitar suscripciones RSS |
-
-Para limpiar las descargas muertas: pide «¿qué descargas están muertas?» (`downloads_list` con `stalled`) y luego «quítalas» (`downloads_delete`, con confirmación).
-
-### Docker (Container Manager): 12
-
-Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a otros usuarios.
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `docker_list` | L | Contenedores con estado, salud, imagen, tiempo encendido, proyecto Compose, CPU y memoria |
-| `docker_get` | L | Puertos, volúmenes (carpeta del NAS → contenedor), redes, reinicio, último *health check* y **solo los nombres** de las variables de entorno |
-| `docker_logs` | L | Registro de un contenedor, con filtros por texto y fecha. Puede tardar 20–60 s |
-| `docker_images` | L | Imágenes con tamaño, si alguna las usa y si hay actualización |
-| `docker_start` | E | Arrancar contenedores |
-| `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
-| `docker_pull_image` | E | Descargar una imagen de Docker Hub |
-| `docker_create_container` | E | Crear un contenedor: puertos, carpetas, variables, reinicio automático, red |
-| `docker_update_container` | **D** | Renombrar un contenedor parado o cambiar su reinicio automático; variables, puertos o carpetas recreándolo (pregunta antes) |
-| `docker_delete_container` | **D** | Borrar contenedores parados (las carpetas montadas conservan sus datos) |
-| `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
-
-### Administración de DSM: 18
-
-Todas necesitan una cuenta administradora.
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `dsm_users` | L | Usuarios con estado (activo, desactivado, caducado), si son administradores y sus grupos. Sin emails |
-| `dsm_groups` | L | Grupos y sus miembros |
-| `dsm_shared_folders` | L | Carpetas compartidas (ruta, espacio, oculta, cifrada, papelera, USB) o, para una carpeta, quién tiene acceso y de qué tipo |
-| `dsm_user_access` | L | A qué carpetas puede entrar un usuario, sumando sus permisos y los de sus grupos (prevalece la denegación) |
-| `dsm_scheduled_tasks` | L | Tareas programadas: activas o no, próxima ejecución, resultado de la última y resumen del comando sin secretos |
-| `dsm_services` | L | SMB, AFP, NFS, FTP, SSH, Telnet y DSM web, con **avisos** de lo inseguro: SMB1, FTP sin cifrar, Telnet, DSM sin redirección a HTTPS… |
-| `dsm_set_task_enabled` | E | Activar o desactivar tareas programadas |
-| `dsm_run_task` | **D** | Ejecutar una tarea ahora (corre su script, a menudo como root) |
-| `dsm_set_share_access` | **D** | Dar o quitar acceso a carpetas a un usuario o grupo: lectura y escritura, solo lectura, denegado o nada |
-| `dsm_create_user` | E | Crear un usuario con sus grupos; sin contraseña genera una y la enseña una sola vez |
-| `dsm_update_user` | **D** | Cambiar descripción, grupos o contraseña, o desactivar/activar la cuenta. No deja fuera la cuenta del propio MCP |
-| `dsm_delete_user` | **D** | Borrar usuarios y su carpeta personal. No se borra a sí mismo, ni `admin` ni `guest` |
-| `dsm_create_group` / `dsm_delete_group` | E / **D** | Crear un grupo con miembros / borrar grupos (no los del sistema) |
-| `dsm_create_shared_folder` | E | Crear una carpeta compartida (después, dar acceso con `dsm_set_share_access`) |
-| `dsm_delete_shared_folder` | **D** | Borrar carpetas compartidas **y su contenido**. Rechaza las que no están vacías salvo que se pida expresamente |
-| `dsm_set_services` | **D** | Versión mínima de SMB (quitar SMB1), FTP, Telnet, SSH y su puerto, redirección a HTTPS |
-| `dsm_power` | **D** | Reiniciar o apagar el NAS (pide repetir la palabra; antes avisa de las tareas en marcha) |
-
-### Varios NAS: 2 (solo si hay más de uno configurado)
-
-| Herramienta | Tipo | Qué hace |
-|---|---|---|
-| `list_nas` | L | NAS configurados, cuál está activo y cómo se llega a cada uno (dirección; con QuickConnect, si es red local, directa o relé) |
-| `use_nas` | L | Cambiar el NAS activo; las demás herramientas pasan a actuar sobre él. No cambia nada en ningún NAS |
-
-Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [docs/herramientas.md](docs/herramientas.md).
+La lista completa, herramienta a herramienta, está en el **[catálogo](docs/catalogo.md)**. Los parámetros y la API de DSM que usa cada una, en la [referencia técnica](docs/herramientas.md).
 
 ## 7. Ejemplos de peticiones
 
@@ -455,11 +309,18 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 - «Crea un usuario para Lucía con acceso de solo lectura a photo.»
 - «Desactiva SMB1 y Telnet.»
 - «Crea una carpeta compartida Proyectos que solo pueda usar el grupo familia.»
+- «¿Qué IPs están bloqueadas? Bloquea 203.0.113.7 una semana.»
+- «¿Qué aplicaciones puede usar marta? Quítale el FTP.»
 
 **Fotos**
 - «Enséñame las fotos de Escocia de julio de 2025.»
 - «Haz un álbum con las mejores de Madrid.»
 - «Abre la última foto que ha subido Marta.»
+- «Sube estas fotos al álbum de Escocia.»
+
+**Cámaras**
+- «¿Funcionan las cámaras? ¿Está grabando algo?»
+- «Activa el modo en casa.»
 
 **Docker**
 - «¿Qué contenedores están parados? Enséñame los últimos errores de pihole.»
@@ -507,39 +368,16 @@ npm run build        # dist/ (paquete npm)
 npm run bundle       # plugin/server/synology-mcp.cjs: el servidor en un solo fichero, para el plugin y la extensión
 npm run pack:mcpb    # build/synology-mcp-<versión>.mcpb
 npm test             # regenera el bundle y ejecuta las pruebas con un NAS simulado, sin red
-SYNOLOGY_ENV_FILE=.env.admin npm run test:real   # opcional: contra un NAS real, en una carpeta temporal de /home
+SYNOLOGY_ENV_FILE=.env.admin npm run test:real   # opcional: contra un NAS real (lecturas y elementos temporales que borra)
+# extra, opcional: SYNOLOGY_REAL_ADMIN_WRITES=1 (usuario, grupo y carpeta temporales), SYNOLOGY_REAL_DOCKER=1 (hello-world), SYNOLOGY_REAL_SEARCH=1 (búsqueda de torrents)
 ```
 
-```
-src/
-  index.ts                 arranque (stdio) y comando register-device
-  server.ts                creación del servidor y registro de herramientas
-  config.ts                variables de entorno
-  synology/client.ts       login (Noise v7 / v6 / 2FA), peticiones, subidas, errores de conexión
-  synology/errors.ts       textos de los códigos de error
-  synology/noise.ts        handshake Noise del login de DSM 7.2
-  synology/quickconnect.ts resolución de un ID de QuickConnect (red local, directa o relé)
-  synology/pool.ts         varios NAS: el cliente activo y el cambio entre ellos
-  tools/filestation.ts     ficheros
-  tools/system.ts          get_system_info, utilización y almacenamiento
-  tools/health.ts          SMART, actualizaciones, notificaciones y registros
-  tools/space.ts           papeleras
-  tools/drive.ts           Synology Drive
-  tools/photos.ts          Synology Photos
-  tools/downloadstation.ts Download Station (tareas, ficheros de torrent, RSS, búsqueda, límites, horario)
-  tools/docker.ts          Container Manager
-  tools/nas.ts             list_nas y use_nas (con varios NAS)
-  tools/admin.ts           administración de DSM (dsm_*)
-test/                      unitarias, NAS simulado (test/mock) y NAS real (test/real)
-plugin/                    plugin de Claude Code: manifiesto, skill y servidor empaquetado
-.claude-plugin/            marketplace
-mcpb/manifest.json         extensión de Claude Desktop
-docs/                      documentación técnica (en español)
-```
+Organización del código y cómo fluye una llamada: [arquitectura](docs/arquitectura.md).
 
 Documentación técnica en [docs/](docs/README.md):
 
-- [herramientas](docs/herramientas.md): referencia completa;
+- [catálogo de herramientas](docs/catalogo.md): todas, por área;
+- [herramientas](docs/herramientas.md): referencia técnica completa;
 - [API de Synology](docs/api-synology.md): comportamientos no documentados descubiertos al probar;
 - [autenticación](docs/autenticacion.md);
 - [arquitectura](docs/arquitectura.md);
@@ -552,5 +390,5 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 ## 11. Limitaciones y próximos pasos
 
 - **npm**: el paquete no está publicado todavía.
-- **Sin probar en la práctica**: 2FA y la extensión de Claude Desktop instalada. Además, a propósito, solo probados con el NAS simulado: cambiar servicios (`dsm_set_services`), reiniciar o apagar (`dsm_power`) y editar personas en Photos (el NAS de pruebas no tiene). Los enlaces públicos y las *file requests* de Drive están desactivados en el NAS de pruebas, así que solo están probados con el simulado.
-- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), subir desde Photos, editar grupos, cuotas, cifrado, cortafuegos y red, proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **Sin probar en la práctica**: 2FA y la extensión de Claude Desktop instalada. Además, a propósito, solo probados con el NAS simulado: cambiar servicios (`dsm_set_services`), reiniciar o apagar (`dsm_power`), editar personas en Photos y las carpetas cifradas (el NAS de pruebas no tiene) y las grabaciones (su única cámara está sin conexión). Los enlaces públicos y las *file requests* de Drive están desactivados en el NAS de pruebas, así que solo están probados con el simulado.
+- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), cambiar el cortafuegos o la red (solo lectura: un error te dejaría sin acceso), cifrar o descifrar del todo carpetas (solo montarlas), fotos y vídeo en directo de las cámaras, crear proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).

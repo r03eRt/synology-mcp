@@ -117,6 +117,13 @@ describe("DSM groups, shared folders, services and power", () => {
       return { users: [{ name: "marta" }] };
     });
     nas.on("SYNO.Core.User.Group", "join", () => ({}));
+    const members: Record<string, string[]> = {};
+    nas.on("SYNO.Core.Group.Member", "change", (p) => {
+      const g = JSON.parse(p.group);
+      members[g] = [...new Set([...(members[g] ?? []).filter((m) => !JSON.parse(p.remove_member).includes(m)), ...JSON.parse(p.add_member)])];
+      return {};
+    });
+    nas.on("SYNO.Core.Group.Member", "list", (p) => ({ users: (members[JSON.parse(p.group)] ?? []).map((name) => ({ name })) }));
     nas.on("SYNO.Core.Share", "list", () => ({ shares: shareNames.map((name) => ({ name })) }));
     nas.on("SYNO.Core.Share", "create", (p) => {
       const info = JSON.parse(p.shareinfo);

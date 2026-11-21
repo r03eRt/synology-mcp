@@ -14,6 +14,9 @@ import { humanSize, ok, safe } from "./format.js";
  */
 
 const CONTAINER = "SYNO.Docker.Container";
+/** cpu_priority values of the Container Manager wizard (generateCpuPriorityRow): 10 low, 50 medium, 90 high, anything else automatic. */
+const CPU_PRIORITY = { auto: 0, low: 10, medium: 50, high: 90 } as const;
+const CPU_PRIORITY_NAME: Record<number, string> = { 0: "auto", 10: "low", 50: "medium", 90: "high" };
 
 interface ListedContainer {
   name: string;
@@ -242,6 +245,38 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
     }),
   );
 
+  server.registerTool(
+    "docker_networks",
+    {
+      title: "Container Manager: networks",
+      description: "Docker networks on the NAS: name, driver (bridge, host…), subnet and gateway, and which containers use each one.",
+      annotations: READ,
+    },
+    safe(async () => {
+      const { network } = await client.request<{ network: { name: string; driver: string; subnet?: string; gateway?: string; containers?: string[]; enable_ipv6?: boolean }[] }>("SYNO.Docker.Network", "list", {}, 1);
+      return ok({
+        total: network.length,
+        networks: network.map((n) => ({ name: n.name, driver: n.driver, ...(n.subnet && { subnet: n.subnet }), ...(n.gateway && { gateway: n.gateway }), containers: n.containers ?? [] })),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "docker_projects",
+    {
+      title: "Container Manager: Compose projects",
+      description:
+        "Docker Compose projects created in Container Manager: name, folder, status and containers. Projects started outside Container Manager (docker compose on SSH) are not listed; docker_list shows their project from the container labels.",
+      annotations: READ,
+    },
+    safe(async () => {
+      const r = await client.request<Record<string, { name?: string; path?: string; status?: string; containerIds?: string[]; containers?: { name?: string }[]; updated_at?: string }>>("SYNO.Docker.Project", "list", {}, 1);
+      // The list is an object keyed by project id.
+      const projects = Object.entries(r ?? {}).map(([id, p]) => ({ id, name: p.name, path: p.path, status: p.status, containers: (p.containers ?? []).map((c) => c.name).filter(Boolean) }));
+      return ok({ total: projects.length, projects, ...(!projects.length && { note: "No Compose projects in Container Manager." }) });
+    }),
+  );
+
   if (opts.readOnly) return;
 
   const action = (method: "start" | "stop" | "restart") => async ({ names: list }: { names: string[] }) => {
@@ -457,6 +492,8 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
         name: z.string().min(1),
         new_name: containerName.optional(),
         restart_always: z.boolean().optional(),
+        cpu_priority: z.enum(["auto", "low", "medium", "high"]).optional().describe("CPU share when the NAS is busy"),
+        memory_limit_mb: z.number().int().min(0).optional().describe("0 = no limit"),
         env_set: z.record(z.string(), z.string()).optional().describe("Needs recreate"),
         env_unset: z.array(z.string().min(1)).optional().describe("Needs recreate"),
         ports: z.array(portSchema).optional().describe("Replaces all port mappings. Needs recreate"),
@@ -477,12 +514,15 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
           "Environment variables, ports, folders and command can only change by recreating the container (DSM silently ignores them on an existing one). Anything stored inside the container outside its mounted folders would be lost. Confirm with the user, then call again with recreate: true.",
         );
       }
-      if (!needsRecreate && a.new_name === undefined && a.restart_always === undefined) throw new Error("Nothing to change");
+      if (!needsRecreate && a.new_name === undefined && a.restart_always === undefined && a.cpu_priority === undefined && a.memory_limit_mb === undefined) throw new Error("Nothing to change");
       if (a.new_name && (await listAll()).some((x) => x.name.toLowerCase() === a.new_name!.toLowerCase() && x.name !== a.name)) throw new Error(`A container called ${a.new_name} already exists`);
       const { profile } = await client.request<{ profile: Profile }>(CONTAINER, "get", { name: json(a.name) }, 1);
       const next: Profile = { ...profile };
       if (a.new_name) next.name = a.new_name;
       if (a.restart_always !== undefined) next.enable_restart_policy = a.restart_always;
+      // Container Manager's priorities (CPU shares): 10 low, 50 medium, 90 high, 0 automatic.
+      if (a.cpu_priority !== undefined) next.cpu_priority = CPU_PRIORITY[a.cpu_priority];
+      if (a.memory_limit_mb !== undefined) next.memory_limit = a.memory_limit_mb * 1024 * 1024;
       if (a.env_set || a.env_unset) {
         const env = new Map((profile.env_variables ?? []).map((e) => [e.key, e.value]));
         for (const k of a.env_unset ?? []) env.delete(k);
@@ -519,6 +559,8 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
       for (const k of a.env_unset ?? []) if (envKeys.includes(k)) notApplied.push(`env ${k} still set`);
       if (a.restart_always !== undefined && after.enable_restart_policy !== a.restart_always) notApplied.push("restart_always");
       if (a.ports && (after.port_bindings ?? []).length !== a.ports.length) notApplied.push("ports");
+      if (a.cpu_priority !== undefined && after.cpu_priority !== CPU_PRIORITY[a.cpu_priority]) notApplied.push("cpu_priority");
+      if (a.memory_limit_mb !== undefined && after.memory_limit !== a.memory_limit_mb * 1024 * 1024) notApplied.push("memory_limit_mb");
       return ok({
         container: after.name,
         ...(a.new_name && { renamed_from: a.name }),
@@ -526,6 +568,8 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
         env: envKeys,
         restart_always: after.enable_restart_policy,
         ports: (after.port_bindings ?? []).map((p) => `${p.host_port}:${p.container_port}/${p.type}`),
+        cpu_priority: CPU_PRIORITY_NAME[Number(after.cpu_priority ?? 0)] ?? after.cpu_priority,
+        memory_limit_mb: Number(after.memory_limit ?? 0) / 1024 / 1024,
         ...(notApplied.length && { not_applied: notApplied }),
         note: "It is stopped: start it with docker_start.",
       });

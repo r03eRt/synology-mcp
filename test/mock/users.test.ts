@@ -57,12 +57,21 @@ describe("DSM user management", () => {
       for (const n of JSON.parse(p.name)) users.delete(n);
       return {};
     });
+    // Like the real NAS: join is a background task; the change shows once join_status says finish.
+    const pending = new Map<string, () => void>();
     nas.on("SYNO.Core.User.Group", "join", (p) => {
       const u = users.get(JSON.parse(p.name))!;
       const join: string[] = JSON.parse(p.join_group);
       const leave: string[] = JSON.parse(p.leave_group);
-      u.groups = [...new Set([...u.groups.filter((g) => !leave.includes(g)), ...join])];
-      return {};
+      const task = `@administrators/JOIN${pending.size}`;
+      pending.set(task, () => (u.groups = [...new Set([...u.groups.filter((g) => !leave.includes(g)), ...join])]));
+      return { task_id: task };
+    });
+    nas.on("SYNO.Core.User.Group", "join_status", (p) => {
+      const task = JSON.parse(p.task_id);
+      pending.get(task)?.();
+      pending.delete(task);
+      return { finish: true };
     });
     nas.on("SYNO.Core.User.Group", "get", (p) => ({ groups: users.get(JSON.parse(p.name))!.groups }));
     nas.on("SYNO.Core.User.UsernamePolicy", "list", () => ["admin", "test", "pi"]);

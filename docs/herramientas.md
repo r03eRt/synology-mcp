@@ -2,7 +2,7 @@
 
 # Herramientas
 
-111 herramientas en ocho grupos (113 con varios NAS, ver el final): File Station (22), estado y salud del NAS (9), papeleras (2), Synology Drive (22), Synology Photos (9), Download Station (17), Container Manager (12) y administración de DSM (18). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 3 + 6 + 4 + 6 = 52); con `SYNOLOGY_READ_ONLY=false` registra las 111. El [README](../README.es.md#6-herramientas) tiene el resumen con el tipo de cada una.
+128 herramientas en nueve grupos (130 con varios NAS, ver el final): File Station (22), estado y salud del NAS (9), papeleras (2), Synology Drive (22), Synology Photos (10), Download Station (17), Container Manager (14), administración de DSM (29) y Surveillance Station (3). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 3 + 6 + 6 + 10 + 2 = 60); con `SYNOLOGY_READ_ONLY=false` registra las 128. El [catálogo](catalogo.md) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -337,15 +337,17 @@ Código: [src/tools/photos.ts](../src/tools/photos.ts), desde 0.14.0. La API no 
 
 `photos_list` con fechas **y** otro filtro: la búsqueda ignora `time` y `list_with_filter` no combina bien con los ids (ver [api-synology.md](api-synology.md)). Por eso el MCP pide páginas de 500 y filtra las fechas él mismo, hasta 5000 elementos; si llega al límite, lo dice en `note`.
 
-## Escritura (6)
+## Escritura (7)
 
 | Herramienta | API | Parámetros | Qué hace |
 |---|---|---|---|
 | `photos_create_album` | `Foto.Browse.NormalAlbum create` v1 (`name`, `item`) | `name`, `item_ids` | Crea un álbum normal. Las fotos no se mueven ni se copian |
 | `photos_album_items` | `NormalAlbum add_item` / `delete_item` v1 (`id`, `item`) | `album_id`, `add`, `remove` | Añadir o sacar fotos. `add_item` devuelve `error_list` con las que no pudo añadir (`not_added`). Los álbumes condicionales se llenan solos |
-\1| `photos_create_condition_album` (0.15.0) | `Foto/FotoTeam.Search.Filter list` v4 (`setting={geocoding: true}`, el árbol de lugares, hasta ~30 s) + `Foto.Browse.ConditionAlbum peek_item_count` y `create` v4 (`name`, `condition={user_id, item_type: [4,3,0,2], geocoding, time, keyword}`) | `name`, `place` o `place_id`, `from`/`to`, `keyword`, `space` | Álbum que se llena solo con lo que cumpla las condiciones. Busca el lugar por nombre en el árbol del filtro (exacto, o si no, que lo contenga); si hay varios, no crea nada y devuelve `candidates` con su ruta (`Chile > Santiago`). Dice cuántas fotos entran (`photos`). `user_id` 0 es el espacio compartido |
+| `photos_delete_album` | `Foto.Browse.Album delete` v1 (`id=[...]`) | `album_ids` | Borra los álbumes, no las fotos. **Destructiva** |
+| `photos_create_condition_album` (0.15.0) | `Foto/FotoTeam.Search.Filter list` v4 (`setting={geocoding: true}`, el árbol de lugares, hasta ~30 s) + `Foto.Browse.ConditionAlbum peek_item_count` y `create` v4 (`name`, `condition={user_id, item_type: [4,3,0,2], geocoding, time, keyword}`) | `name`, `place` o `place_id`, `from`/`to`, `keyword`, `space` | Álbum que se llena solo con lo que cumpla las condiciones. Busca el lugar por nombre en el árbol del filtro (exacto, o si no, que lo contenga); si hay varios, no crea nada y devuelve `candidates` con su ruta (`Chile > Santiago`). Dice cuántas fotos entran (`photos`). `user_id` 0 es el espacio compartido |
 | `photos_share_album` (0.15.0) | `Foto.Sharing.Passphrase set_shared` v1 (`policy="album"`, `album_id`, `enabled`) + `update` v1 (`passphrase`, `permission=[{action: "update", role: "view"/"download", member: {type: "public"}}]`, `password`, `expiration`) | `album_id`, `access` (`view`/`download`/`off`), `password`, `expires` | Enlace público al álbum. Devuelve `url` (`/mo/sharing/<passphrase>`). `off` lo quita. **Destructiva** y *open world* |
 | `photos_edit_person` (0.15.0) | `Browse.Person set` v1 (`id`, `name`), `show` v1 (`id`, `show`) y `merge` v2 (`target_id`, `merged_id`, `name`) | `person_id`, `name`, `hidden`, `merge_ids`, `space` | Nombrar, ocultar o fusionar personas. Fusionar no se puede deshacer. **Destructiva**. Solo probada con el NAS simulado (en el de pruebas no hay personas) |
+| `photos_upload` (0.16.0) | `FileStation.Upload` a `/home/Photos/<carpeta>` o `/photo/<carpeta>`; con `album_id`, `Browse.RecentlyAdded list` v6 cada 5 s (hasta 2 min) + `NormalAlbum add_item` | `local_paths` (hasta 50), `space` (`personal` por defecto), `folder`, `album_id` | Sube fotos o vídeos del ordenador a una carpeta del espacio elegido; Photos los indexa solo. Con `album_id` espera a que aparezcan entre los añadidos recientemente (comparando la ruta completa) y los mete en el álbum. No sobrescribe. Probada en el NAS real: una foto de 2,3 MB se indexó en 7 s. Una imagen de 1×1 píxel no llegó a indexarse en 2 minutos |
 
 No incluido: subir fotos (ya se puede con `upload_file` a `/photo` o `/home/Photos`), compartir con usuarios concretos (solo enlace público), álbumes condicionales por persona, etiqueta o cámara, mover o borrar fotos (es File Station) y las fotos similares.
 
@@ -426,7 +428,7 @@ Código: [src/tools/docker.ts](../src/tools/docker.ts), desde 0.8.0. `SYNO.Docke
 
 **Secretos**: `Container get` devuelve las variables de entorno **con sus valores** (contraseñas de bases de datos, claves de API…). `docker_get` solo devuelve sus nombres (`env_names`) y nunca la sección `profile`, que también las trae. Lo comprueban una prueba simulada y otra contra el NAS real.
 
-## Lectura (4)
+## Lectura (6)
 
 | Herramienta | API | Parámetros | Qué devuelve |
 |---|---|---|---|
@@ -434,6 +436,8 @@ Código: [src/tools/docker.ts](../src/tools/docker.ts), desde 0.8.0. `SYNO.Docke
 | `docker_get` | `Container get` | `name` | `image`, `status`, `health` con `last_check` (hora, código y salida del último *health check*), `created`, `started`, `restart_policy`, `restart_count`, `network_mode`, `ports` ("8080 → 80/tcp"), `exposed_ports`, `volumes` (`nas` → `container`, `read_only`), `networks` con IP, `command`, `project`, `memory`/`memory_pct` y `env_names` |
 | `docker_logs` | `Container.Log get` | `name`, `keyword`, `from`/`to` (`YYYY-MM-DD`), `limit` (50), `offset` | `total`, `returned` y `lines` (`time`, `stream` si no es stdout, `text`), lo más reciente primero. Espera hasta 120 s, porque Container Manager tarda 20–60 s con registros largos |
 | `docker_images` | `Image list` (`show_dsm=false`) + `Container list` | — | `total`, `total_size` e imágenes con `repository`, `tags`, `size`, `created`, `in_use` (si algún contenedor la usa) y `update_available` |
+| `docker_networks` (0.16.0) | `Docker.Network list` v1 | — | Redes con `driver`, `subnet`, `gateway` y los contenedores de cada una |
+| `docker_projects` (0.16.0) | `Docker.Project list` v1 (un objeto por id de proyecto) | — | Proyectos Compose de Container Manager: `name`, `path`, `status` y contenedores. Los creados fuera de Container Manager no salen (en el NAS de pruebas, ninguno) |
 
 ## Escritura (8)
 
@@ -444,9 +448,10 @@ Solo con `SYNOLOGY_READ_ONLY=false`. Arrancar, parar y reiniciar devuelven `{ do
 | `docker_start` | `Container start` | no destructiva, idempotente | Arrancar uno que ya está en marcha no hace nada |
 | `docker_stop` | `Container stop` | **destructiva**, idempotente | No borra datos, pero corta el servicio del contenedor (DNS, gestor de contraseñas…). Se marca destructiva para que el cliente pida confirmación |
 | `docker_restart` | `Container restart` | **destructiva** | Corte breve del servicio |
-\1| `docker_pull_image` (0.15.0) | `Docker.Image pull_start` v1 (`repository`, `tag`) + `pull_status` v1 (`task_id`) cada 3 s, hasta 10 min | `image` (`repo[:tag]`) | Descarga una imagen de Docker Hub y espera a `finished: true`. *Open world*. Probada en el NAS real con `hello-world` |
+| `docker_remove_images` | `Image list` + `Container list` + `Image delete` (`images=[{repository, tags:[tag]}]`) | **destructiva** | Recibe `"repositorio:etiqueta"`, o solo el repositorio para una imagen sin etiqueta. Entiende registros con puerto (`registry.local:5000/tool:1.0`). **Rechaza las imágenes que usa algún contenedor**, aunque esté parado, diciendo cuáles. Devuelve `removed` (con el espacio liberado) y `failed`. Desde 0.9.0 |
+| `docker_pull_image` (0.15.0) | `Docker.Image pull_start` v1 (`repository`, `tag`) + `pull_status` v1 (`task_id`) cada 3 s, hasta 10 min | `image` (`repo[:tag]`) | Descarga una imagen de Docker Hub y espera a `finished: true`. *Open world*. Probada en el NAS real con `hello-world` |
 | `docker_create_container` (0.15.0) | `Docker.Image list` + `FileStation.List getinfo` (las carpetas) + `Docker.Container create` v1 (`is_run_instantly`, `profile`) | `name`, `image`, `ports` (`[{host, container, protocol}]`), `volumes` (`[{nas_path, container_path, read_only}]`), `env`, `restart_always` (`true`), `command`, `network` (`bridge`/`host`), `start` (`true`) | Crea un contenedor con el perfil por defecto del asistente de la web (`getDefaultProfile`). Comprueba que el nombre esté libre, que la imagen esté en el NAS y que existan las carpetas. Devuelve los nombres de las variables, nunca sus valores |
-| `docker_update_container` (0.15.0; corregida en 0.15.1) | `Docker.Container get` + `set` v1 (`name`, `edit_name`, `profile`) para nombre y reinicio; con `recreate`, `delete` + `create` con el perfil modificado | `name`, `new_name`, `restart_always`, `env_set`, `env_unset`, `ports`, `volumes`, `command`, `recreate` | Cambia un contenedor **parado**. **DSM solo aplica en `set` el nombre y el reinicio automático**: variables, puertos, carpetas y comando los ignora sin error (probado en el NAS real). Para esos hace falta `recreate: true`, que borra y vuelve a crear el contenedor (se pierde lo que tenga dentro fuera de las carpetas montadas); si la creación falla, crea otra vez el original. Al final lee el perfil y devuelve `not_applied` si algo no quedó. Rechaza los de paquetes de DSM. **Destructiva** |
+| `docker_update_container` (0.15.0; corregida en 0.15.1) | `Docker.Container get` + `set` v1 (`name`, `edit_name`, `profile`) para nombre y reinicio; con `recreate`, `delete` + `create` con el perfil modificado | `name`, `new_name`, `restart_always`, `cpu_priority` (`auto`/`low`/`medium`/`high` = 0/10/50/90), `memory_limit_mb` (0.16.0), `env_set`, `env_unset`, `ports`, `volumes`, `command`, `recreate` | Cambia un contenedor **parado**. **DSM solo aplica en `set` el nombre, el reinicio automático y los límites de CPU y memoria** (estos, comprobados en 0.16.0): variables, puertos, carpetas y comando los ignora sin error (probado en el NAS real). Para esos hace falta `recreate: true`, que borra y vuelve a crear el contenedor (se pierde lo que tenga dentro fuera de las carpetas montadas); si la creación falla, crea otra vez el original. Al final lee el perfil y devuelve `not_applied` si algo no quedó. Rechaza los de paquetes de DSM. **Destructiva** |
 | `docker_delete_container` (0.15.0) | `Docker.Container delete` v1 (`force=false`, `preserve_profile=false`) | `names` | Borra contenedores parados; los datos de las carpetas montadas se quedan. **Destructiva** |
 
 No incluido (por ahora): límites de CPU y memoria, redes propias, enlaces entre contenedores, privilegios y *capabilities*, `Image prune` y proyectos Compose. `prune` no se expone porque borra de golpe sin decir qué; `docker_images` más `docker_remove_images` hacen lo mismo de forma explícita. `SYNO.Docker.Project list` devuelve `{}` en este NAS porque su proyecto Compose se creó fuera de Container Manager; el proyecto de cada contenedor se lee de sus etiquetas `com.docker.compose.project`.
@@ -457,7 +462,7 @@ Código: [src/tools/admin.ts](../src/tools/admin.ts), desde 0.11.0. Todas necesi
 
 **Secretos**: los scripts de las tareas programadas suelen llevar contraseñas (`docker run -e PASSWORD=…`), así que solo se devuelve `command_preview` con los valores ocultos (`redactCommand`). Tampoco se devuelven los emails de los usuarios.
 
-## Lectura (6)
+## Lectura (10)
 
 | Herramienta | API | Parámetros | Qué devuelve |
 |---|---|---|---|
@@ -467,8 +472,12 @@ Código: [src/tools/admin.ts](../src/tools/admin.ts), desde 0.11.0. Todas necesi
 | `dsm_user_access` | `Core.Share.Permission list_by_user` | `user` | Por carpeta: `explicit`; `from_groups` (campo `inherit`: `rw`, `ro`, `na` o `-`); y `effective` (gana la denegación; si no hay, el mayor de los dos) |
 | `dsm_scheduled_tasks` | `Core.TaskScheduler list` v3 + `get_history_status_list` por tarea | — | `id`, `name`, `type`, `owner` (`real_owner`), `enabled`, `next_run`, `last_run` (inicio, fin, `exit_code` y `ok`/`failed`) y, en los scripts, `command_preview` sin secretos |
 | `dsm_services` | `get` de `Core.FileServ.SMB`, `.AFP`, `.NFS`, `.FTP`, `Core.Terminal` y `Core.Web.DSM` | — | Estado de SMB (con versión mínima), AFP, NFS, FTP/FTPS, SSH (con puerto), Telnet y DSM web (puertos, redirección a HTTPS y HSTS). Además, `warnings` cuando: se permite SMB1 (`smb_min_protocol=0`), hay FTP sin cifrar, Telnet está activo, no hay redirección a HTTPS o SSH usa el puerto 22 |
+| `dsm_app_access` (0.16.0) | `Core.AppPriv.App list` v2 + `Core.AppPriv.Rule list` v1 por aplicación (`app_id`) | `name`, `type` (`user`/`group`) | Por aplicación: lo que tiene puesto ese usuario o grupo (`allow`, `deny`, `custom (by IP)` o `not set`) y la regla de `everyone`. Una regla con `0.0.0.0` vale para todas las IP |
+| `dsm_quota` (0.16.0) | `Core.Quota get` v1 (`subject_type=user`, `support_share_quota`) | `user` | Cuota y uso de un usuario en cada carpeta compartida, en MB (0 = sin límite), y `limited` con las que tienen límite |
+| `dsm_network` (0.16.0) | `Core.Network get` + `Core.Network.Interface list` | — | Nombre del servidor, puerta de enlace, DNS y cada interfaz (IP, máscara, DHCP o fija, velocidad, conectada) |
+| `dsm_firewall` (0.16.0) | `Core.Security.Firewall get` + `Firewall.Profile get` (`name` del perfil activo) + `Core.Security.AutoBlock get` + `AutoBlock.Rules list` (`type` `deny` y `allow`) | — | Cortafuegos (activo, perfil, qué pasa si ninguna regla coincide y las reglas: acción, puertos, protocolo, origen) y bloqueo automático (regla, cuánto dura, IPs bloqueadas con país y fechas, IPs siempre permitidas) |
 
-## Escritura (12)
+## Escritura (19)
 
 Solo con `SYNOLOGY_READ_ONLY=false`. **No probadas contra el NAS real**, porque cambian permisos, cuentas o ejecutan scripts. Se probaron con el NAS simulado y con los mismos parámetros que manda la web. Excepción: las de usuarios (`dsm_create_user`, `dsm_update_user`, `dsm_delete_user`). Probadas en el NAS real el 2026-11-20 con un usuario desechable: crearlo con contraseña generada, entrar con ella, cambiarla (la antigua da 400 y la nueva entra), desactivarlo (al entrar da 401, "Account disabled") y borrarlo. También se comprobó que se niega a borrar la cuenta del MCP. No se probó en el NAS real añadir o quitar grupos.
 
@@ -479,16 +488,38 @@ Solo con `SYNOLOGY_READ_ONLY=false`. **No probadas contra el NAS real**, porque 
 | `dsm_set_share_access` | `Core.Share.Permission set_by_user_group` (`name`, `user_group_type=local_user` o `local_group`, `permissions=[{name: carpeta, is_writable, is_readonly, is_deny, is_custom: false}]`) | `name`, `type` (`user`/`group`), `shares`, `access` (`read-write`/`read-only`/`deny`/`none`) | **Destructiva**: cambia quién ve qué. `none` quita el permiso explícito |
 | `dsm_create_user` (0.12.0) | `Core.User get` (¿existe? 3106 = no) + `Core.User.PasswordPolicy check` + `Core.User create` (`name`, `password`, `description`, `email`, `cannot_chg_passwd`, `expired="normal"`, `notify_by_email=false`) + `Core.User.Group join` (`join_group`, `leave_group`) + `Core.User.UsernamePolicy list` | `name`, `password` (opcional), `description`, `email`, `groups`, `cannot_change_password` | Crea un usuario local, siempre en `users` y en los grupos que se den. Sin `password`, genera una de 20 caracteres y la devuelve **una sola vez** (`generated_password`); la que se da no se devuelve. Avisa si el nombre está en la lista de nombres comunes de DSM (`admin`, `test`, `pi`…). No da acceso a carpetas: eso es `dsm_set_share_access` |
 | `dsm_update_user` (0.12.0) | `Core.User set` (solo los campos que cambian: `description`, `expired="now"`/`"normal"`, `password`) + `Core.User.Group join` | `name`, `description`, `disabled`, `add_groups`, `remove_groups`, `password` o `generate_password` | **Destructiva** (puede dejar a alguien sin acceso). Rechaza desactivar la cuenta del propio MCP o quitarla de `administrators`, y quitar a nadie de `users` |
-\1| `dsm_create_group` (0.15.0) | `Core.Group list` + `Core.Group create` v1 (`name`, `description`) + `Core.User.Group join` por miembro | `name`, `description`, `members` | Crea un grupo. Comprueba antes que no exista y que existan los miembros |
+| `dsm_delete_user` (0.12.0) | `Core.User get` por usuario + `Core.User delete` (`name=[...]`, hasta 10 min como la web) | `names` | **Destructiva**: DSM borra también la carpeta personal (`/homes/<nombre>`). Rechaza la cuenta del propio MCP, `admin`, `guest` y `root`, y los usuarios que no existen (sin borrar ninguno) |
+| `dsm_create_group` (0.15.0) | `Core.Group list` + `Core.Group create` v1 (`name`, `description`) + `Core.User.Group join` por miembro | `name`, `description`, `members` | Crea un grupo. Comprueba antes que no exista y que existan los miembros |
 | `dsm_delete_group` (0.15.0) | `Core.Group delete` v1 (`name=[...]`) | `names` | Rechaza `administrators`, `users` y `http`. Los miembros se quedan sin lo que les daba el grupo. **Destructiva** |
 | `dsm_create_shared_folder` (0.15.0) | `Core.Share create` v1 (`name`, `shareinfo={name, vol_path, desc, name_org: "", enable_recycle_bin, recycle_bin_admin_only, hidden}`) | `name`, `volume` (`/volume1`), `description`, `recycle_bin` (`true`), `recycle_bin_admin_only`, `hidden` | Sin cifrado, cuota ni WORM. Solo los administradores tienen acceso hasta usar `dsm_set_share_access`. La web cifra `shareinfo` en el navegador; el MCP no |
 | `dsm_delete_shared_folder` (0.15.0) | `Core.Share list` + `FileStation.List list` (¿vacía?) + `Core.Share validate_delete` + `delete` v1 (`name=[...]`, hasta 10 min) | `names`, `delete_contents` | **Borra la carpeta y todo lo que contiene.** Rechaza las del sistema (`homes`…), las que no existen (el nombre distingue mayúsculas), las que no están vacías (solo cuenta `#recycle` como vacío) salvo `delete_contents: true`, y lo que DSM marque como `hard` en `validate_delete`. **Destructiva** |
 | `dsm_set_services` (0.15.0) | `Core.FileServ.SMB set` v3 (`smb_min_protocol`: 1 = SMB2, 3 = SMB3; parcial, como la web), `Core.FileServ.FTP get`/`set` v1 (completo), `Core.Terminal get`/`set` v3 (completo) y `Core.Web.DSM set` v2 (`enable_https_redirect`) | `smb_min_version`, `ftp`, `telnet`, `ssh`, `ssh_port`, `https_redirect` | Cambia solo lo que se da. FTP y Terminal se mandan enteros, como la web, para no perder el resto. Se niega a activar la redirección a HTTPS si el propio MCP entra por `http://`, porque se quedaría fuera. **Destructiva**. **Solo probada con el NAS simulado**: cambiar los servicios del NAS real es decisión del usuario |
 | `dsm_power` (0.15.0) | `Core.System reboot`/`shutdown` v2 (`force`, `local: true`, `firmware_upgrade: false`, `cache_check_shutdown`) | `action`, `confirm` (igual a `action`), `force` | Reinicia o apaga el NAS. Si DSM responde con `errors.runningTasks`, devuelve la lista sin hacer nada; con `blockingTasks`, error. **Destructiva**. Nunca probada en el NAS real |
+| `dsm_update_group` (0.16.0) | `Core.Group set` v1 (`name`, `new_name`, `description`) + `Core.Group.Member change` v1 (`group`, `add_member`, `remove_member`) | `name`, `new_name`, `description`, `add_members`, `remove_members` | Renombrar, describir y cambiar miembros desde el grupo, como el diálogo de grupo. Rechaza renombrar los del sistema y quitar al propio MCP de `administrators`. Devuelve los miembros leídos después y `not_applied` si algo no quedó. **Destructiva** |
+| `dsm_set_app_access` (0.16.0) | `Core.AppPriv.Rule set` v1 (`rules=[{entity_type, entity_name, app_id, allow_ip | deny_ip: ["0.0.0.0"]}]`) o `delete` v1 (`default`) | `name`, `type`, `apps` (ids), `access` (`allow`/`deny`/`default`) | Permitir o denegar aplicaciones, o quitar la regla propia. Comprueba los ids y se niega a denegar nada a la cuenta del MCP. **Destructiva** |
+| `dsm_set_quota` (0.16.0) | `Core.Quota set` v1 (`name`, `user_quota=[{share, quota}]`, MB) | `user`, `shares` (`[{share, quota_mb}]`) | Cuota de un usuario por carpeta compartida (0 la quita) y la lee después |
+| `dsm_unlock_shared_folder` (0.16.0) | `Core.Share.Crypto decrypt` v1 (`name`, `password`) | `name`, `password` | Monta una carpeta cifrada. Solo probada con el NAS simulado (el de pruebas no tiene carpetas cifradas) |
+| `dsm_lock_shared_folder` (0.16.0) | `Core.Share.Crypto encrypt` v1 (`name`) | `name` | Desmonta una carpeta cifrada. **Destructiva**. Solo simulado |
+| `dsm_block_ip` (0.16.0) | `Core.Security.AutoBlock.Rules create` v1 (`type=deny`, `block_days`, `overwrite`, `ip=[...]`) | `ips`, `days` (0 = siempre) | Añade IPs públicas a la lista de bloqueo. Rechaza las privadas y locales (10.x, 172.16–31.x, 192.168.x, 127.x, 169.254.x, fc/fd/fe80), para no cortar nunca la red local ni al MCP. **Destructiva** |
+| `dsm_unblock_ip` (0.16.0) | `AutoBlock.Rules delete` v1 (`type=deny`, `ip=[...]`) | `ips` | Las quita de la lista de bloqueo |
 
 Contraseñas: las comprueba antes `Core.User.PasswordPolicy check` (3121 = no cumple la política del NAS). La web de DSM las cifra en el navegador (`encryption: ["password"]`); el MCP las manda dentro de la conexión HTTPS o QuickConnect, sin ese cifrado extra, y DSM las acepta (comprobado entrando con la contraseña creada).
 
-No incluido: editar grupos (descripción, permisos de aplicaciones), renombrar usuarios, cuotas y límites de ancho de banda, cifrado de carpetas, AFP y NFS, el cortafuegos y la configuración de red.
+Arreglado en 0.16.0: los grupos de un usuario (`dsm_create_user` con `groups`, `dsm_update_user` con `add_groups`/`remove_groups`). `Core.User.Group join` es una tarea en segundo plano: devuelve `task_id` y la web consulta `join_status` hasta `finish`. El MCP no esperaba y devolvía los grupos de antes; ahora espera (hasta 60 s). Comprobado en el NAS real.
+
+No incluido: cambiar el cortafuegos o la red (un error deja el NAS inaccesible; se leen con `dsm_firewall` y `dsm_network`), cifrar o descifrar del todo una carpeta (solo montar y desmontar), cuotas de grupo, límites de ancho de banda, renombrar usuarios, AFP y NFS.
+
+# Surveillance Station
+
+Código: [src/tools/surveillance.ts](../src/tools/surveillance.ts), desde 0.16.0. `SYNO.SurveillanceStation.*` tiene guía oficial (*Surveillance Station Web API*). En el NAS de pruebas hay una cámara (FOSCAM FI8918W) con estado 15, sin grabaciones ni eventos.
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `surveillance_cameras` | `Camera List` v9 (`basic`, `privCamType=1`) + `HomeMode GetInfo` v1 | — | Cámaras con nombre, marca y modelo, `status` traducido (1 normal, 3 desconectada, 7 desactivada, 15 «connection failed»…; tabla `CAMERA_STATUS`, de la guía oficial), si está activa y grabando, carpeta y cuánto guarda; y `home_mode` |
+| `surveillance_recordings` | `Recording List` v6 (`offset`, `limit`, `cameraIds`) | `camera_id`, `limit` (20) | Grabaciones: cámara, inicio y fin, tamaño, si sigue grabando. Con el NAS de pruebas sin grabaciones, el formato de cada elemento sale de la guía y solo se ha probado con el simulado |
+| `surveillance_set_home_mode` | `HomeMode Switch` v1 (`on`) + `GetInfo` | `on` | Activa o desactiva el modo en casa. Probado en el NAS real: activado y vuelto a desactivar |
+
+No incluido: la foto de la cámara (`GetSnapshot` respondió 105 con la cámara sin conexión, así que no se pudo comprobar), vídeo en directo, PTZ, añadir o configurar cámaras y exportar grabaciones.
 
 # Varios NAS
 

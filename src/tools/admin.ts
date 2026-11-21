@@ -297,6 +297,158 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
     ),
   );
 
+  // ----------------------------------------------- app access, quotas, network
+
+  const ENTITY = z.enum(["user", "group"]);
+  const appRules = async () => {
+    const { applications } = await client.request<{ applications: { app_id: string; name: string; grant_type?: string[] }[] }>("SYNO.Core.AppPriv.App", "list", { offset: 0, limit: 200 }, 2);
+    const rules = await Promise.all(
+      applications.map((a) =>
+        client
+          .request<{ rules: { app_id: string; entity_type: string; entity_name: string; allow_ip: string[]; deny_ip: string[] }[] }>("SYNO.Core.AppPriv.Rule", "list", { app_id: json(a.app_id) }, 1)
+          .then((r) => r.rules)
+          .catch(() => []),
+      ),
+    );
+    return applications.map((a, i) => ({ app: a, rules: rules[i] }));
+  };
+  /** A rule as one word: allow / deny for everyone (0.0.0.0), or custom when limited to some IPs. */
+  const ruleAccess = (r: { allow_ip: string[]; deny_ip: string[] }) =>
+    r.deny_ip.includes("0.0.0.0") ? "deny" : r.allow_ip.includes("0.0.0.0") ? "allow" : r.allow_ip.length || r.deny_ip.length ? "custom (by IP)" : "none";
+
+  server.registerTool(
+    "dsm_app_access",
+    {
+      title: "Application privileges",
+      description:
+        "Which DSM applications (File Station, Photos, Drive, DSM itself, FTP, SMB…) a user or group may use: allow or deny set for them, and what applies to everyone. A user also gets what their groups allow; deny wins. Needs a DSM administrator account.",
+      inputSchema: { name: z.string().min(1).describe("User or group name"), type: ENTITY.optional().describe("Default user") },
+      annotations: READ,
+    },
+    safe(async ({ name, type }) =>
+      adminOnly(async () => {
+        const kind = type ?? "user";
+        const all = await appRules();
+        return ok({
+          [kind]: name,
+          apps: all.map(({ app, rules }) => {
+            const own = rules.find((r) => r.entity_type === kind && r.entity_name.toLowerCase() === name.toLowerCase());
+            const everyone = rules.find((r) => r.entity_type === "everyone");
+            return { app: app.name, app_id: app.app_id, [kind]: own ? ruleAccess(own) : "not set", everyone: everyone ? ruleAccess(everyone) : "not set" };
+          }),
+        });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_quota",
+    {
+      title: "User quotas",
+      description: "Storage quota of a user on each shared folder (and volume): limit and space used, in MB. 0 = no limit. Needs a DSM administrator account.",
+      inputSchema: { user: z.string().min(1) },
+      annotations: READ,
+    },
+    safe(async ({ user }) =>
+      adminOnly(async () => {
+        const r = await client.request<{ user_quota: { volume?: string; shares?: { name: string; quota: number; used: number }[]; quota?: number; used?: number }[] }>(
+          "SYNO.Core.Quota",
+          "get",
+          { name: json(user), subject_type: json("user"), support_share_quota: true },
+          1,
+        );
+        const limited: { share: string; quota_mb: number; used_mb: number }[] = [];
+        const shares: { share: string; quota_mb: number; used_mb: number }[] = [];
+        for (const v of r.user_quota) for (const sh of v.shares ?? []) {
+          const row = { share: sh.name, quota_mb: sh.quota, used_mb: Math.round(sh.used) };
+          shares.push(row);
+          if (sh.quota > 0) limited.push(row);
+        }
+        return ok({ user, limited: limited.length ? limited : "no limits set", shares });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_network",
+    {
+      title: "Network settings",
+      description: "The NAS's network settings: server name, default gateway, DNS servers and each interface (IP, mask, DHCP or fixed, link speed, connected or not). Read only. Needs a DSM administrator account.",
+      annotations: READ,
+    },
+    safe(async () =>
+      adminOnly(async () => {
+        const [net, ifs] = await Promise.all([
+          client.request<{ server_name?: string; gateway?: string; dns_primary?: string; dns_secondary?: string; dns_manual?: boolean; v6gateway?: string; gateway_info?: { ifname?: string } }>("SYNO.Core.Network", "get", {}, 1),
+          client.request<{ ifname: string; ip: string; mask: string; speed: number; status: string; type: string; use_dhcp: boolean }[]>("SYNO.Core.Network.Interface", "list", {}, 1),
+        ]);
+        return ok({
+          server_name: net.server_name,
+          gateway: net.gateway,
+          ...(net.v6gateway && { gateway_ipv6: net.v6gateway }),
+          dns: [net.dns_primary, net.dns_secondary].filter(Boolean),
+          dns_manual: net.dns_manual,
+          interfaces: ifs.map((i) => ({
+            name: i.ifname,
+            type: i.type,
+            status: i.status,
+            ...(i.ip && { ip: i.ip, mask: i.mask }),
+            addressing: i.use_dhcp ? "DHCP" : "fixed",
+            ...(i.speed > 0 && { speed_mbps: i.speed }),
+          })),
+        });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_firewall",
+    {
+      title: "Firewall and auto block",
+      description:
+        "Security settings that decide who can connect: whether the firewall is on and the rules of its active profile; auto block (how many failed sign-ins block an IP, for how long) and the blocked and allowed IP lists. Read only. Needs a DSM administrator account.",
+      annotations: READ,
+    },
+    safe(async () =>
+      adminOnly(async () => {
+        const fw = await client.request<{ enable_firewall: boolean; profile_name: string }>("SYNO.Core.Security.Firewall", "get", {}, 1);
+        const profile = await client
+          .request<{ global?: { policy?: string; rules?: { enable: boolean; name: string; policy: string; ports: string; protocol: string; source_ip: string; source_ip_group: string }[] } }>("SYNO.Core.Security.Firewall.Profile", "get", { name: json(fw.profile_name) }, 1)
+          .catch(() => undefined);
+        const [ab, deny, allow] = await Promise.all([
+          client.request<{ enable: boolean; attempts: number; within_mins: number; expire_day: number }>("SYNO.Core.Security.AutoBlock", "get", {}, 1),
+          client.request<{ total: number; ip_info: { ip: string; country?: string; record_date: number; expire_date: number }[] }>("SYNO.Core.Security.AutoBlock.Rules", "list", { offset: 0, limit: 500, type: json("deny") }, 1),
+          client.request<{ total: number; ip_info: { ip: string; record_date: number }[] }>("SYNO.Core.Security.AutoBlock.Rules", "list", { offset: 0, limit: 500, type: json("allow") }, 1),
+        ]);
+        const when = (s: number) => (s ? new Date(s * 1000).toISOString().slice(0, 10) : "never");
+        return ok({
+          firewall: {
+            enabled: fw.enable_firewall,
+            profile: fw.profile_name,
+            ...(profile?.global && {
+              when_no_rule_matches: profile.global.policy,
+              rules: (profile.global.rules ?? []).map((r) => ({
+                ...(r.name && { name: r.name }),
+                action: r.policy,
+                enabled: r.enable,
+                ports: r.ports,
+                protocol: r.protocol,
+                from: r.source_ip_group === "all" ? "everyone" : r.source_ip,
+              })),
+            }),
+          },
+          auto_block: {
+            enabled: ab.enable,
+            rule: `${ab.attempts} failed sign-ins within ${ab.within_mins} min`,
+            blocks_for: ab.expire_day ? `${ab.expire_day} days` : "ever",
+            blocked: { total: deny.total, ips: deny.ip_info.map((i) => ({ ip: i.ip, ...(i.country && { country: i.country }), since: when(i.record_date), until: when(i.expire_date) })) },
+            always_allowed: allow.ip_info.map((i) => i.ip),
+          },
+        });
+      }),
+    ),
+  );
+
   if (opts.readOnly) return;
 
   const findTasks = async (ids: number[]) => {
@@ -387,9 +539,29 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
   };
   const checkPassword = (name: string, description: string, password: string) =>
     client.request("SYNO.Core.User.PasswordPolicy", "check", { name: json(name), description: json(description), password: json(password) }, 1);
+  /**
+   * A user's groups. User.Group join is a background task on DSM (it returns a task_id and
+   * the web UI polls join_status until `finish`); answering before it ends showed the old groups.
+   */
   const changeGroups = async (name: string, join: string[], leave: string[]) => {
-    if (join.length || leave.length) await client.request("SYNO.Core.User.Group", "join", { name: json(name), join_group: json(join), leave_group: json(leave) }, 1);
+    if (join.length || leave.length) {
+      const r = await client.request<{ task_id?: string | string[] }>("SYNO.Core.User.Group", "join", { name: json(name), join_group: json(join), leave_group: json(leave) }, 1);
+      const task = Array.isArray(r?.task_id) ? r.task_id[0] : r?.task_id;
+      if (task) {
+        await client.poll(
+          () => client.request<{ finish?: boolean }>("SYNO.Core.User.Group", "join_status", { task_id: json(task) }, 1).catch(() => ({ finish: true })),
+          (x) => Boolean(x.finish),
+          60_000,
+          1500,
+        );
+      }
+    }
     return (await client.request<{ groups: string[] }>("SYNO.Core.User.Group", "get", { name: json(name) }, 1)).groups;
+  };
+  /** A group's members, changed from the group side as the group dialog does (Group.Member change). */
+  const changeMembers = async (group: string, add: string[], remove: string[]) => {
+    if (add.length || remove.length) await client.request("SYNO.Core.Group.Member", "change", { group: json(group), add_member: json(add), remove_member: json(remove) }, 1);
+    return (await client.request<{ users: { name: string }[] }>("SYNO.Core.Group.Member", "list", { group: json(group), offset: 0, limit: -1 }, 1)).users.map((u) => u.name);
   };
   const self = () => client.accountName().toLowerCase();
   const BUILT_IN = new Set(["admin", "guest", "root"]);
@@ -540,8 +712,8 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
         for (const m of members) if (!(await userExists(m))) missing.push(m);
         if (missing.length) throw new Error(`No such user: ${missing.join(", ")}; nothing was created`);
         await client.request("SYNO.Core.Group", "create", { name: json(name), ...(description && { description: json(description) }) }, 1);
-        for (const m of members) await client.request("SYNO.Core.User.Group", "join", { name: json(m), join_group: json([name]), leave_group: json([]) }, 1);
-        return ok({ created: name, members });
+        const now = members.length ? await changeMembers(name, members, []) : [];
+        return ok({ created: name, members: now, ...(members.some((m) => !now.includes(m)) && { not_added: members.filter((m) => !now.includes(m)) }) });
       }),
     ),
   );
@@ -723,6 +895,163 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
           throw err;
         }
         return ok({ done: true, action, note: action === "reboot" ? "The NAS is restarting: it will be unreachable for a few minutes." : "The NAS is shutting down. Someone must turn it on again by hand." });
+      }),
+    ),
+  );
+
+  // ------------------------------------------ groups, app access, quota, crypto, IPs
+
+  server.registerTool(
+    "dsm_update_group",
+    {
+      title: "Change a DSM group",
+      description: "Rename a group, change its description, or add and remove members. Removing someone from a group takes away what the group gave them. Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1),
+        new_name: z.string().min(1).max(64).optional(),
+        description: z.string().max(64).optional(),
+        add_members: z.array(z.string().min(1)).optional(),
+        remove_members: z.array(z.string().min(1)).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ name, new_name, description, add_members = [], remove_members = [] }) =>
+      adminOnly(async () => {
+        if (new_name === undefined && description === undefined && !add_members.length && !remove_members.length) throw new Error("Nothing to change");
+        if (SYSTEM_GROUPS.has(name.toLowerCase()) && new_name) throw new Error(`Built-in group ${name} cannot be renamed`);
+        if (name.toLowerCase() === "administrators" && remove_members.some((m) => m.toLowerCase() === self())) throw new Error("That would remove this MCP's own account from administrators");
+        const { groups } = await client.request<{ groups: { name: string }[] }>("SYNO.Core.Group", "list", { offset: 0, limit: -1, type: json("local") }, 1);
+        if (!groups.some((g) => g.name === name)) throw new Error(`No group ${name}; see dsm_groups`);
+        for (const m of [...add_members, ...remove_members]) if (!(await userExists(m))) throw new Error(`No user ${m}; nothing was changed`);
+        if (new_name !== undefined || description !== undefined) {
+          await client.request("SYNO.Core.Group", "set", { name: json(name), ...(new_name && { new_name: json(new_name) }), ...(description !== undefined && { description: json(description) }) }, 1);
+        }
+        const g = new_name ?? name;
+        const members = await changeMembers(g, add_members, remove_members);
+        const notApplied = [...add_members.filter((m) => !members.includes(m)).map((m) => `add ${m}`), ...remove_members.filter((m) => members.includes(m)).map((m) => `remove ${m}`)];
+        return ok({ group: g, ...(new_name && { renamed_from: name }), ...(description !== undefined && { description }), members, ...(notApplied.length && { not_applied: notApplied }) });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_set_app_access",
+    {
+      title: "Change application privileges",
+      description:
+        "Allow or deny DSM applications for a user or group, or remove the explicit setting (default: then the user's groups and the everyone rule decide). App ids from dsm_app_access. Changes what people can open: confirm first. It refuses to deny anything to this MCP's own account. Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1),
+        type: ENTITY.optional().describe("Default user"),
+        apps: z.array(z.string().min(1)).min(1).describe("App ids, e.g. [\"SYNO.SDS.App.FileStation3.Instance\"]"),
+        access: z.enum(["allow", "deny", "default"]),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ name, type, apps, access }) =>
+      adminOnly(async () => {
+        const kind = type ?? "user";
+        if (kind === "user" && access === "deny" && name.toLowerCase() === self()) throw new Error(`${name} is the account this MCP signs in with; denying it applications could lock the MCP out`);
+        const known = (await client.request<{ applications: { app_id: string }[] }>("SYNO.Core.AppPriv.App", "list", { offset: 0, limit: 200 }, 2)).applications.map((a) => a.app_id);
+        const unknown = apps.filter((a) => !known.includes(a));
+        if (unknown.length) throw new Error(`Unknown app ids: ${unknown.join(", ")}; see dsm_app_access`);
+        const rules = apps.map((app_id) => ({ entity_type: kind, entity_name: name, app_id }));
+        if (access === "default") await client.request("SYNO.Core.AppPriv.Rule", "delete", { rules: json(rules) }, 1);
+        else await client.request("SYNO.Core.AppPriv.Rule", "set", { rules: json(rules.map((r) => ({ ...r, ...(access === "allow" ? { allow_ip: ["0.0.0.0"], deny_ip: [] } : { allow_ip: [], deny_ip: ["0.0.0.0"] }) }))) }, 1);
+        return ok({ [kind]: name, apps, access });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_set_quota",
+    {
+      title: "Set a user's quota",
+      description: "Limit how much a user can store on shared folders, in MB (0 removes the limit). Files already over the limit stay; the user just cannot add more. Needs a DSM administrator account.",
+      inputSchema: {
+        user: z.string().min(1),
+        shares: z.array(z.object({ share: z.string().min(1), quota_mb: z.number().int().min(0) })).min(1),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ user, shares }) =>
+      adminOnly(async () => {
+        if (!(await userExists(user))) throw new Error(`No user ${user}`);
+        await client.request("SYNO.Core.Quota", "set", { name: json(user), user_quota: json(shares.map((s) => ({ share: s.share, quota: s.quota_mb }))) }, 1);
+        const r = await client.request<{ user_quota: { shares?: { name: string; quota: number }[] }[] }>("SYNO.Core.Quota", "get", { name: json(user), subject_type: json("user"), support_share_quota: true }, 1);
+        const now = new Map(r.user_quota.flatMap((v) => v.shares ?? []).map((x) => [x.name, x.quota]));
+        return ok({ user, quotas: shares.map((s) => ({ share: s.share, quota_mb: now.get(s.share) ?? s.quota_mb, ...(now.has(s.share) && now.get(s.share) !== s.quota_mb && { note: "the NAS kept a different value" }) })) });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_unlock_shared_folder",
+    {
+      title: "Mount an encrypted shared folder",
+      description: "Unlock (mount) an encrypted shared folder with its encryption password, so its files can be used. The password is sent to the NAS only. Needs a DSM administrator account.",
+      inputSchema: { name: z.string().min(1), password: z.string().min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ name, password }) =>
+      adminOnly(async () => {
+        await client.request("SYNO.Core.Share.Crypto", "decrypt", { name: json(name), password: json(password) }, 1, { timeoutMs: 120_000 });
+        return ok({ unlocked: name });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_lock_shared_folder",
+    {
+      title: "Unmount an encrypted shared folder",
+      description: "Lock (unmount) an encrypted shared folder: its files become unavailable until it is unlocked again with the password. Whatever uses it (shares, apps, containers) loses access. Confirm first. Needs a DSM administrator account.",
+      inputSchema: { name: z.string().min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ name }) =>
+      adminOnly(async () => {
+        await client.request("SYNO.Core.Share.Crypto", "encrypt", { name: json(name) }, 1, { timeoutMs: 120_000 });
+        return ok({ locked: name });
+      }),
+    ),
+  );
+
+  /** Private, loopback and link-local ranges: blocking those could cut off the local network or this MCP. */
+  const isPrivateIp = (ip: string) =>
+    /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.)/.test(ip) || /^(::1|fe80:|fc|fd)/i.test(ip);
+
+  server.registerTool(
+    "dsm_block_ip",
+    {
+      title: "Block IP addresses",
+      description:
+        "Add public IP addresses to DSM's auto block list, so they can no longer connect, for some days or for ever. Refuses private and local addresses (192.168.x.x, 10.x…) so the local network and this MCP are never cut off. Needs a DSM administrator account.",
+      inputSchema: { ips: z.array(z.union([z.ipv4(), z.ipv6()])).min(1), days: z.number().int().min(0).max(3650).optional().describe("0 = for ever (default)") },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ ips, days }) =>
+      adminOnly(async () => {
+        const local = ips.filter(isPrivateIp);
+        if (local.length) throw new Error(`Refusing private or local addresses: ${local.join(", ")}`);
+        await client.request("SYNO.Core.Security.AutoBlock.Rules", "create", { type: json("deny"), block_days: days ?? 0, overwrite: true, ip: json(ips) }, 1);
+        return ok({ blocked: ips, for: days ? `${days} days` : "ever" });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_unblock_ip",
+    {
+      title: "Unblock IP addresses",
+      description: "Remove IP addresses from DSM's auto block list (see dsm_firewall), e.g. after someone locked themselves out with wrong passwords. Needs a DSM administrator account.",
+      inputSchema: { ips: z.array(z.string().min(1)).min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ ips }) =>
+      adminOnly(async () => {
+        await client.request("SYNO.Core.Security.AutoBlock.Rules", "delete", { type: json("deny"), ip: json(ips) }, 1);
+        return ok({ unblocked: ips });
       }),
     ),
   );

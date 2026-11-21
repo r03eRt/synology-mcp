@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-179 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+192 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -56,6 +56,17 @@ Pruebas:
 5. Download Station (se salta si el usuario no tiene acceso): `downloads_info`, `downloads_list`, y una descarga propia de `http://<NAS>/webman/index.cgi?mcp-test=<timestamp>` (lo sirve el propio NAS, sin tráfico a Internet) hacia `<carpeta temporal>/descargas`: `downloads_add`, `downloads_set_destination` a otra carpeta temporal (y a una inexistente, que debe dar el mensaje explicativo), `downloads_get`, `downloads_pause`, `downloads_resume` y `downloads_delete` **solo de esa tarea**; al final el total de tareas tiene que ser el mismo que al principio.
 
 Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta exacta, y cualquier tarea de descarga creada por la ejecución que siguiera viva.
+
+Desde 0.16.0, `test/real/real-nas-areas.test.ts` cubre las áreas posteriores, con las mismas reglas:
+
+6. Photos: álbumes, lugares, personas y fotos de los dos espacios, comprobando con `get_file_info` que cada ruta devuelta existe; por lugar y por fechas.
+7. Álbum temporal `mcptest-<base36>`: crear, añadir y quitar una foto, comprobar y borrar.
+8. Drive: lecturas de compartición, *file requests* (vale el mensaje de "desactivadas") y un enlace interno en una carpeta temporal de `/home/Drive`, que se quita y se borra.
+9. Paquetes y ajustes de Download Station (administrador).
+10. Administración: accesos de la propia cuenta, permisos de una carpeta y los rechazos (`administrators`, `homes`, borrarse a sí mismo), que responden sin llamar a DSM.
+11. Opcionales, con su variable a `1`: `SYNOLOGY_REAL_ADMIN_WRITES` (usuario, grupo y carpeta compartida temporales), `SYNOLOGY_REAL_DOCKER` (`hello-world`: descargar, crear, renombrar, recrear y borrar) y `SYNOLOGY_REAL_SEARCH` (una búsqueda de torrents, que sale a Internet).
+
+Nunca se lanzan aquí `dsm_set_services`, `dsm_power`, `package_control` sobre servicios reales ni `photos_edit_person`.
 
 ### Resultado 2026-11-20 (cuenta de `.env.admin`)
 
@@ -122,6 +133,23 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-21, versión 0.16.0 (suite real ampliada y áreas nuevas)
+
+- `npm test`: 192/192. Nueva: `test/mock/more-areas.test.ts`. Además, el NAS simulado imita ahora la unión a grupos en segundo plano (`join` → `task_id`, `join_status`), que es lo que destapó el fallo.
+- `test:real`, contra el NAS real:
+  - sin opcionales: 16 pruebas (13 pasan, se saltan las 3 opcionales);
+  - el fichero nuevo, con `SYNOLOGY_REAL_ADMIN_WRITES=1` y `SYNOLOGY_REAL_DOCKER=1`: 8 pruebas, 7 pasan y se salta la búsqueda.
+- Herramientas nuevas contra el NAS real:
+  - todas las lecturas;
+  - subir a Photos y meter en un álbum temporal;
+  - grupo y usuario temporales: editar el grupo, cambiar miembros, privilegios y cuota;
+  - bloquear y desbloquear `203.0.113.77`;
+  - límites de un `hello-world` temporal;
+  - modo en casa, activado y desactivado.
+- Rechazos comprobados: denegar aplicaciones a la cuenta del MCP y bloquear una IP privada.
+- Al final, una revisión de solo lectura no encontró ningún resto: usuarios, grupos, carpetas, álbumes, contenedores, imágenes, IPs bloqueadas y modo en casa, igual que antes.
+- Sin probar en el NAS real: carpetas cifradas (no hay), grabaciones (la cámara está sin conexión) y, a propósito, `dsm_set_services` y `dsm_power`.
 
 ### Resultado 2026-11-21, versión 0.15.1 (pruebas reales pendientes de la 0.15.0)
 

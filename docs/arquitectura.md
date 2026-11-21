@@ -23,6 +23,7 @@ src/
                            get_system_logs (APIs de la web de DSM; usan adminOnly)
   tools/drive.ts           herramientas de Synology Drive (drive_*)
   tools/photos.ts          herramientas de Synology Photos (photos_*)
+  tools/surveillance.ts    herramientas de Surveillance Station (surveillance_*)
   tools/downloadstation.ts herramientas de Download Station (downloads_*)
   tools/format.ts          utilidades comunes (ok, fail, safe, simplifyFile, humanSize)
   types/noise-protocol.d.ts  tipos para la librería noise-protocol (no trae los suyos)

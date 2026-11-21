@@ -57,6 +57,10 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Groups, shared folders | `dsm_create_group` / `dsm_delete_group`, `dsm_create_shared_folder` / `dsm_delete_shared_folder` (deletes everything inside: show get_dir_size and get an explicit yes) |
 | Fix insecure services | `dsm_services` warnings, then `dsm_set_services` (SMB2 minimum, FTP or Telnet off) after confirming: old devices may need SMB1 |
 | New container | `docker_images` / `docker_pull_image`, then `docker_create_container`; change a stopped one with `docker_update_container` (env, ports, folders or command need `recreate: true`, which loses data kept inside the container outside its mounted folders: ask first) |
+| Who can use which app, quotas | `dsm_app_access` / `dsm_set_app_access` (never deny the MCP's own account), `dsm_quota` / `dsm_set_quota` |
+| Network, firewall, suspicious IPs | `dsm_network`, `dsm_firewall` (read only), `dsm_block_ip` / `dsm_unblock_ip` (public IPs only) |
+| Upload photos to an album | `photos_upload` with `album_id` (waits for Photos to index them) |
+| Cameras | `surveillance_cameras`, `surveillance_recordings`, `surveillance_set_home_mode` |
 | Restart or shut down the NAS | `dsm_power` only when the user explicitly asks; it lists running tasks first |
 | Start or stop a package | `package_control` after confirming (stopping takes its service down); `get_packages` first |
 | Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |

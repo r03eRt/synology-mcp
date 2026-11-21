@@ -327,6 +327,33 @@ Fuentes: el bundle de Photos (otra vez), `admin_center.js`, `ContainerManager/Ma
   - Docker, con la imagen oficial `hello-world` (unos 10 KB, borrada al final): `pull_status` responde primero `{}`, después `{current, total, finished: false…}` y por último `finished: true`, así que la suposición era correcta. Crear (parado, con carpeta montada en solo lectura), renombrar y borrar funcionan.
   - **Fallo encontrado**: `Docker.Container set` devuelve `{task_id}` y solo aplica el nombre y el reinicio automático. Las variables y los puertos no cambiaron, ni en el perfil ni en el contenedor real, ni siquiera 33 s después ni mandando el perfil con la forma del asistente de creación. La web manda exactamente lo mismo (`updateContainer({name, profile})`), así que la limitación es de DSM, como en Docker, donde esos ajustes solo cambian recreando el contenedor. Corregido en 0.15.1: `docker_update_container` cambia en el sitio lo que DSM aplica, y para el resto exige `recreate: true` (borrar y crear). Comprobado: tras recrear, el contenedor real lleva las variables nuevas y el puerto `18080:80`.
 
+## Privilegios, cuotas, red, cortafuegos, Docker, Surveillance Station y grupos (0.16.0)
+
+Fuentes: `admin_center.js`, `ContainerManager/MainVue.js` y, para Surveillance Station, sus respuestas reales (tiene guía oficial). Probado contra el NAS real el 2026-11-21: lecturas siempre, escrituras solo sobre elementos temporales que se borraron después.
+
+- **Privilegios de aplicaciones**: `Core.AppPriv.App list` v2 da las aplicaciones (`app_id`, `name`, `grant_type`). `Core.AppPriv.Rule list` v1 con `app_id` da las reglas `{entity_type: everyone|user|group, entity_name, allow_ip, deny_ip}`: `0.0.0.0` significa todas las IP. La web cambia con `Rule set` (`rules=[{…, allow_ip | deny_ip}]`) y vuelve al valor por defecto con `Rule delete`. Probado con un usuario temporal: denegar File Station y volver a `not set`.
+- **Cuotas**: `Core.Quota get` v1 (`name`, `subject_type`, `support_share_quota`) devuelve `user_quota[].shares[]` con `quota` y `used` en MB. `set` v1 lleva `name` y `user_quota=[{share|volume, quota}]`. Probado: 100 MB en `docker` para un usuario temporal.
+- **Carpetas cifradas**: `Core.Share.Crypto decrypt` (`name`, `password`) monta y `encrypt` (`name`) desmonta, aunque los nombres digan lo contrario. Sin carpetas cifradas en el NAS de pruebas: solo con el simulado.
+- **Red**: `Core.Network get` (nombre, puerta de enlace, DNS) y `Core.Network.Interface list`. `Router.Gateway.List get` y `UPnPServer get` dieron 4302 en este NAS y no se usan.
+- **Cortafuegos**: `Core.Security.Firewall get` → `{enable_firewall, profile_name}`. `Firewall.Profile get` **pide `name`** (sin él, 120) y devuelve `global.policy` y `global.rules` (acción, puertos, protocolo, origen). En este NAS está activo con el perfil "test": permite los servicios de DSM a todos y descarta dos IPs.
+- **Bloqueo automático**: `Core.Security.AutoBlock get` → `{enable, attempts, within_mins, expire_day}`. `AutoBlock.Rules list` con `type` `deny` o `allow`; `create` con `type`, `block_days`, `overwrite` e `ip=[…]`; `delete` con `type` e `ip`. Probado con `203.0.113.77` (red reservada para documentación): bloqueada un día, vista en la lista y desbloqueada. `Core.Security.DoS get` dio 114: no se usa.
+- **Docker**:
+  - `Docker.Network list` → `{network: [{name, driver, subnet, gateway, containers}]}`.
+  - `Docker.Project list` → un objeto por id; en este NAS, `{}`.
+  - **Los límites `cpu_priority` (10/50/90) y `memory_limit` (bytes) sí se aplican con `Container set`**, sin recrear: comprobado con un `hello-world` temporal. Con las variables y los puertos no pasa.
+- **Surveillance Station**: `Camera List` v9 (`basic`, `privCamType`), `Recording List` v6, `HomeMode GetInfo` (`on`) y `Switch` (`on`).
+  - La única cámara (FOSCAM FI8918W) da `status: 15`, que la tabla de la guía llama "connection failed", sin grabaciones ni eventos.
+  - `Camera GetSnapshot` v9 dio 105 con `id` y con `cameraId`; con la cámara sin conexión no se puede saber si es eso o un parámetro, así que no hay herramienta de fotos.
+  - Modo en casa: activado y vuelto a desactivar.
+- **Fallo encontrado: los grupos de un usuario no cambiaban al momento.**
+  - `Core.User.Group join` devuelve `{task_id}` y la web consulta `join_status` (`task_id`) hasta `finish: true`.
+  - Desde la 0.12.0, `dsm_create_user` con `groups` y `dsm_update_user` con grupos devolvían los grupos de antes, y solo se habían probado con el NAS simulado. Ahora esperan a la tarea.
+  - Desde el lado del grupo, la web usa `Core.Group.Member change` (`group`, `add_member`, `remove_member`), que `dsm_update_group` y `dsm_create_group` usan ahora.
+  - Probado en el NAS real: unirse, salir por los dos lados y comprobar.
+- **Subir a Photos**: no se usa la subida propia de Photos (`Upload.Item`), sino File Station hacia la carpeta del espacio, que Photos indexa sola.
+  - Para encontrar la foto nueva, `Browse.RecentlyAdded list` va mejor que la búsqueda, cuyo índice va con retraso.
+  - Una foto real de 2,3 MB apareció a los 7 s. Una imagen de 1×1 píxel no apareció en 2 minutos (Photos seguramente ignora imágenes tan pequeñas).
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

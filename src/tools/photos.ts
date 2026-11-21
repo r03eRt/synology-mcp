@@ -445,6 +445,58 @@ export function registerPhotosTools(server: McpServer, client: SynologyClient, o
   );
 
   server.registerTool(
+    "photos_upload",
+    {
+      title: "Photos: upload photos",
+      description:
+        "Upload photos or videos from this computer into Synology Photos: into a folder of the shared space (/photo) or the user's personal space (/home/Photos). Photos indexes them by itself; with album_id the tool waits for that (up to ~2 min) and adds them to the album. Existing files with the same name are not overwritten.",
+      inputSchema: {
+        local_paths: z.array(z.string().min(1)).min(1).max(50).describe("Files on this computer"),
+        space: z.enum(["shared", "personal"]).optional().describe("Default personal"),
+        folder: z.string().optional().describe("Folder inside the space, created if missing, e.g. \"Viajes/Escocia 2025\". Default: the space root"),
+        album_id: z.number().int().optional().describe("Normal album to add them to, from photos_albums"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ local_paths, space: sp = "personal", folder, album_id }) => {
+      const { stat } = await import("node:fs/promises");
+      for (const p of local_paths) {
+        const st = await stat(p).catch(() => null);
+        if (!st?.isFile()) throw new Error(`${p} is not a file on this computer`);
+      }
+      const root = sp === "shared" ? "/photo" : "/home/Photos";
+      const sub = (folder ?? "").replace(/^\/+|\/+$/g, "");
+      const dest = sub ? `${root}/${sub}` : root;
+      const uploaded: { file: string; path: string }[] = [];
+      for (const p of local_paths) {
+        await client.upload({ localPath: p, destFolder: dest, overwrite: false, createParents: true });
+        uploaded.push({ file: p, path: `${dest}/${p.split("/").pop()}` });
+      }
+      if (album_id === undefined) return ok({ uploaded, note: "Photos indexes new files by itself within a minute or so." });
+      // Wait until Photos has indexed each file, matching on the full NAS path.
+      const found = new Map<string, number>();
+      const deadline = Date.now() + 120_000;
+      while (found.size < uploaded.length && Date.now() < deadline) {
+        // Newly indexed items show up in Browse.RecentlyAdded (the search index can lag behind).
+        const names = new Set(uploaded.map((u) => u.path.split("/").pop()!));
+        const recent = await req<{ list: PhotoItem[] }>(sp, "Browse.RecentlyAdded", "list", { offset: 0, limit: 200 }, 6).catch(() => ({ list: [] as PhotoItem[] }));
+        for (const i of await withPaths(recent.list.filter((x) => names.has(x.filename)))) {
+          if (i.path && uploaded.some((u) => u.path === i.path)) found.set(i.path, i.id);
+        }
+        if (found.size < uploaded.length) await new Promise((r) => setTimeout(r, 5000));
+      }
+      const ids = [...found.values()];
+      if (ids.length) await client.request("SYNO.Foto.Browse.NormalAlbum", "add_item", { id: album_id, item: json(ids) }, V.normalAlbum);
+      return ok({
+        uploaded: uploaded.map((u) => ({ ...u, ...(found.has(u.path) && { photo_id: found.get(u.path) }) })),
+        album_id,
+        added_to_album: ids.length,
+        ...(ids.length < uploaded.length && { note: "Some files were not indexed by Photos yet; add them later with photos_album_items." }),
+      });
+    }),
+  );
+
+  server.registerTool(
     "photos_delete_album",
     {
       title: "Photos: delete albums",

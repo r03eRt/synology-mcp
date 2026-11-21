@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-179 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+192 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -56,6 +56,17 @@ Tests:
 5. Download Station (skipped if the user has no access): `downloads_info`, `downloads_list`, and its own download of `http://<NAS>/webman/index.cgi?mcp-test=<timestamp>` (served by the NAS itself, no Internet traffic) to `<carpeta temporal>/descargas`: `downloads_add`, `downloads_set_destination` to another temporary folder (and to a nonexistent one, which must give the explanatory message), `downloads_get`, `downloads_pause`, `downloads_resume` and `downloads_delete` **of that task only**; at the end the total number of tasks has to be the same as at the start.
 
 When it finishes, it deletes **only** the folder created by the run, by its exact path, and any download task created by the run that was still alive.
+
+Since 0.16.0, `test/real/real-nas-areas.test.ts` covers the later areas, with the same rules:
+
+6. Photos: albums, places, people and photos from both spaces, checking with `get_file_info` that each returned path exists; by place and by dates.
+7. Temporary album `mcptest-<base36>`: create, add and remove a photo, check and delete.
+8. Drive: sharing reads, file requests (the "disabled" message is accepted) and an internal link on a temporary folder in `/home/Drive`, which is removed and deleted.
+9. Packages and Download Station settings (administrator).
+10. Administration: the account's own access, a folder's permissions and the refusals (`administrators`, `homes`, deleting itself), which answer without calling DSM.
+11. Opt-in, with their variable set to `1`: `SYNOLOGY_REAL_ADMIN_WRITES` (temporary user, group and shared folder), `SYNOLOGY_REAL_DOCKER` (`hello-world`: pull, create, rename, recreate and delete) and `SYNOLOGY_REAL_SEARCH` (a torrent search, which goes to the Internet).
+
+`dsm_set_services`, `dsm_power`, `package_control` on real services and `photos_edit_person` are never run here.
 
 ### Result 2026-11-20 (`.env.admin` account)
 
@@ -122,6 +133,23 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-21, version 0.16.0 (extended real suite and new areas)
+
+- `npm test`: 192/192. New: `test/mock/more-areas.test.ts`. Also, the mock NAS now mimics the background group join (`join` → `task_id`, `join_status`), which is what exposed the bug.
+- `test:real`, against the real NAS:
+  - without opt-ins: 16 tests (13 pass, the 3 opt-in ones are skipped);
+  - the new file, with `SYNOLOGY_REAL_ADMIN_WRITES=1` and `SYNOLOGY_REAL_DOCKER=1`: 8 tests, 7 pass and the search is skipped.
+- New tools against the real NAS:
+  - every read;
+  - uploading to Photos and adding to a temporary album;
+  - temporary group and user: editing the group, changing members, privileges and quota;
+  - blocking and unblocking `203.0.113.77`;
+  - limits on a temporary `hello-world`;
+  - Home Mode, turned on and off.
+- Refusals checked: denying applications to the MCP's account and blocking a private IP.
+- At the end, a read-only audit found nothing left behind: users, groups, folders, albums, containers, images, blocked IPs and Home Mode, as before.
+- Not tested on the real NAS: encrypted folders (there are none), recordings (the camera is offline) and, on purpose, `dsm_set_services` and `dsm_power`.
 
 ### Result 2026-11-21, version 0.15.1 (0.15.0's pending real tests)
 

@@ -6,6 +6,28 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-21
 
+### 0.16.0: suite real ampliada, README más corto y áreas nuevas
+- **Suite real** (`test:real`): nuevo `test/real/real-nas-areas.test.ts`, que cubre Photos (comprobando que las rutas existen), Drive, paquetes, Download Station, administración y los rechazos. Lo que crea cuentas o sale a Internet va aparte, con variables opcionales (`SYNOLOGY_REAL_ADMIN_WRITES`, `SYNOLOGY_REAL_DOCKER`, `SYNOLOGY_REAL_SEARCH`).
+- **README**: de 556 a unas 390 líneas.
+  - Las tablas de herramientas pasan a un catálogo nuevo (`docs/catalogo.md` y `docs/en/catalogo.md`), y en el README queda un resumen por áreas.
+  - El árbol de código se sustituye por un enlace a la arquitectura.
+- **17 herramientas nuevas**:
+  - Photos: `photos_upload`, que sube fotos y, si se pide, las mete en un álbum.
+  - Administración:
+    - `dsm_update_group`;
+    - `dsm_app_access` y `dsm_set_app_access` (privilegios de aplicaciones);
+    - `dsm_quota` y `dsm_set_quota`;
+    - `dsm_unlock_shared_folder` y `dsm_lock_shared_folder` (carpetas cifradas);
+    - `dsm_network` y `dsm_firewall`, de solo lectura, porque cambiar el cortafuegos o la red podría dejar el NAS inaccesible;
+    - `dsm_block_ip` y `dsm_unblock_ip`, que rechaza IPs privadas.
+  - Docker: `docker_networks`, `docker_projects`, y límites de CPU y memoria en `docker_update_container`, que DSM aplica sin recrear.
+  - Surveillance Station: `surveillance_cameras`, `surveillance_recordings` y `surveillance_set_home_mode`.
+- **Arreglado**:
+  - Los grupos de un usuario (`dsm_create_user` con `groups`, `dsm_update_user`) devolvían los grupos de antes desde la 0.12.0. `User.Group join` es una tarea en segundo plano y no se esperaba a que acabara. Ahora sí, y los cambios desde el grupo usan `Group.Member change`.
+  - **Documentación de la 0.15.0**: al editarla se perdieron cuatro puntos de la hoja de ruta (quedaba un `\1` literal) y tres filas de la referencia de herramientas (`photos_delete_album`, `docker_remove_images`, `dsm_delete_user`). Se recuperaron del historial de git.
+- Probado contra el NAS real (escrituras solo sobre elementos temporales), sin dejar restos.
+- 128 herramientas (60 en solo lectura). Pruebas: 192.
+
 ### README al día
 - Tras la 0.15.1: el README (en los dos idiomas) estaba desactualizado en varios puntos.
 - Presentación, requisitos y permisos de la cuenta de DSM: ahora incluyen Synology Photos.
