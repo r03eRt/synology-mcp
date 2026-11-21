@@ -6,6 +6,17 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-21
 
+### README brought up to date
+- After 0.15.1: the README (in both languages) was out of date in several places.
+- Tagline, requirements and DSM account permissions: they now include Synology Photos.
+- Regular user vs administrator table: adds Photos, packages, Download Station settings and the new administration tools.
+- The plugin supports a second NAS, and the `SYNOLOGY_NAS2_*` variables appear in the configuration table.
+- Write mode enables 59 tools, not 32.
+- Security: new list of safeguards (not locking out its own account, folders with content, repeated word to shut down, recreating containers) and passwords that are never returned.
+- Troubleshooting: file requests disabled, public links not allowed and container variables that "don't change".
+- Limitations: what is only tested with the simulated NAS.
+- Examples for services, shared folders and containers.
+
 ### 0.15.1: `docker_update_container` fix and 0.15.0's real tests
 - **Fixed**: `docker_update_container` claimed to change variables, ports, folders or command, but DSM only applies the name and the restart policy on an existing container (checked on the real NAS). Now it:
   - changes the name and restart policy in place;

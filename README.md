@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <b>Talk to your NAS.</b> Find files, manage downloads and containers, keep an eye on your disks and administer DSM<br>
+  <b>Talk to your NAS.</b> Find files and photos, share from Drive, manage downloads and containers, keep an eye on your disks and administer DSM<br>
   from <b>Claude Code</b> or <b>Claude Desktop</b>, at home or away with QuickConnect. Secure by default.
 </p>
 
@@ -90,7 +90,7 @@ Using Claude Desktop? Download the `.mcpb` from [Releases](https://github.com/r0
   - by its IP or name, on the same network, over VPN or through an open port;
   - or via **QuickConnect** (`quickconnect:<your ID>`), which works from anywhere without opening ports.
 - **Node.js 22.19 or later** on that computer, for Claude Code or the manual install. Claude Desktop ships its own Node.
-- For each area, its package installed on the NAS: Synology Drive Server, Download Station or Container Manager. Tools for a package that isn't installed answer "is … installed?". `get_system_info` tells you which packages are present.
+- For each area, its package installed on the NAS: Synology Drive Server, Synology Photos, Download Station or Container Manager. Tools for a package that isn't installed answer "is … installed?". `get_system_info` tells you which packages are present.
 
 ## 2. Set up a DSM user
 
@@ -100,13 +100,13 @@ Claude can only do what the DSM user you configure is allowed to do; that is the
 
 1. In *Control Panel → User & Group*, create a user, for example `claude`.
 2. Under *Permissions*, give it read (or read/write) access **only** to the shared folders you want Claude to see.
-3. Under *Applications*, allow File Station and, if you use them, Synology Drive and Download Station.
+3. Under *Applications*, allow File Station and, if you use them, Synology Drive, Synology Photos and Download Station.
 
 What works with each kind of account:
 
 | With a regular user | Only with an administrator |
 |---|---|
-| Files, Drive, Download Station (its own downloads), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), recycle bins, administration (`dsm_*`) and every user's downloads |
+| Files, Drive (including sharing and file requests), Photos (the folders the user can see), Download Station (its own downloads and torrent search), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), packages (`get_packages`, `package_control`), recycle bins, Download Station speed limits and schedule, every user's downloads and administration (`dsm_*`: users, groups, shared folders, services, restart and shutdown) |
 
 Using an administrator gives Claude access to the whole NAS. If you do, consider keeping read-only mode on.
 
@@ -130,7 +130,7 @@ claude plugin marketplace add r03eRt/synology-mcp
 claude plugin install synology@synology-mcp
 ```
 
-Then, inside Claude Code, fill in the details with `/plugin configure synology@synology-mcp`. The password is stored in the system credential store. The plugin includes:
+Then, inside Claude Code, fill in the details with `/plugin configure synology@synology-mcp`. The password is stored in the system credential store. The form also has optional fields for a **second NAS** (see [Multiple NAS](#multiple-nas)). The plugin includes:
 
 - the server already bundled, with no dependencies to install;
 - the `synology-nas` skill, which teaches Claude to use the NAS well: paths, which tool to use for what, confirming before deleting or stopping services, and how to read disk health.
@@ -182,12 +182,13 @@ claude mcp add synology -s user -- node --env-file=/path/to/.env /path/to/synolo
 | `SYNOLOGY_URL` | NAS URL | — | DSM address with port (`http://IP:5000`, `https://nombre:5001`) or `quickconnect:<ID>` |
 | `SYNOLOGY_USERNAME` | DSM user | — | DSM user |
 | `SYNOLOGY_PASSWORD` | DSM password | — | Password |
-| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` enables the 32 write tools (create, move, delete, download, stop containers, change permissions…) |
+| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` enables the 59 write tools (create, move, delete, download, share, create containers, change permissions or services, restart the NAS…) |
 | `SYNOLOGY_INSECURE_TLS` | Accept an invalid HTTPS certificate | `false` | Accepts a self-signed, expired or wrong-name HTTPS certificate. Only on a trusted network |
 | `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token from `register-device`, for accounts with 2FA |
 | `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Name the device was registered under |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | — | `60000` | How long a tool waits for a long operation (copy, delete, search…) before returning its `taskid` to check later |
-| `SYNOLOGY_NAS_FILE` | — | — | JSON file with **multiple NAS** (see below). Replaces the first three variables |
+| `SYNOLOGY_NAS_FILE` | NAS list file | — | JSON file with **multiple NAS** (see below). Replaces the first three variables |
+| `SYNOLOGY_NAS_NAME`, `SYNOLOGY_NAS2_*` | Name of this NAS, Second NAS: … | — | A second NAS without a JSON file: `SYNOLOGY_NAS2_URL`, `_USERNAME`, `_PASSWORD`, `_NAME`, `_DEVICE_ID`, `_INSECURE_TLS` |
 
 ### Using it away from home: QuickConnect
 
@@ -235,12 +236,18 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
   - Photos: `photos_delete_album`, `photos_share_album` (public link), `photos_edit_person` (merging can't be undone);
   - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
   - others: `delete_sharing_links`.
+- **Safeguards against locking yourself out or going too far**:
+  - it won't disable, demote or delete the account it signs in with, nor delete `admin`, `guest`, the built-in groups or system shared folders like `homes`;
+  - it won't delete a shared folder that still has files unless told explicitly, or turn on the HTTPS redirect while it connects over HTTP;
+  - restarting or shutting down needs the word repeated (`confirm: "reboot"`), and DSM's running tasks are listed first;
+  - changing a container's variables, ports or folders means recreating it, and it asks for that explicitly (`recreate: true`).
 - **Secrets it never returns**, even if the NAS API provides them:
   - the **values** of container environment variables (database passwords, API keys); it only gives their names;
   - tracker **private keys (passkeys)** in torrent, RSS and magnet URLs, and credentials inside URLs; they come out as `<redacted>`;
   - passwords and keys inside **scheduled task scripts** (only a summary of the command is shown, with values hidden);
   - users' **emails**;
-  - the **serial numbers** of the NAS and its disks.
+  - the **serial numbers** of the NAS and its disks;
+  - passwords you give it (new users, protected links, file requests). A password it generates is shown **once**.
 - **Credentials**: with the plugin or the extension, in the system's secure store. In the manual install, preferably in a `.env` with `600` permissions. The repository history contains no personal data.
 
 ## 6. Tools
@@ -446,6 +453,8 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 - "Which scheduled tasks failed last time?"
 - "Remove marta's access to Documents."
 - "Create a user for Lucía with read-only access to photo."
+- "Turn off SMB1 and Telnet."
+- "Create a shared folder Proyectos that only the family group can use."
 
 **Photos**
 - "Show me the photos from Scotland in July 2025."
@@ -455,6 +464,7 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 **Docker**
 - "Which containers are stopped? Show me pihole's latest errors."
 - "Restart jellyfin."
+- "Create an nginx container that serves /docker/web on port 8080."
 
 **Drive**
 - "List what I've starred in Drive."
@@ -476,6 +486,9 @@ Full reference (parameters, the DSM API each one uses and responses) in [docs/en
 | `is <package> installed …? (code 102)` | That package isn't installed | Install it from Package Center |
 | Write tools are missing | It's in read-only mode | `SYNOLOGY_READ_ONLY=false` |
 | `finished: false` with a `taskid` | The operation is still running | Ask Claude to check it later (`get_task_status`) |
+| `File requests are disabled in Synology Drive (code 1076)` | The Drive administrator has file requests off | Turn them on in *Synology Drive Admin Console → Settings* |
+| `Public links are probably not allowed` (code 1040) | Drive doesn't allow public sharing | Enable it in *Synology Drive Admin Console → Settings → Sharing permissions*, or use `access: internal` |
+| A container's variables or ports "didn't change" | DSM only changes the name and restart policy of an existing container | Ask again allowing it to recreate the container (`recreate: true`) |
 
 ## 9. Updating
 
@@ -539,5 +552,5 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 ## 11. Limitations and next steps
 
 - **npm**: the package isn't published yet.
-- **Not tested in practice**: 2FA (tested only with the simulated NAS) and the installed Claude Desktop extension.
+- **Not tested in practice**: 2FA and the installed Claude Desktop extension. Also, on purpose, only tested with the simulated NAS: changing services (`dsm_set_services`), restarting or shutting down (`dsm_power`) and editing people in Photos (the test NAS has none). Drive public links and file requests are disabled on the test NAS, so they are only tested with the simulated one.
 - **Not included**: Hyper Backup (not installed on the test NAS, so its API couldn't be taken), uploading through Photos, editing groups, quotas, encryption, firewall and network settings, Compose projects. See the [roadmap](docs/en/hoja-de-ruta.md).

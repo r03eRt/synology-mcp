@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <b>Habla con tu NAS.</b> Busca ficheros, gestiona descargas y contenedores, vigila los discos y administra DSM<br>
+  <b>Habla con tu NAS.</b> Busca ficheros y fotos, comparte desde Drive, gestiona descargas y contenedores, vigila los discos y administra DSM<br>
   desde <b>Claude Code</b> o <b>Claude Desktop</b>, en casa o fuera con QuickConnect. Seguro por defecto.
 </p>
 
@@ -90,7 +90,7 @@ Después, en Claude Code: `/plugin configure synology@synology-mcp`. Pon la dire
   - por su IP o nombre, en la misma red, por VPN o con un puerto abierto;
   - o por **QuickConnect** (`quickconnect:<tu ID>`), que funciona desde cualquier sitio sin abrir puertos.
 - **Node.js 22.19 o superior** en ese ordenador, para Claude Code o la instalación manual. Claude Desktop trae su propio Node.
-- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Download Station o Container Manager. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
+- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Synology Photos, Download Station o Container Manager. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
 
 ## 2. Prepara un usuario en DSM
 
@@ -100,13 +100,13 @@ Claude solo puede hacer lo que permita el usuario de DSM que configures; esa es 
 
 1. En *Panel de control → Usuario y grupo*, crea un usuario, por ejemplo `claude`.
 2. En *Permisos*, dale lectura (o lectura y escritura) **solo** en las carpetas compartidas que quieras que Claude vea.
-3. En *Aplicaciones*, permítele File Station y, si los usas, Synology Drive y Download Station.
+3. En *Aplicaciones*, permítele File Station y, si los usas, Synology Drive, Synology Photos y Download Station.
 
 Qué funciona con cada tipo de cuenta:
 
 | Con un usuario normal | Solo con un administrador |
 |---|---|
-| Ficheros, Drive, Download Station (sus propias descargas), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), papeleras, administración (`dsm_*`) y las descargas de todos los usuarios |
+| Ficheros, Drive (también compartir y *file requests*), Photos (las carpetas que el usuario puede ver), Download Station (sus propias descargas y la búsqueda de torrents), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), paquetes (`get_packages`, `package_control`), papeleras, límites y horario de Download Station, las descargas de todos los usuarios y la administración (`dsm_*`: usuarios, grupos, carpetas compartidas, servicios, reiniciar y apagar) |
 
 Usar un administrador da a Claude acceso a todo el NAS. Si lo haces, considera dejar el modo solo lectura activado.
 
@@ -130,7 +130,7 @@ claude plugin marketplace add r03eRt/synology-mcp
 claude plugin install synology@synology-mcp
 ```
 
-Después, dentro de Claude Code, rellena los datos con `/plugin configure synology@synology-mcp`. La contraseña se guarda en el almacén de credenciales del sistema. El plugin trae:
+Después, dentro de Claude Code, rellena los datos con `/plugin configure synology@synology-mcp`. La contraseña se guarda en el almacén de credenciales del sistema. El formulario tiene además campos opcionales para un **segundo NAS** (ver [Varios NAS](#varios-nas)). El plugin trae:
 
 - el servidor ya empaquetado, sin dependencias que instalar;
 - la skill `synology-nas`, que enseña a Claude a usar bien el NAS: rutas, qué herramienta usar para cada cosa, confirmar antes de borrar o de parar servicios, y cómo interpretar la salud de los discos.
@@ -182,12 +182,13 @@ claude mcp add synology -s user -- node --env-file=/ruta/.env /ruta/a/synology-m
 | `SYNOLOGY_URL` | NAS URL | — | Dirección de DSM con puerto (`http://IP:5000`, `https://nombre:5001`) o `quickconnect:<ID>` |
 | `SYNOLOGY_USERNAME` | DSM user | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | DSM password | — | Contraseña |
-| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 32 herramientas de escritura (crear, mover, borrar, descargar, parar contenedores, cambiar permisos…) |
+| `SYNOLOGY_READ_ONLY` | Read-only | `true` | `false` activa las 59 herramientas de escritura (crear, mover, borrar, descargar, compartir, crear contenedores, cambiar permisos o servicios, reiniciar el NAS…) |
 | `SYNOLOGY_INSECURE_TLS` | Accept an invalid HTTPS certificate | `false` | Acepta un certificado HTTPS autofirmado, caducado o de otro nombre. Solo en una red de confianza |
 | `SYNOLOGY_DEVICE_ID` | 2FA device token | — | Token de `register-device`, para cuentas con 2FA |
 | `SYNOLOGY_DEVICE_NAME` | — | `synology-mcp` | Nombre con el que se registró el dispositivo |
 | `SYNOLOGY_TASK_TIMEOUT_MS` | — | `60000` | Cuánto espera una herramienta a una operación larga (copiar, borrar, buscar…) antes de devolver su `taskid` para consultarla luego |
-| `SYNOLOGY_NAS_FILE` | — | — | Fichero JSON con **varios NAS** (ver abajo). Sustituye a las tres primeras variables |
+| `SYNOLOGY_NAS_FILE` | NAS list file | — | Fichero JSON con **varios NAS** (ver abajo). Sustituye a las tres primeras variables |
+| `SYNOLOGY_NAS_NAME`, `SYNOLOGY_NAS2_*` | Name of this NAS, Second NAS: … | — | Un segundo NAS sin fichero JSON: `SYNOLOGY_NAS2_URL`, `_USERNAME`, `_PASSWORD`, `_NAME`, `_DEVICE_ID`, `_INSECURE_TLS` |
 
 ### Usarlo fuera de casa: QuickConnect
 
@@ -235,12 +236,18 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
   - Photos: `photos_delete_album`, `photos_share_album` (enlace público), `photos_edit_person` (fusionar no se puede deshacer);
   - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
   - otras: `delete_sharing_links`.
+- **Salvaguardas para no dejarte fuera ni pasarse**:
+  - no desactiva, quita de administradores ni borra la cuenta con la que entra, ni borra `admin`, `guest`, los grupos del sistema o carpetas del sistema como `homes`;
+  - no borra una carpeta compartida que aún tenga ficheros salvo que se pida expresamente, ni activa la redirección a HTTPS mientras entra por HTTP;
+  - reiniciar o apagar exige repetir la palabra (`confirm: "reboot"`), y antes enseña las tareas que DSM tiene en marcha;
+  - cambiar las variables, puertos o carpetas de un contenedor obliga a recrearlo, y lo pide expresamente (`recreate: true`).
 - **Secretos que nunca devuelve**, aunque la API del NAS los dé:
   - los **valores** de las variables de entorno de los contenedores (contraseñas de bases de datos, claves de API); solo da sus nombres;
   - las **claves privadas (passkeys)** de los trackers en las URL de torrents, RSS y enlaces magnet, y las credenciales dentro de URLs; salen como `<redacted>`;
   - las contraseñas y claves dentro de los **scripts de las tareas programadas** (solo se muestra un resumen del comando, con los valores ocultos);
   - los **emails** de los usuarios;
-  - los **números de serie** del NAS y de los discos.
+  - los **números de serie** del NAS y de los discos;
+  - las contraseñas que le das (usuarios nuevos, enlaces protegidos, *file requests*). Una contraseña que genera se enseña **una sola vez**.
 - **Credenciales**: con el plugin o la extensión, en el almacén seguro del sistema. En la instalación manual, mejor en un `.env` con permisos `600`. El historial del repositorio no contiene datos personales.
 
 ## 6. Herramientas
@@ -446,6 +453,8 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 - «¿Qué tareas programadas fallaron la última vez?»
 - «Quita a marta el acceso a Documents.»
 - «Crea un usuario para Lucía con acceso de solo lectura a photo.»
+- «Desactiva SMB1 y Telnet.»
+- «Crea una carpeta compartida Proyectos que solo pueda usar el grupo familia.»
 
 **Fotos**
 - «Enséñame las fotos de Escocia de julio de 2025.»
@@ -455,6 +464,7 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 **Docker**
 - «¿Qué contenedores están parados? Enséñame los últimos errores de pihole.»
 - «Reinicia jellyfin.»
+- «Crea un contenedor de nginx que sirva /docker/web en el puerto 8080.»
 
 **Drive**
 - «Lista lo que tengo marcado con estrella en Drive.»
@@ -476,6 +486,9 @@ Referencia completa (parámetros, API de DSM que usa cada una y respuestas) en [
 | `is <paquete> installed …? (code 102)` | Ese paquete no está instalado | Instálalo desde el Centro de paquetes |
 | Faltan las herramientas de escritura | Está en solo lectura | `SYNOLOGY_READ_ONLY=false` |
 | `finished: false` con un `taskid` | La operación sigue en marcha | Pide a Claude que la consulte más tarde (`get_task_status`) |
+| `File requests are disabled in Synology Drive (code 1076)` | El administrador de Drive tiene las *file requests* desactivadas | Actívalas en *Consola de administración de Synology Drive → Configuración* |
+| `Public links are probably not allowed` (code 1040) | Drive no permite compartir en público | Actívalo en *Consola de administración de Synology Drive → Configuración → Permisos de compartición*, o usa `access: internal` |
+| Las variables o puertos de un contenedor «no cambian» | DSM solo cambia el nombre y el reinicio de un contenedor ya creado | Pídelo otra vez permitiendo recrear el contenedor (`recreate: true`) |
 
 ## 9. Actualizar
 
@@ -539,5 +552,5 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 ## 11. Limitaciones y próximos pasos
 
 - **npm**: el paquete no está publicado todavía.
-- **Sin probar en la práctica**: 2FA (probado solo con el NAS simulado) y la extensión de Claude Desktop instalada.
+- **Sin probar en la práctica**: 2FA y la extensión de Claude Desktop instalada. Además, a propósito, solo probados con el NAS simulado: cambiar servicios (`dsm_set_services`), reiniciar o apagar (`dsm_power`) y editar personas en Photos (el NAS de pruebas no tiene). Los enlaces públicos y las *file requests* de Drive están desactivados en el NAS de pruebas, así que solo están probados con el simulado.
 - **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), subir desde Photos, editar grupos, cuotas, cifrado, cortafuegos y red, proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
