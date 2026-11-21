@@ -514,6 +514,228 @@ export function registerAdminTools(server: McpServer, client: SynologyClient, op
       }),
     ),
   );
+
+  // ------------------------------------------------------- groups and shares
+
+  const SYSTEM_GROUPS = new Set(["administrators", "users", "http"]);
+  const SYSTEM_SHARES = new Set(["homes", "home", "web", "web_packages"]);
+
+  server.registerTool(
+    "dsm_create_group",
+    {
+      title: "Create a DSM group",
+      description: "Create a local DSM group, optionally with members. Give it folder access with dsm_set_share_access (type group). Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1).max(64).regex(/^[^\s/\\:*?"<>|@+=;,[\]]+$/, "no spaces or / \\ : * ? \" < > | @ + = ; , [ ]"),
+        description: z.string().max(64).optional(),
+        members: z.array(z.string().min(1)).optional().describe("User names to add"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ name, description, members = [] }) =>
+      adminOnly(async () => {
+        const { groups } = await client.request<{ groups: { name: string }[] }>("SYNO.Core.Group", "list", { offset: 0, limit: -1, type: json("local") }, 1);
+        if (groups.some((g) => g.name.toLowerCase() === name.toLowerCase())) throw new Error(`Group ${name} already exists`);
+        const missing: string[] = [];
+        for (const m of members) if (!(await userExists(m))) missing.push(m);
+        if (missing.length) throw new Error(`No such user: ${missing.join(", ")}; nothing was created`);
+        await client.request("SYNO.Core.Group", "create", { name: json(name), ...(description && { description: json(description) }) }, 1);
+        for (const m of members) await client.request("SYNO.Core.User.Group", "join", { name: json(m), join_group: json([name]), leave_group: json([]) }, 1);
+        return ok({ created: name, members });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_delete_group",
+    {
+      title: "Delete DSM groups",
+      description:
+        "Delete local DSM groups. Their members stay, but lose the folder and application access the group gave them: list what changes and wait for confirmation. The built-in administrators, users and http groups are refused. Needs a DSM administrator account.",
+      inputSchema: { names: z.array(z.string().min(1)).min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ names }) =>
+      adminOnly(async () => {
+        const system = names.filter((n) => SYSTEM_GROUPS.has(n.toLowerCase()));
+        if (system.length) throw new Error(`Built-in groups cannot be deleted: ${system.join(", ")}`);
+        const { groups } = await client.request<{ groups: { name: string }[] }>("SYNO.Core.Group", "list", { offset: 0, limit: -1, type: json("local") }, 1);
+        const missing = names.filter((n) => !groups.some((g) => g.name.toLowerCase() === n.toLowerCase()));
+        if (missing.length) throw new Error(`No such group: ${missing.join(", ")}; see dsm_groups`);
+        await client.request("SYNO.Core.Group", "delete", { name: json(names) }, 1);
+        return ok({ deleted: names });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_create_shared_folder",
+    {
+      title: "Create a shared folder",
+      description:
+        "Create a shared folder on a volume, with a description and recycle bin settings. Only administrators get access by default: grant it with dsm_set_share_access. No encryption, quota or WORM options. Needs a DSM administrator account.",
+      inputSchema: {
+        name: z.string().min(1).max(32).regex(/^[^/\\:*?"<>|=+;,[\]]+$/, "no / \\ : * ? \" < > | = + ; , [ ]"),
+        volume: z.string().regex(/^\/volume\w+$/, "like /volume1").optional().describe("Default /volume1"),
+        description: z.string().max(64).optional(),
+        recycle_bin: z.boolean().optional().describe("Default true"),
+        recycle_bin_admin_only: z.boolean().optional(),
+        hidden: z.boolean().optional().describe("Hide it in network places (SMB browsing)"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ name, volume, description, recycle_bin, recycle_bin_admin_only, hidden }) =>
+      adminOnly(async () => {
+        const shareinfo = {
+          name,
+          vol_path: volume ?? "/volume1",
+          desc: description ?? "",
+          name_org: "",
+          enable_recycle_bin: recycle_bin ?? true,
+          ...(recycle_bin_admin_only !== undefined && { recycle_bin_admin_only }),
+          ...(hidden !== undefined && { hidden }),
+        };
+        const r = await client.request<{ name?: string }>("SYNO.Core.Share", "create", { name: json(name), shareinfo: json(shareinfo) }, 1);
+        return ok({ created: r.name ?? name, path: `/${r.name ?? name}`, volume: shareinfo.vol_path, recycle_bin: shareinfo.enable_recycle_bin, note: "Only administrators can access it until you grant access with dsm_set_share_access." });
+      }),
+    ),
+  );
+
+  server.registerTool(
+    "dsm_delete_shared_folder",
+    {
+      title: "Delete shared folders",
+      description:
+        "Delete shared folders AND EVERYTHING IN THEM, permanently (their recycle bin goes too). Refuses folders that are not empty unless delete_contents is true, and system folders like homes. Show the user what each folder holds (get_dir_size) and wait for explicit confirmation. Needs a DSM administrator account.",
+      inputSchema: {
+        names: z.array(z.string().min(1)).min(1).describe("Shared folder names, without /"),
+        delete_contents: z.boolean().optional().describe("Required to delete folders that still have files"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ names, delete_contents }) =>
+      adminOnly(async () => {
+        const system = names.filter((n) => SYSTEM_SHARES.has(n.toLowerCase()));
+        if (system.length) throw new Error(`System shared folders cannot be deleted here: ${system.join(", ")}`);
+        const { shares } = await client.request<{ shares: { name: string }[] }>("SYNO.Core.Share", "list", { shareType: json("all") }, 1);
+        const missing = names.filter((n) => !shares.some((s) => s.name === n));
+        if (missing.length) throw new Error(`No such shared folder: ${missing.join(", ")} (names are case-sensitive); see dsm_shared_folders`);
+        if (!delete_contents) {
+          const notEmpty: string[] = [];
+          for (const n of names) {
+            const { files } = await client.request<{ files: { name: string }[] }>("SYNO.FileStation.List", "list", { folder_path: json(`/${n}`), limit: 2 }, 2);
+            if (files.some((f) => f.name !== "#recycle")) notEmpty.push(n);
+          }
+          if (notEmpty.length) throw new Error(`Not empty: ${notEmpty.join(", ")}. Deleting removes every file in them; pass delete_contents: true only after the user confirms.`);
+        }
+        // Like the web UI: DSM's own check first (hard = cannot delete, e.g. used by a package).
+        const check = await client.request<{ hard?: Record<string, unknown[]>; soft?: Record<string, unknown[]> }>("SYNO.Core.Share", "validate_delete", { name: json(names) }, 1).catch(() => ({}) as { hard?: Record<string, unknown[]>; soft?: Record<string, unknown[]> });
+        if (check.hard && Object.keys(check.hard).length) throw new Error(`DSM refuses to delete ${Object.keys(check.hard).join(", ")}: ${JSON.stringify(check.hard)}`);
+        await client.request("SYNO.Core.Share", "delete", { name: json(names) }, 1, { timeoutMs: 600_000 });
+        return ok({ deleted: names, ...(check.soft && Object.keys(check.soft).length && { dsm_warnings: check.soft }) });
+      }),
+    ),
+  );
+
+  // ----------------------------------------------------------------- services
+
+  server.registerTool(
+    "dsm_set_services",
+    {
+      title: "Change file and remote services",
+      description:
+        "Turn services on or off and harden them: SMB minimum version (SMB2 or SMB3: drops SMB1), FTP, Telnet, SSH (and its port), DSM's HTTP→HTTPS redirect. This changes how people and devices connect (old TVs or printers may need SMB1): state the exact change and wait for confirmation. Only the given settings change. Needs a DSM administrator account.",
+      inputSchema: {
+        smb_min_version: z.enum(["SMB2", "SMB3"]).optional(),
+        ftp: z.boolean().optional().describe("Plain FTP on/off"),
+        telnet: z.boolean().optional(),
+        ssh: z.boolean().optional(),
+        ssh_port: z.number().int().min(1).max(65535).optional(),
+        https_redirect: z.boolean().optional().describe("Redirect DSM's HTTP port to HTTPS"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async ({ smb_min_version, ftp, telnet, ssh, ssh_port, https_redirect }) =>
+      adminOnly(async () => {
+        if ([smb_min_version, ftp, telnet, ssh, ssh_port, https_redirect].every((v) => v === undefined)) throw new Error("Nothing to change");
+        const conn = await client.connection();
+        if (https_redirect && conn.url.startsWith("http://")) {
+          throw new Error(`This MCP talks to DSM over HTTP (${new URL(conn.url).port || 80}); with the redirect on it would be sent to HTTPS and could stop working (the certificate may be invalid). Switch SYNOLOGY_URL to https:// first, or turn the redirect on in Control Panel.`);
+        }
+        const changed: Record<string, unknown> = {};
+        if (smb_min_version) {
+          // smb_min_protocol: 0 SMB1, 1 SMB2, 2 SMB2 + large MTU, 3 SMB3; the web UI sends partial SMB settings.
+          await client.request("SYNO.Core.FileServ.SMB", "set", { smb_min_protocol: smb_min_version === "SMB3" ? 3 : 1 }, 3);
+          changed.smb_min_version = smb_min_version;
+        }
+        if (ftp !== undefined) {
+          // FTP settings are sent whole, as the web UI does (get, change, set).
+          const cur = await client.request<Record<string, unknown>>("SYNO.Core.FileServ.FTP", "get", {}, 1);
+          await client.request("SYNO.Core.FileServ.FTP", "set", { ...flatParams(cur), enable_ftp: ftp }, 1);
+          changed.ftp = ftp;
+        }
+        if (telnet !== undefined || ssh !== undefined || ssh_port !== undefined) {
+          const cur = await client.request<Record<string, unknown>>("SYNO.Core.Terminal", "get", {}, 3);
+          await client.request(
+            "SYNO.Core.Terminal",
+            "set",
+            { ...flatParams(cur), ...(telnet !== undefined && { enable_telnet: telnet }), ...(ssh !== undefined && { enable_ssh: ssh }), ...(ssh_port !== undefined && { ssh_port }) },
+            3,
+          );
+          Object.assign(changed, { ...(telnet !== undefined && { telnet }), ...(ssh !== undefined && { ssh }), ...(ssh_port !== undefined && { ssh_port }) });
+        }
+        if (https_redirect !== undefined) {
+          await client.request("SYNO.Core.Web.DSM", "set", { enable_https_redirect: https_redirect }, 2);
+          changed.https_redirect = https_redirect;
+        }
+        return ok({ changed, note: "Check the result with dsm_services." });
+      }),
+    ),
+  );
+
+  // -------------------------------------------------------------------- power
+
+  server.registerTool(
+    "dsm_power",
+    {
+      title: "Restart or shut down the NAS",
+      description:
+        "Restart or shut down the whole NAS. Everything stops: shares, containers, downloads, this MCP's own connection (after a shutdown someone must press the power button). Only when the user explicitly asks; repeat the action word in confirm. If DSM reports running tasks (a backup, a RAID check…) they are listed and nothing happens unless force is true. Needs a DSM administrator account.",
+      inputSchema: {
+        action: z.enum(["reboot", "shutdown"]),
+        confirm: z.string().describe("Must equal action (\"reboot\" or \"shutdown\"): a deliberate second confirmation"),
+        force: z.boolean().optional().describe("Go ahead even if DSM reports running tasks (default false)"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ action, confirm, force }) =>
+      adminOnly(async () => {
+        if (confirm !== action) throw new Error(`confirm must be "${action}"`);
+        try {
+          // Parameters of the DSM desktop's power menu (_haltSystem in synoSDSjslib).
+          await client.request("SYNO.Core.System", action, { force: force ?? false, local: true, firmware_upgrade: false, cache_check_shutdown: action === "shutdown" }, 2);
+        } catch (err) {
+          const errs = err instanceof SynologyApiError ? (err.errors as { blockingTasks?: unknown[]; runningTasks?: unknown[] } | undefined) : undefined;
+          if (errs?.blockingTasks?.length) throw new Error(`DSM refuses to ${action} now because of: ${JSON.stringify(errs.blockingTasks)}`);
+          if (errs?.runningTasks?.length) {
+            return ok({ done: false, running_tasks: errs.runningTasks, note: `These tasks are running. Tell the user; ${action} with force: true only if they agree.` });
+          }
+          throw err;
+        }
+        return ok({ done: true, action, note: action === "reboot" ? "The NAS is restarting: it will be unreachable for a few minutes." : "The NAS is shutting down. Someone must turn it on again by hand." });
+      }),
+    ),
+  );
+}
+
+/** A get result as WebAPI parameters: nested values JSON-encoded, strings JSON-encoded like the web UI sends them. */
+function flatParams(o: Record<string, unknown>): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (v === null || v === undefined) continue;
+    out[k] = typeof v === "number" || typeof v === "boolean" ? v : json(v);
+  }
+  return out;
 }
 
 /** 20 random characters with upper, lower, digits and symbols (meets any DSM strong-password policy). */

@@ -88,7 +88,7 @@ Necesaria antes de que lo use nadie más.
   - cambiar permisos de compartición;
   - crear enlaces de Drive;
   - *file requests*.
-- [x] **3.3 Estado del sistema** (M) — hecho en 0.7.0 salvo reiniciar y apagar, que se dejan fuera a propósito: son acciones con mucho impacto y la web de DSM ya las hace con confirmación.:
+\1 En 0.15.0 se añadió `dsm_power` (reiniciar y apagar), a petición del usuario, con doble confirmación y aviso de tareas en marcha.
   - notificaciones y registros del NAS;
   - estado SMART por disco;
   - actualizaciones de DSM y de paquetes disponibles;
@@ -99,10 +99,10 @@ Necesaria antes de que lo use nadie más.
 
 Ordenadas por utilidad probable.
 
-- [x] **4.1 Synology Photos** (L). Hecho en 0.14.0: álbumes, lugares, personas y etiquetas, buscar por fecha, lugar o texto (cada foto con su ruta en File Station), y crear álbumes y añadir o quitar fotos. API sacada de la web de Photos. Sin gestionar caras ni compartir álbumes.
-- [x] **4.2 Container Manager (Docker)** (M). Listar contenedores, arrancar, parar y reiniciar, y ver registros. Hecho en 0.8.0, junto con las imágenes.
+\1 En 0.15.0: álbumes condicionales, compartir álbumes con enlace y editar personas.
+\1 En 0.15.0: descargar imágenes y crear, editar y borrar contenedores.
 - [ ] **4.3 Hyper Backup** (M). Estado de las copias y de la última ejecución, y lanzar una copia. **Bloqueado** (2026-11-21): Hyper Backup no está instalado en el NAS de pruebas, así que no se puede sacar su API de la web ni probarla. Se retoma si el usuario lo instala.
-- [x] **4.4 Administración de DSM** (L). Hecho en 0.11.0: lectura de usuarios, grupos, carpetas y permisos, tareas y servicios (con avisos); activar o ejecutar tareas y cambiar permisos. En 0.12.0: crear, cambiar (desactivar, grupos, contraseña) y borrar usuarios. Sin crear ni borrar grupos o carpetas compartidas.
+\1 En 0.15.0, a petición del usuario y siempre con confirmación: crear y borrar grupos y carpetas compartidas, y cambiar servicios (SMB1, FTP, Telnet, SSH, redirección a HTTPS).
 - [ ] **4.5 Surveillance Station** (L). Cámaras, grabaciones e instantáneas. Solo si alguien lo usa.
 - [x] **4.6 QuickConnect** (M). Hecho en 0.10.0: `SYNOLOGY_URL=quickconnect:<ID>`, con red local, conexión directa o relé.
 - [x] **4.7 Varios NAS** (M). Hecho en 0.10.0 con `SYNOLOGY_NAS_FILE`, `list_nas` y `use_nas` (NAS activo, en vez de un parámetro en cada herramienta). En 0.14.0, desde el plugin y la extensión: un segundo NAS en el formulario y la ruta del JSON para más.

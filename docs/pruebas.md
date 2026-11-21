@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-165 pruebas, ~9 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+178 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -122,6 +122,23 @@ Al terminar se borra **solo** la carpeta creada por la ejecución, por su ruta e
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-21, versión 0.15.0 (acciones de riesgo)
+
+- `npm test`: 178/178. Nueva: `test/mock/risky-admin.test.ts`. Cubre:
+  - álbumes condicionales: lugar por nombre, varios candidatos, desconocido;
+  - compartir y dejar de compartir;
+  - personas;
+  - grupos: miembros, duplicados, los del sistema;
+  - carpetas: vacías o no, `homes`, mayúsculas;
+  - servicios: FTP y Terminal mandados enteros, rechazo de la redirección por HTTP;
+  - apagado: palabra de confirmación, tareas en marcha, `force`;
+  - Docker: crear con comprobaciones, editar parado, borrar y descargar.
+- Contra el NAS real:
+  - Photos: álbum condicional temporal "Madrid 2025" (76 fotos) compartido con contraseña y caducidad (DSM las guardó), dejado de compartir y borrado; un lugar inexistente da error. Antes, solo lectura: `peek_item_count` con distintas condiciones y el árbol de lugares.
+  - Docker: solo lectura del perfil de un contenedor, para copiar el formato.
+  - **Bloqueada por el sistema de permisos del asistente**: crear y borrar un grupo y una carpeta compartida temporales. No se intentó otra vía.
+  - **No probados a propósito**: `dsm_set_services` (cambiaría la seguridad del NAS), `dsm_power` (lo reiniciaría o apagaría), `photos_edit_person` (no hay personas), `docker_create/update/delete_container` y `docker_pull_image`.
 
 ### Resultado 2026-11-21, versión 0.14.0 (Synology Photos, paquetes, *file requests*, segundo NAS)
 

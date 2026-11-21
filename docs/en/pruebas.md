@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-165 tests, ~9 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+178 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -122,6 +122,23 @@ When it finishes, it deletes **only** the folder created by the run, by its exac
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-21, version 0.15.0 (risky actions)
+
+- `npm test`: 178/178. New: `test/mock/risky-admin.test.ts`. It covers:
+  - conditional albums: place by name, several candidates, unknown;
+  - sharing and unsharing;
+  - people;
+  - groups: members, duplicates, built-in ones;
+  - folders: empty or not, `homes`, case;
+  - services: FTP and Terminal sent whole, redirect refused over HTTP;
+  - power: confirmation word, running tasks, `force`;
+  - Docker: create with checks, edit stopped, delete and pull.
+- Against the real NAS:
+  - Photos: temporary conditional album "Madrid 2025" (76 photos) shared with password and expiry (DSM stored them), unshared and deleted; an unknown place gives an error. Before that, read-only: `peek_item_count` with several conditions and the place tree.
+  - Docker: only reading a container's profile, to copy the format.
+  - **Blocked by the assistant's permission system**: creating and deleting a temporary group and shared folder. No other route was tried.
+  - **Not tested on purpose**: `dsm_set_services` (it would change the NAS's security), `dsm_power` (it would restart or shut it down), `photos_edit_person` (no people), `docker_create/update/delete_container` and `docker_pull_image`.
 
 ### Result 2026-11-21, version 0.14.0 (Synology Photos, packages, file requests, second NAS)
 

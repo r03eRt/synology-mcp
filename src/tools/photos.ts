@@ -72,8 +72,10 @@ function placeOf(a?: NonNullable<PhotoItem["additional"]>["address"]): string | 
 export function registerPhotosTools(server: McpServer, client: SynologyClient, opts: { readOnly: boolean }) {
   const READ = { readOnlyHint: true, openWorldHint: false } as const;
   const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-  const req = <T>(space: Space, api: string, method: string, params: Record<string, string | number | boolean | undefined>, version: number) =>
-    client.request<T>(`${SPACES[space]}.${api}`, method, params, version);
+  const req = <T>(space: Space, api: string, method: string, params: Record<string, string | number | boolean | undefined>, version: number, timeoutMs?: number) =>
+    client.request<T>(`${SPACES[space]}.${api}`, method, params, version, timeoutMs ? { timeoutMs } : {});
+  /** Whole-library queries (place tree, conditional counts) took 30–50 s on 229,000 photos. */
+  const SLOW = 180_000;
   const space = z.enum(["personal", "shared"]).optional();
 
   let me: Promise<number> | undefined;
@@ -302,6 +304,143 @@ export function registerPhotosTools(server: McpServer, client: SynologyClient, o
         ...(failed.length && { not_added: failed, note: "Some photos were not added (they may not exist or not be accessible)." }),
         ...(remove?.length && { removed: remove.length }),
       });
+    }),
+  );
+
+  /** Place tree of the filter / conditional-album API (ids differ from Browse.Geocoding's). */
+  interface PlaceNode {
+    id: number;
+    name: string;
+    level: number;
+    children?: PlaceNode[];
+  }
+  const placeTree = async (sp: Space) =>
+    // ~30 s on a library of 229,000 photos.
+    (await req<{ geocoding?: PlaceNode[] }>(sp, "Search.Filter", "list", { setting: json({ geocoding: true }) }, 4, SLOW)).geocoding ?? [];
+  const findPlaces = (tree: PlaceNode[], name: string) => {
+    const flat: { node: PlaceNode; path: string }[] = [];
+    const walk = (nodes: PlaceNode[], parents: string[]) => {
+      for (const n of nodes) {
+        flat.push({ node: n, path: [...parents, n.name].join(" > ") });
+        walk(n.children ?? [], [...parents, n.name]);
+      }
+    };
+    walk(tree, []);
+    const q = name.toLowerCase();
+    const exact = flat.filter((f) => f.node.name.toLowerCase() === q);
+    return exact.length ? exact : flat.filter((f) => f.node.name.toLowerCase().includes(q));
+  };
+
+  server.registerTool(
+    "photos_create_condition_album",
+    {
+      title: "Photos: create a conditional album",
+      description:
+        "Create a conditional album that fills itself with every photo matching the conditions, now and in the future: a place (by name, e.g. \"Madrid\"; looking it up takes up to ~30 s on big libraries), a date range and/or a text. Says how many photos match before creating it. Space shared (default) is /photo, personal the user's /home/Photos.",
+      inputSchema: {
+        name: z.string().min(1).max(255),
+        place: z.string().min(1).optional().describe("Place name: country, region, city or district"),
+        place_id: z.number().int().optional().describe("Exact place from a previous answer's candidates, when the name is ambiguous"),
+        from: z.string().optional().describe("Taken on or after, e.g. 2025-01-01"),
+        to: z.string().optional().describe("Taken on or before, e.g. 2025-12-31"),
+        keyword: z.string().min(1).optional().describe("Text in the file name or description"),
+        space,
+      },
+      annotations: WRITE,
+    },
+    safe(async ({ name, place, place_id, from, to, keyword, space: sp = "shared" }) => {
+      if (!place && place_id === undefined && !from && !to && !keyword) throw new Error("Give at least one condition: place, from/to or keyword");
+      const ownerId = sp === "shared" ? 0 : await myPhotosId();
+      let placeIds: number[] | undefined;
+      let placeLabel: string | undefined;
+      if (place_id !== undefined) placeIds = [place_id];
+      else if (place) {
+        const found = findPlaces(await placeTree(sp), place);
+        if (!found.length) throw new Error(`No place called "${place}" in the ${sp} space's photos`);
+        if (found.length > 1) {
+          return ok({ created: false, note: `"${place}" matches several places: call again with place_id.`, candidates: found.slice(0, 20).map((f) => ({ place_id: f.node.id, place: f.path })) });
+        }
+        placeIds = [found[0].node.id];
+        placeLabel = found[0].path;
+      }
+      const start = from ? wallClockSeconds(from) : undefined;
+      const end = to ? wallClockSeconds(to, true) : undefined;
+      const condition = {
+        user_id: ownerId,
+        // All item types, as the albums the web UI creates.
+        item_type: [4, 3, 0, 2],
+        ...(placeIds && { geocoding: placeIds }),
+        ...((start !== undefined || end !== undefined) && { time: [{ ...(start !== undefined && { start_time: start }), ...(end !== undefined && { end_time: end }) }] }),
+        ...(keyword && { keyword: [keyword] }),
+      };
+      const { count } = await client.request<{ count: number }>("SYNO.Foto.Browse.ConditionAlbum", "peek_item_count", { condition: json(condition) }, 4, { timeoutMs: SLOW });
+      const r = await client.request<{ album: Album }>("SYNO.Foto.Browse.ConditionAlbum", "create", { name: json(name), condition: json(condition) }, 4, { timeoutMs: SLOW });
+      return ok({ created: true, id: r.album.id, name: r.album.name ?? name, photos: count, ...(placeLabel && { place: placeLabel }), space: sp });
+    }),
+  );
+
+  server.registerTool(
+    "photos_share_album",
+    {
+      title: "Photos: share an album by link",
+      description:
+        "Turn on a public link to an album (anyone with the link can see it: view, or view and download), optionally with a password and an expiry date, or turn it off. This exposes the photos outside the NAS: confirm first.",
+      inputSchema: {
+        album_id: z.number().int(),
+        access: z.enum(["view", "download", "off"]),
+        password: z.string().min(1).max(127).optional(),
+        expires: z.string().optional().describe("Date the link stops working, e.g. 2026-12-31"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ album_id, access, password, expires }) => {
+      if (access === "off") {
+        await client.request("SYNO.Foto.Sharing.Passphrase", "set_shared", { policy: json("album"), album_id, enabled: false }, 1);
+        return ok({ album_id, link: "off" });
+      }
+      const shared = await client.request<{ sharing_link: string; passphrase: string }>("SYNO.Foto.Sharing.Passphrase", "set_shared", { policy: json("album"), album_id, enabled: true }, 1);
+      let expiration: number | undefined;
+      if (expires) {
+        expiration = wallClockSeconds(expires, true);
+        if (expiration * 1000 < Date.now()) throw new Error(`${expires} is in the past`);
+      }
+      await client.request(
+        "SYNO.Foto.Sharing.Passphrase",
+        "update",
+        {
+          passphrase: json(shared.passphrase),
+          permission: json([{ action: "update", role: access, member: { type: "public" } }]),
+          ...(password && { password: json(password) }),
+          ...(expiration !== undefined && { expiration }),
+        },
+        1,
+      );
+      return ok({ album_id, access, url: shared.sharing_link, password: Boolean(password), ...(expiration && { expires: takenAt(expiration).slice(0, 10) }) });
+    }),
+  );
+
+  server.registerTool(
+    "photos_edit_person",
+    {
+      title: "Photos: name, hide or merge people",
+      description:
+        "Edit a person found by face recognition: give them a name, hide or show them, or merge other people into them (same person detected twice; merging cannot be undone, confirm first). Ids from photos_browse kind people.",
+      inputSchema: {
+        person_id: z.number().int(),
+        name: z.string().max(255).optional(),
+        hidden: z.boolean().optional(),
+        merge_ids: z.array(z.number().int()).min(1).optional().describe("People to merge into person_id"),
+        space,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ person_id, name, hidden, merge_ids, space: sp = "shared" }) => {
+      if (name === undefined && hidden === undefined && !merge_ids) throw new Error("Give name, hidden or merge_ids");
+      if (merge_ids?.includes(person_id)) throw new Error("merge_ids cannot include person_id itself");
+      if (merge_ids) await req(sp, "Browse.Person", "merge", { target_id: person_id, merged_id: json(merge_ids), ...(name !== undefined && { name: json(name) }) }, 2);
+      else if (name !== undefined) await req(sp, "Browse.Person", "set", { id: person_id, name: json(name) }, 1);
+      if (hidden !== undefined) await req(sp, "Browse.Person", "show", { id: person_id, show: !hidden }, 1);
+      return ok({ person_id, ...(name !== undefined && { name }), ...(hidden !== undefined && { hidden }), ...(merge_ids && { merged: merge_ids }) });
     }),
   );
 

@@ -38,7 +38,7 @@ El resultado queda en `dist/index.js`.
 | `SYNOLOGY_USERNAME` | sí | — | Usuario de DSM |
 | `SYNOLOGY_PASSWORD` | sí | — | Contraseña |
 | `SYNOLOGY_INSECURE_TLS` | no | `false` | `true` acepta un certificado HTTPS no válido (autofirmado, caducado o emitido para otro nombre). Solo en una red de confianza |
-| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 52 herramientas de lectura (12 de File Station, 8 de estado y salud del NAS, 1 de papeleras, 12 de Drive, 3 de Photos, 6 de Download Station, 4 de Container Manager y 6 de administración). `false` registra también las 46 de escritura |
+| `SYNOLOGY_READ_ONLY` | no | **`true`** (desde 0.6.0) | Por defecto solo se registran las 52 herramientas de lectura (12 de File Station, 8 de estado y salud del NAS, 1 de papeleras, 12 de Drive, 3 de Photos, 6 de Download Station, 4 de Container Manager y 6 de administración). `false` registra también las 59 de escritura |
 | `SYNOLOGY_DEVICE_ID` | no | — | Token de dispositivo para cuentas con 2FA (lo da `synology-mcp register-device`). Es secreto, como la contraseña |
 | `SYNOLOGY_DEVICE_NAME` | no | `synology-mcp` | Nombre con el que se registró el dispositivo; tiene que coincidir con el del registro |
 | `SYNOLOGY_NAS_FILE` | no | — | JSON con varios NAS (ver "Varios NAS"). Sustituye a `SYNOLOGY_URL`, `SYNOLOGY_USERNAME` y `SYNOLOGY_PASSWORD` |

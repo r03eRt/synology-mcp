@@ -337,4 +337,181 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
       return ok({ removed: done, ...(failed.length && { failed }) });
     }),
   );
+
+  // --------------------------------------------------- create, edit, delete
+
+  interface Profile {
+    name: string;
+    image: string;
+    port_bindings?: { host_port: number | string; container_port: number | string; type: string }[];
+    volume_bindings?: { host_volume_file: string; mount_point: string; type: string; is_directory?: boolean }[];
+    env_variables?: { key: string; value: string }[];
+    network?: { name: string; driver: string }[];
+    use_host_network?: boolean;
+    enable_restart_policy?: boolean;
+    cmd_v2?: string;
+    [k: string]: unknown;
+  }
+  const portSchema = z.object({ host: z.number().int().min(1).max(65535), container: z.number().int().min(1).max(65535), protocol: z.enum(["tcp", "udp"]).optional() });
+  const volumeSchema = z.object({
+    nas_path: z.string().startsWith("/", "a NAS folder like /docker/app/config").describe("Existing NAS folder or file, e.g. /docker/app/config"),
+    container_path: z.string().startsWith("/"),
+    read_only: z.boolean().optional(),
+  });
+  const toPorts = (ports: z.infer<typeof portSchema>[]) => ports.map((p) => ({ host_port: p.host, container_port: p.container, type: p.protocol ?? "tcp" }));
+  const toVolumes = async (vols: z.infer<typeof volumeSchema>[]) => {
+    if (!vols.length) return [];
+    const { files } = await client.request<{ files: { path: string; isdir?: boolean; code?: number }[] }>("SYNO.FileStation.List", "getinfo", { path: json(vols.map((v) => v.nas_path)) }, 2);
+    const missing = files.filter((f) => f.code).map((f) => f.path);
+    if (missing.length) throw new Error(`These NAS paths do not exist: ${missing.join(", ")}. Create the folders first (create_folder).`);
+    return vols.map((v, i) => ({ host_volume_file: v.nas_path, mount_point: v.container_path, type: v.read_only ? "ro" : "rw", is_directory: files[i]?.isdir ?? true }));
+  };
+  const listAll = async () => (await client.request<{ containers: ListedContainer[] }>(CONTAINER, "list", { limit: -1, offset: 0, type: json("all") }, 1)).containers;
+  const containerName = z.string().min(1).regex(/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/, "letters, digits, _ . - (not starting with a symbol)");
+
+  server.registerTool(
+    "docker_pull_image",
+    {
+      title: "Container Manager: download an image",
+      description: "Download (pull) a Docker image from Docker Hub onto the NAS, e.g. \"nginx:alpine\", so containers can be created from it. Waits until it finishes (big images can take minutes).",
+      inputSchema: { image: z.string().min(1).describe("repository[:tag], default tag latest") },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    safe(async ({ image }) => {
+      const at = image.lastIndexOf(":");
+      const [repository, tag] = at > image.lastIndexOf("/") ? [image.slice(0, at), image.slice(at + 1)] : [image, "latest"];
+      const { task_id } = await client.request<{ task_id: string }>("SYNO.Docker.Image", "pull_start", { repository: json(repository), tag: json(tag) }, 1);
+      const { result, finished } = await client.poll(
+        () => client.request<{ finished?: boolean; error?: unknown }>("SYNO.Docker.Image", "pull_status", { task_id: json(task_id) }, 1),
+        (r) => Boolean(r.finished),
+        600_000,
+        3000,
+      );
+      if (!finished) return ok({ image: `${repository}:${tag}`, status: "still downloading", task_id, note: "Check later with docker_images." });
+      return ok({ image: `${repository}:${tag}`, status: "downloaded", ...(result.error ? { error: result.error } : {}) });
+    }),
+  );
+
+  server.registerTool(
+    "docker_create_container",
+    {
+      title: "Container Manager: create a container",
+      description:
+        "Create a container from an image already on the NAS (docker_images, or docker_pull_image first): ports, folders to mount, environment variables, restart policy, command, bridge or host network. Starts it unless start is false. Ports open services to the network: confirm the settings first.",
+      inputSchema: {
+        name: containerName,
+        image: z.string().min(1).describe("repository:tag as listed by docker_images"),
+        ports: z.array(portSchema).optional(),
+        volumes: z.array(volumeSchema).optional(),
+        env: z.record(z.string(), z.string()).optional().describe("Environment variables (secrets are fine: they are never returned)"),
+        restart_always: z.boolean().optional().describe("Restart automatically (default true)"),
+        command: z.string().optional(),
+        network: z.enum(["bridge", "host"]).optional().describe("Default bridge"),
+        start: z.boolean().optional().describe("Start it right away (default true)"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async (a) => {
+      const all = await listAll();
+      if (all.some((c) => c.name.toLowerCase() === a.name.toLowerCase())) throw new Error(`A container called ${a.name} already exists`);
+      const { images } = await client.request<{ images: { repository: string; tags: string[] }[] }>("SYNO.Docker.Image", "list", { limit: -1, offset: 0, show_dsm: false }, 1);
+      const img = a.image.includes(":") ? a.image : `${a.image}:latest`;
+      if (!images.some((i) => i.tags.some((t) => `${i.repository}:${t}` === img))) throw new Error(`Image ${img} is not on the NAS; download it first with docker_pull_image`);
+      const host = a.network === "host";
+      if (host && a.ports?.length) throw new Error("With network host the container uses the NAS ports directly; leave ports empty");
+      // Defaults from the web UI's create wizard (getDefaultProfile).
+      const profile: Profile = {
+        name: a.name,
+        image: img,
+        cpu_priority: 0,
+        memory_limit: 0,
+        privileged: false,
+        port_bindings: toPorts(a.ports ?? []),
+        volume_bindings: await toVolumes(a.volumes ?? []),
+        env_variables: Object.entries(a.env ?? {}).map(([key, value]) => ({ key, value })),
+        network: [host ? { name: "host", driver: "host" } : { name: "bridge", driver: "bridge" }],
+        use_host_network: host,
+        enable_restart_policy: a.restart_always ?? true,
+        cmd_v2: a.command ?? "",
+      };
+      await client.request(CONTAINER, "create", { is_run_instantly: a.start ?? true, profile: json(profile) }, 1, { timeoutMs: 120_000 });
+      const created = (await listAll()).find((c) => c.name === a.name);
+      return ok({
+        created: a.name,
+        image: img,
+        status: created?.status ?? "unknown",
+        ports: a.ports ?? [],
+        volumes: (a.volumes ?? []).map((v) => `${v.nas_path} → ${v.container_path}${v.read_only ? " (ro)" : ""}`),
+        env: Object.keys(a.env ?? {}),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "docker_update_container",
+    {
+      title: "Container Manager: change a container",
+      description:
+        "Change a stopped container's settings: rename, set or remove environment variables, replace its ports or mounted folders, restart policy, command. Stop it first with docker_stop (that takes its service down), then start it again. Only the given settings change.",
+      inputSchema: {
+        name: z.string().min(1),
+        new_name: containerName.optional(),
+        env_set: z.record(z.string(), z.string()).optional(),
+        env_unset: z.array(z.string().min(1)).optional(),
+        ports: z.array(portSchema).optional().describe("Replaces all port mappings"),
+        volumes: z.array(volumeSchema).optional().describe("Replaces all mounted folders"),
+        restart_always: z.boolean().optional(),
+        command: z.string().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    safe(async (a) => {
+      const c = (await listAll()).find((x) => x.name === a.name);
+      if (!c) throw new Error(`No container called ${a.name}; see docker_list`);
+      if (c.is_package) throw new Error(`${a.name} belongs to a DSM package; change it from that package`);
+      if (c.status === "running") throw new Error(`${a.name} is running: stop it first with docker_stop (after confirming), then try again`);
+      const { profile } = await client.request<{ profile: Profile }>(CONTAINER, "get", { name: json(a.name) }, 1);
+      const next: Profile = { ...profile };
+      if (a.new_name) next.name = a.new_name;
+      if (a.env_set || a.env_unset) {
+        const env = new Map((profile.env_variables ?? []).map((e) => [e.key, e.value]));
+        for (const k of a.env_unset ?? []) env.delete(k);
+        for (const [k, v] of Object.entries(a.env_set ?? {})) env.set(k, v);
+        next.env_variables = [...env].map(([key, value]) => ({ key, value }));
+      }
+      if (a.ports) next.port_bindings = toPorts(a.ports);
+      if (a.volumes) next.volume_bindings = await toVolumes(a.volumes);
+      if (a.restart_always !== undefined) next.enable_restart_policy = a.restart_always;
+      if (a.command !== undefined) next.cmd_v2 = a.command;
+      await client.request(CONTAINER, "set", { name: json(a.name), edit_name: json(next.name), profile: json(next) }, 1, { timeoutMs: 120_000 });
+      return ok({
+        container: next.name,
+        ...(a.new_name && { renamed_from: a.name }),
+        changed: Object.keys(a).filter((k) => k !== "name" && (a as Record<string, unknown>)[k] !== undefined),
+        note: "Start it again with docker_start.",
+      });
+    }),
+  );
+
+  server.registerTool(
+    "docker_delete_container",
+    {
+      title: "Container Manager: delete containers",
+      description:
+        "Delete stopped containers and their settings. Data in mounted NAS folders stays; data stored only inside the container is lost. The image stays (docker_remove_images). Confirm first.",
+      inputSchema: { names: z.array(z.string().min(1)).min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    safe(async ({ names }) => {
+      const all = await listAll();
+      const missing = names.filter((n) => !all.some((c) => c.name === n));
+      if (missing.length) throw new Error(`No such container: ${missing.join(", ")}`);
+      const running = names.filter((n) => all.find((c) => c.name === n)?.status === "running");
+      if (running.length) throw new Error(`Still running: ${running.join(", ")}. Stop them first with docker_stop.`);
+      const pkg = names.filter((n) => all.find((c) => c.name === n)?.is_package);
+      if (pkg.length) throw new Error(`These belong to DSM packages: ${pkg.join(", ")}`);
+      for (const n of names) await client.request(CONTAINER, "delete", { force: false, preserve_profile: false, name: json(n) }, 1, { timeoutMs: 120_000 });
+      return ok({ deleted: names });
+    }),
+  );
 }

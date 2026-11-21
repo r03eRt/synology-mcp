@@ -293,6 +293,36 @@ Fuente de Photos: `webman/3rdparty/SynologyPhotos/react_bundle.js` (3,5 MB). `pk
 - **Paquetes**: `SYNO.Core.Package.Control start` v1 con `id` y `dsm_apps` (la lista del paquete, que da `Core.Package list` con `additional=["dsm_apps"]`), y `stop` v1 con `id`. La web espera hasta una hora y antes llama a `feasibility_check`; el MCP no lo llama. Probado parando y arrancando Text Editor; File Station (`startable: false`) y WordPress (`version_limit`) se rechazan antes de llamar.
 - ***File requests***: editar es `FileRequest update` v1 con `sharing_link`, `path` (`id:<carpeta>` o `link:<permanent_link>`) y el formulario entero (`title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour`). Cerrar y reabrir es `update` solo con `sharing_link`, `path` y `file_request_status`, que vale `inactive` (cerrar, en `synodrive.js`) o `active` (`w0` en el bundle). No se pudo probar en el NAS real porque las tiene desactivadas (1076).
 
+## Álbumes condicionales y compartidos, grupos, carpetas, servicios, Docker y apagado (0.15.0)
+
+Fuentes: el bundle de Photos (otra vez), `admin_center.js`, `ContainerManager/MainVue.js` y `synoSDSjslib/dist/sds.bundle.js` (el menú de apagado del escritorio). Lo que se probó en el NAS real se indica en cada punto.
+
+- **Álbumes condicionales** (`Foto.Browse.ConditionAlbum` v4):
+  - `create` lleva `name` y `condition`. La forma de `condition` sale del constructor de la web: `{user_id, item_type, time: [{start_time, end_time}], geocoding: [...], keyword: [...], person, general_tag…}`. `user_id` 0 es el espacio compartido y el id de Photos del usuario, el personal.
+  - `peek_item_count` con `condition` cuenta sin crear nada: así se descubrió el resto.
+  - **Los lugares del filtro son otro árbol.** `Search.Filter list` (`setting={geocoding: true}`) devuelve país > región > ciudad > barrio con otros ids. Madrid es 75 en el árbol y 16 en `Browse.Geocoding list`, y `geocoding: [16]` daba 52 fotos de otro sitio. Con 75: 8231 fotos, y 76 en 2025.
+  - Sobre todo el espacio compartido (229.000 fotos), `Search.Filter list` tarda unos 29 s y `peek_item_count` sin filtros unos 52 s. Con el tiempo de espera normal fallaban sin código; el MCP les da 3 minutos.
+  - `item_type: [0]` contó lo mismo que todos los tipos (219.712), así que el MCP manda siempre `[4,3,0,2]`, como el álbum que ya había.
+  - Probado: álbum temporal "Madrid 2025" (76 fotos, `Spain > Madrid`), listado y borrado.
+- **Compartir un álbum** (`Foto.Sharing.Passphrase` v1): `set_shared` (`policy="album"`, `album_id`, `enabled`) devuelve `sharing_link` y `passphrase`. `update` (`passphrase`, `permission=[{action: "update", role: "view"|"download", member: {type: "public"}}]`, `password`, `expiration` en segundos) pone el acceso. Probado: `Browse.Album get` con `additional=["sharing_info"]` mostró `privacy_type: "public-view"`, `enable_password: true` y la caducidad; tras `enabled: false`, `private`.
+- **Personas**: `Browse.Person set` (`id`, `name`), `show` (`id`, `show`) y `merge` (`target_id`, `merged_id`, `name`), sacados de las llamadas `PersonAPI.*` del bundle. No probadas: en el NAS no hay personas.
+- **Grupos**: `Core.Group create` v1 (`name`, `description`) y `delete` v1 (`name=[...]`), del Panel de control.
+- **Carpetas compartidas**:
+  - Crear: `Core.Share create` v1 con `name` y `shareinfo` (`name`, `vol_path`, `desc`, `name_org`, `enable_recycle_bin`, `recycle_bin_admin_only`, `hidden`…). La web cifra `shareinfo` (`encryption: ["shareinfo"]`).
+  - Borrar: la web llama antes a `validate_delete` (`hard` = no se puede, `soft` = aviso) y pide la contraseña en un diálogo propio del navegador. Después, `delete` v1 con `name=[...]` y 10 minutos de espera.
+  - **La prueba en el NAS real (crear y borrar una carpeta y un grupo temporales) la bloqueó el sistema de permisos del asistente**, porque crea y borra cosas en DSM; queda pendiente de que el usuario la autorice o la haga.
+- **Servicios**: la web cambia SMB con `Core.FileServ.SMB set` v3 y solo los campos que toca (`{enable_samba, smb_max_protocol, smb_min_protocol}`), y la redirección con `Core.Web.DSM set` v2 parcial. En cambio, FTP (`Core.FileServ.FTP set` v1) y Terminal (`Core.Terminal set` v3) los manda enteros, a partir de su `get`. El MCP copia ese comportamiento. No probado en el NAS real: cambiar servicios es decisión del usuario.
+- **Docker** (`SYNO.Docker.Container` v1):
+  - `create` lleva `is_run_instantly` y `profile`. El perfil por defecto del asistente es `{name, image, cpu_priority: 0, memory_limit: 0, privileged: false, port_bindings: [{host_port, container_port, type}], volume_bindings: [{host_volume_file, mount_point, type: "rw"|"ro", is_directory}], env_variables: [{key, value}], network: [{name: "bridge", driver: "bridge"}], use_host_network: false, cmd_v2: ""}`, más `enable_restart_policy`.
+  - `set` lleva `name`, `edit_name` y `profile`; `delete`, `force`, `preserve_profile` y `name`.
+  - El formato del perfil se comprobó leyendo uno real con `get` (sin imprimir valores de variables).
+  - `Image pull_start` (`repository`, `tag`) y `pull_status` (`task_id`) existen en la web, pero el campo de fin (`finished`) es una suposición.
+  - No probado en el NAS real.
+- **Apagado**: `Core.System reboot`/`shutdown` v2 con `force`, `local: true`, `firmware_upgrade` y `cache_check_shutdown`.
+  - Sin `force`, si hay tareas, la respuesta falla con `errors.runningTasks` (la web pide confirmación y repite con `force: true`) o `errors.blockingTasks` (no deja).
+  - `SynologyApiError` guarda ahora `errors` tal cual (antes solo un texto), para poder leer esas listas.
+  - Nunca probado en el NAS real.
+
 ## Códigos de error frecuentes
 
 | Código | Significado |

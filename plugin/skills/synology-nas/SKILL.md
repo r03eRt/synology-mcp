@@ -53,6 +53,11 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Broken or stopped packages, do I have backups? | `get_packages` (problems first; warns if Hyper Backup is missing) |
 | Share in Drive | `drive_share` (users/groups, roles), `drive_link` (internal/public link, password and expiry give a protected link), `drive_create_file_request` (upload link for people without an account); confirm first |
 | Photos: trips, places, dates, albums | `photos_browse` (places/people/tags), `photos_list` (album, person, place, tag, dates or keyword; each result has a NAS `path` to open with `read_file`), `photos_albums`; `photos_create_album` / `photos_album_items` to build albums |
+| Self-filling album, share an album | `photos_create_condition_album` (place by name, dates, keyword), `photos_share_album` (public link: confirm first) |
+| Groups, shared folders | `dsm_create_group` / `dsm_delete_group`, `dsm_create_shared_folder` / `dsm_delete_shared_folder` (deletes everything inside: show get_dir_size and get an explicit yes) |
+| Fix insecure services | `dsm_services` warnings, then `dsm_set_services` (SMB2 minimum, FTP or Telnet off) after confirming: old devices may need SMB1 |
+| New container | `docker_images` / `docker_pull_image`, then `docker_create_container`; change a stopped one with `docker_update_container` |
+| Restart or shut down the NAS | `dsm_power` only when the user explicitly asks; it lists running tasks first |
 | Start or stop a package | `package_control` after confirming (stopping takes its service down); `get_packages` first |
 | Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |
 | Download speed, only at night | `downloads_info` shows limits, queue and schedule; `downloads_set_limits`, `downloads_set_schedule` (rules per day and hour: full, limited, off) |

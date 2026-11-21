@@ -6,6 +6,21 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-21
 
+### 0.15.0: acciones de más riesgo (todas con confirmación) y más Photos
+- **Photos**:
+  - `photos_create_condition_album`: álbum que se llena solo, por lugar, fechas y/o texto. El lugar se busca por nombre en el árbol de lugares del filtro, que usa otros ids que la lista de lugares;
+  - `photos_share_album`: enlace público con contraseña y caducidad;
+  - `photos_edit_person`: nombrar, ocultar o fusionar.
+- **Administración**:
+  - `dsm_create_group` y `dsm_delete_group`;
+  - `dsm_create_shared_folder` y `dsm_delete_shared_folder`. Este último no borra carpetas con contenido sin `delete_contents`, ni `homes`;
+  - `dsm_set_services`: SMB mínimo, FTP, Telnet, SSH y redirección a HTTPS. Se niega a activar la redirección si el MCP entra por HTTP;
+  - `dsm_power`: reiniciar o apagar, con la palabra repetida y aviso de tareas en marcha.
+- **Docker**: `docker_pull_image`, `docker_create_container`, `docker_update_container` (solo parados) y `docker_delete_container`.
+- `SynologyApiError` conserva `errors` tal como lo manda el NAS.
+- Pruebas reales: Photos sí (álbum temporal compartido y borrado). Grupos y carpetas, bloqueados por el sistema de permisos del asistente. Servicios, apagado y Docker, a propósito, solo con el NAS simulado.
+- 111 herramientas (52 en solo lectura). Pruebas: 178.
+
 ### 0.14.0: Synology Photos, arrancar y parar paquetes, editar *file requests* y segundo NAS desde el plugin
 - **Synology Photos** (4.1 de la hoja de ruta). Seis herramientas:
   - `photos_albums`, `photos_browse` (lugares, personas, etiquetas) y `photos_list` (por álbum, persona, lugar, etiqueta, fechas o texto);

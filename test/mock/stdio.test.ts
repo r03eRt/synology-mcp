@@ -43,7 +43,7 @@ describe("stdio entry point", () => {
     const client = await start({ SYNOLOGY_READ_ONLY: "false" });
     try {
       assert.equal(client.getServerVersion()?.name, "synology");
-      assert.equal((await client.listTools()).tools.length, 98);
+      assert.equal((await client.listTools()).tools.length, 111);
       const r = await client.callTool({ name: "get_info", arguments: {} });
       assert.match((r.content as Array<{ text: string }>)[0].text, /mock-nas/);
     } finally {

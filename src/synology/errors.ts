@@ -164,6 +164,8 @@ export interface SynologyErrorDetail {
 
 export class SynologyApiError extends Error {
   public readonly details: SynologyErrorDetail[];
+  /** `errors` exactly as the NAS sent it (an object for some DSM APIs, e.g. blockingTasks / runningTasks on reboot). */
+  public readonly errors: unknown;
 
   constructor(
     public readonly api: string,
@@ -180,5 +182,6 @@ export class SynologyApiError extends Error {
     super(`${api}.${method} failed: ${describeError(code, api)} (code ${code})${extra ? ` — ${extra}` : ""}${raw ? ` — ${raw}` : ""}`);
     this.name = "SynologyApiError";
     this.details = list;
+    this.errors = details;
   }
 }

@@ -293,6 +293,36 @@ Photos source: `webman/3rdparty/SynologyPhotos/react_bundle.js` (3.5 MB). `pkg_i
 - **Packages**: `SYNO.Core.Package.Control start` v1 with `id` and `dsm_apps` (the package's list, from `Core.Package list` with `additional=["dsm_apps"]`), and `stop` v1 with `id`. The web UI waits up to an hour and calls `feasibility_check` first; the MCP doesn't call it. Tested by stopping and starting Text Editor; File Station (`startable: false`) and WordPress (`version_limit`) are refused before calling.
 - **File requests**: editing is `FileRequest update` v1 with `sharing_link`, `path` (`id:<folder>` or `link:<permanent_link>`) and the whole form (`title`, `identifier`, `description`, `protect_password`, `due_date`, `has_due_date_hour`). Closing and reopening is `update` with just `sharing_link`, `path` and `file_request_status`, which is `inactive` (close, in `synodrive.js`) or `active` (`w0` in the bundle). It couldn't be tested on the real NAS because they are disabled there (1076).
 
+## Conditional and shared albums, groups, folders, services, Docker and power (0.15.0)
+
+Sources: the Photos bundle (again), `admin_center.js`, `ContainerManager/MainVue.js` and `synoSDSjslib/dist/sds.bundle.js` (the desktop power menu). What was tested on the real NAS is stated in each item.
+
+- **Conditional albums** (`Foto.Browse.ConditionAlbum` v4):
+  - `create` takes `name` and `condition`. The shape of `condition` comes from the web UI's builder: `{user_id, item_type, time: [{start_time, end_time}], geocoding: [...], keyword: [...], person, general_tag…}`. `user_id` 0 is the shared space and the user's Photos id, the personal one.
+  - `peek_item_count` with `condition` counts without creating anything: that's how the rest was found out.
+  - **The filter's places are another tree.** `Search.Filter list` (`setting={geocoding: true}`) returns country > region > city > district with other ids. Madrid is 75 in the tree and 16 in `Browse.Geocoding list`, and `geocoding: [16]` gave 52 photos from somewhere else. With 75: 8231 photos, and 76 in 2025.
+  - Over the whole shared space (229,000 photos), `Search.Filter list` takes about 29 s and `peek_item_count` without filters about 52 s. With the normal timeout they failed with no code; the MCP gives them 3 minutes.
+  - `item_type: [0]` counted the same as every type (219,712), so the MCP always sends `[4,3,0,2]`, like the existing album.
+  - Tested: temporary album "Madrid 2025" (76 photos, `Spain > Madrid`), listed and deleted.
+- **Sharing an album** (`Foto.Sharing.Passphrase` v1): `set_shared` (`policy="album"`, `album_id`, `enabled`) returns `sharing_link` and `passphrase`. `update` (`passphrase`, `permission=[{action: "update", role: "view"|"download", member: {type: "public"}}]`, `password`, `expiration` in seconds) sets the access. Tested: `Browse.Album get` with `additional=["sharing_info"]` showed `privacy_type: "public-view"`, `enable_password: true` and the expiry; after `enabled: false`, `private`.
+- **People**: `Browse.Person set` (`id`, `name`), `show` (`id`, `show`) and `merge` (`target_id`, `merged_id`, `name`), taken from the bundle's `PersonAPI.*` calls. Not tested: there are no people on the NAS.
+- **Groups**: `Core.Group create` v1 (`name`, `description`) and `delete` v1 (`name=[...]`), from the Control Panel.
+- **Shared folders**:
+  - Create: `Core.Share create` v1 with `name` and `shareinfo` (`name`, `vol_path`, `desc`, `name_org`, `enable_recycle_bin`, `recycle_bin_admin_only`, `hidden`…). The web UI encrypts `shareinfo` (`encryption: ["shareinfo"]`).
+  - Delete: the web UI first calls `validate_delete` (`hard` = can't, `soft` = warning) and asks for the password in a browser-side dialog. Then `delete` v1 with `name=[...]` and a 10-minute wait.
+  - **The test on the real NAS (creating and deleting a temporary folder and group) was blocked by the assistant's permission system**, because it creates and deletes things in DSM; it's pending until the user authorizes it or runs it.
+- **Services**: the web UI changes SMB with `Core.FileServ.SMB set` v3 and only the fields it touches (`{enable_samba, smb_max_protocol, smb_min_protocol}`), and the redirect with a partial `Core.Web.DSM set` v2. FTP (`Core.FileServ.FTP set` v1) and Terminal (`Core.Terminal set` v3), on the other hand, are sent whole, from their `get`. The MCP copies that behavior. Not tested on the real NAS: changing services is the user's call.
+- **Docker** (`SYNO.Docker.Container` v1):
+  - `create` takes `is_run_instantly` and `profile`. The wizard's default profile is `{name, image, cpu_priority: 0, memory_limit: 0, privileged: false, port_bindings: [{host_port, container_port, type}], volume_bindings: [{host_volume_file, mount_point, type: "rw"|"ro", is_directory}], env_variables: [{key, value}], network: [{name: "bridge", driver: "bridge"}], use_host_network: false, cmd_v2: ""}`, plus `enable_restart_policy`.
+  - `set` takes `name`, `edit_name` and `profile`; `delete`, `force`, `preserve_profile` and `name`.
+  - The profile format was checked by reading a real one with `get` (without printing variable values).
+  - `Image pull_start` (`repository`, `tag`) and `pull_status` (`task_id`) exist in the web UI, but the end field (`finished`) is an assumption.
+  - Not tested on the real NAS.
+- **Power**: `Core.System reboot`/`shutdown` v2 with `force`, `local: true`, `firmware_upgrade` and `cache_check_shutdown`.
+  - Without `force`, if there are tasks, the answer fails with `errors.runningTasks` (the web UI asks for confirmation and repeats with `force: true`) or `errors.blockingTasks` (it won't).
+  - `SynologyApiError` now keeps `errors` as-is (before, only a string), so those lists can be read.
+  - Never tested on the real NAS.
+
 ## Common error codes
 
 | Code | Meaning |

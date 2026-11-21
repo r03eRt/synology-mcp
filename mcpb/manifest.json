@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "synology-mcp",
   "display_name": "Synology NAS",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Use a Synology NAS (DSM 7) from Claude: files, Synology Drive, Synology Photos, Download Station, Container Manager (Docker) and NAS status.",
   "long_description": "Browse, search, read and organise files on your Synology NAS (File Station), use Synology Drive labels, stars and shares, manage Download Station (URLs, magnets, .torrent files) and check the NAS status (temperature, disks, volumes; some need an admin account). Read-only unless you turn writes on. The extension only can do what the DSM user you configure is allowed to do.",
   "author": {

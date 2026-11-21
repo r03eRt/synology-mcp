@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">98 herramientas</a> ·
+  <a href="#6-herramientas">111 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -48,13 +48,13 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | | Área | Lo más útil |
 |---|---|---|
 | 📁 | **Ficheros** | Buscar por nombre, tipo, tamaño o fecha · leer documentos e imágenes · subir y descargar · mover, comprimir · compartir con enlace |
-| 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · crear álbumes y añadir fotos |
+| 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · álbumes normales y que se llenan solos · compartir álbumes con enlace |
 | ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
-| 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · limpiar imágenes |
+| 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · crear, editar y borrar contenedores · descargar y limpiar imágenes |
 | 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
-| 🛠️ | **Administración** | Usuarios (crear, desactivar, borrar), grupos, permisos de carpetas, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) |
+| 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas y sus permisos, tareas programadas · avisos de servicios inseguros (SMB1, FTP…) y desactivarlos · reiniciar o apagar |
 | 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
 
 ## Instalación rápida
@@ -230,8 +230,9 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
   - borrar o sobrescribir ficheros: `delete`, `copy_move`, `upload_file`, `write_text_file`, `extract`;
   - vaciar papeleras: `empty_recycle_bin`;
   - quitar descargas o feeds: `downloads_delete`, `downloads_rss_delete`;
-  - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
-  - administración: `dsm_run_task` (ejecuta un script), `dsm_set_share_access` (cambia quién ve qué), `dsm_update_user` y `dsm_delete_user` (borrar un usuario borra también su carpeta personal);
+  - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`, `docker_update_container`, `docker_delete_container`;
+  - administración: `dsm_run_task` (ejecuta un script), `dsm_set_share_access` (cambia quién ve qué), `dsm_update_user`, `dsm_delete_user` (borra también la carpeta personal), `dsm_delete_group`, `dsm_delete_shared_folder` (borra todo lo que contiene), `dsm_set_services` y `dsm_power` (reiniciar o apagar);
+  - Photos: `photos_delete_album`, `photos_share_album` (enlace público), `photos_edit_person` (fusionar no se puede deshacer);
   - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
   - otras: `delete_sharing_links`.
 - **Secretos que nunca devuelve**, aunque la API del NAS los dé:
@@ -320,7 +321,7 @@ Para buscar qué más ocupa espacio sirven `get_storage_status`, `get_dir_size`,
 | `drive_link` | **D** | Activar el enlace para compartir (usuarios del NAS o cualquiera) o quitarlo; con contraseña o caducidad, un enlace protegido |
 | `drive_delete_file_request` | **D** | Borrar *file requests* (lo subido se queda) |
 
-### Synology Photos: 6
+### Synology Photos: 9
 
 Espacio `shared` = la carpeta `/photo` (espacio compartido); `personal` = tu `/home/Photos`. Cada foto viene con su ruta en el NAS, así que Claude puede abrirla con `read_file`.
 
@@ -332,6 +333,9 @@ Espacio `shared` = la carpeta `/photo` (espacio compartido); `personal` = tu `/h
 | `photos_create_album` | E | Crear un álbum, con fotos si se quiere |
 | `photos_album_items` | E | Añadir fotos a un álbum o sacarlas (siguen en la biblioteca) |
 | `photos_delete_album` | **D** | Borrar álbumes (las fotos se quedan) |
+| `photos_create_condition_album` | E | Álbum que se llena solo por lugar (por nombre), fechas y/o texto, por ejemplo «Madrid 2025»; dice cuántas fotos entran |
+| `photos_share_album` | **D** | Enlace público a un álbum (ver o descargar), con contraseña y caducidad, o quitarlo |
+| `photos_edit_person` | **D** | Nombrar, ocultar o fusionar personas del reconocimiento de caras |
 
 ### Descargas (Download Station): 17
 
@@ -357,7 +361,7 @@ Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
 
 Para limpiar las descargas muertas: pide «¿qué descargas están muertas?» (`downloads_list` con `stalled`) y luego «quítalas» (`downloads_delete`, con confirmación).
 
-### Docker (Container Manager): 8
+### Docker (Container Manager): 12
 
 Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a otros usuarios.
 
@@ -369,9 +373,13 @@ Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a 
 | `docker_images` | L | Imágenes con tamaño, si alguna las usa y si hay actualización |
 | `docker_start` | E | Arrancar contenedores |
 | `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
+| `docker_pull_image` | E | Descargar una imagen de Docker Hub |
+| `docker_create_container` | E | Crear un contenedor: puertos, carpetas, variables, reinicio automático, red |
+| `docker_update_container` | **D** | Cambiar un contenedor parado (variables, puertos, carpetas, nombre…) |
+| `docker_delete_container` | **D** | Borrar contenedores parados (las carpetas montadas conservan sus datos) |
 | `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
 
-### Administración de DSM: 12
+### Administración de DSM: 18
 
 Todas necesitan una cuenta administradora.
 
@@ -389,6 +397,11 @@ Todas necesitan una cuenta administradora.
 | `dsm_create_user` | E | Crear un usuario con sus grupos; sin contraseña genera una y la enseña una sola vez |
 | `dsm_update_user` | **D** | Cambiar descripción, grupos o contraseña, o desactivar/activar la cuenta. No deja fuera la cuenta del propio MCP |
 | `dsm_delete_user` | **D** | Borrar usuarios y su carpeta personal. No se borra a sí mismo, ni `admin` ni `guest` |
+| `dsm_create_group` / `dsm_delete_group` | E / **D** | Crear un grupo con miembros / borrar grupos (no los del sistema) |
+| `dsm_create_shared_folder` | E | Crear una carpeta compartida (después, dar acceso con `dsm_set_share_access`) |
+| `dsm_delete_shared_folder` | **D** | Borrar carpetas compartidas **y su contenido**. Rechaza las que no están vacías salvo que se pida expresamente |
+| `dsm_set_services` | **D** | Versión mínima de SMB (quitar SMB1), FTP, Telnet, SSH y su puerto, redirección a HTTPS |
+| `dsm_power` | **D** | Reiniciar o apagar el NAS (pide repetir la palabra; antes avisa de las tareas en marcha) |
 
 ### Varios NAS: 2 (solo si hay más de uno configurado)
 
@@ -527,4 +540,4 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 
 - **npm**: el paquete no está publicado todavía.
 - **Sin probar en la práctica**: 2FA (probado solo con el NAS simulado) y la extensión de Claude Desktop instalada.
-- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), las personas y caras de Synology Photos, subir a Photos, crear o borrar grupos y carpetas compartidas, cambiar servicios, crear o editar contenedores, reiniciar o apagar el NAS. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), subir desde Photos, editar grupos, cuotas, cifrado, cortafuegos y red, proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).

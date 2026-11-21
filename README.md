@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">98 tools</a> ·
+  <a href="#6-tools">111 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -48,13 +48,13 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | | Area | Most useful |
 |---|---|---|
 | 📁 | **Files** | Search by name, type, size or date · read documents and images · upload and download · move, compress · share with a link |
-| 🖼️ | **Synology Photos** | Albums · places · find photos by date, place or text, each with its path to open it · create albums and add photos |
+| 🖼️ | **Synology Photos** | Albums · places · find photos by date, place or text, each with its path to open it · normal and self-filling albums · share albums by link |
 | ☁️ | **Synology Drive** | Recent, starred, labels, shared · share with people, links with password and expiry, file requests · convert to Synology Office |
 | ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
-| 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · clean up images |
+| 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · create, edit and delete containers · pull and clean up images |
 | 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages (and start or stop them) · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
-| 🛠️ | **Administration** | Users (create, disable, delete), groups, folder permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) |
+| 🛠️ | **Administration** | Users and groups, shared folders and their permissions, scheduled tasks · warnings about insecure services (SMB1, FTP…) and turning them off · restart or shut down |
 | 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
 
 ## Quick install
@@ -230,8 +230,9 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
   - deleting or overwriting files: `delete`, `copy_move`, `upload_file`, `write_text_file`, `extract`;
   - emptying recycle bins: `empty_recycle_bin`;
   - removing downloads or feeds: `downloads_delete`, `downloads_rss_delete`;
-  - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`;
-  - administration: `dsm_run_task` (runs a script), `dsm_set_share_access` (changes who sees what), `dsm_update_user` and `dsm_delete_user` (deleting a user also deletes their home folder);
+  - Docker: `docker_stop`, `docker_restart`, `docker_remove_images`, `docker_update_container`, `docker_delete_container`;
+  - administration: `dsm_run_task` (runs a script), `dsm_set_share_access` (changes who sees what), `dsm_update_user`, `dsm_delete_user` (also deletes the home folder), `dsm_delete_group`, `dsm_delete_shared_folder` (deletes everything in it), `dsm_set_services` and `dsm_power` (restart or shut down);
+  - Photos: `photos_delete_album`, `photos_share_album` (public link), `photos_edit_person` (merging can't be undone);
   - Drive: `drive_share`, `drive_link`, `drive_delete_file_request`, `drive_delete_label`;
   - others: `delete_sharing_links`.
 - **Secrets it never returns**, even if the NAS API provides them:
@@ -320,7 +321,7 @@ To find what else is taking up space, use `get_storage_status`, `get_dir_size`, 
 | `drive_link` | **D** | Turn the sharing link on (NAS users or anyone) or off; with password or expiry, a protected link |
 | `drive_delete_file_request` | **D** | Delete file requests (uploaded files stay) |
 
-### Synology Photos: 6
+### Synology Photos: 9
 
 `shared` space = the `/photo` folder (shared space); `personal` = your `/home/Photos`. Each photo comes with its NAS path, so Claude can open it with `read_file`.
 
@@ -332,6 +333,9 @@ To find what else is taking up space, use `get_storage_status`, `get_dir_size`, 
 | `photos_create_album` | E | Create an album, optionally with photos |
 | `photos_album_items` | E | Add photos to an album or take them out (they stay in the library) |
 | `photos_delete_album` | **D** | Delete albums (the photos stay) |
+| `photos_create_condition_album` | E | Self-filling album by place (by name), dates and/or text, e.g. "Madrid 2025"; says how many photos match |
+| `photos_share_album` | **D** | Public link to an album (view or download), with password and expiry, or turn it off |
+| `photos_edit_person` | **D** | Name, hide or merge people found by face recognition |
 
 ### Downloads (Download Station): 17
 
@@ -357,7 +361,7 @@ A regular user sees and manages their own downloads; an administrator, everyone'
 
 To clean up dead downloads: ask "which downloads are dead?" (`downloads_list` with `stalled`) and then "remove them" (`downloads_delete`, with confirmation).
 
-### Docker (Container Manager): 8
+### Docker (Container Manager): 12
 
 All require an administrator account: DSM doesn't let other users use Container Manager.
 
@@ -370,8 +374,12 @@ All require an administrator account: DSM doesn't let other users use Container 
 | `docker_start` | E | Start containers |
 | `docker_stop` / `docker_restart` | **D** | Stop or restart. Their service goes down (DNS, password manager…) |
 | `docker_remove_images` | **D** | Delete images no container uses (images in use are rejected) |
+| `docker_pull_image` | E | Download an image from Docker Hub |
+| `docker_create_container` | E | Create a container: ports, folders, variables, restart policy, network |
+| `docker_update_container` | **D** | Change a stopped container (variables, ports, folders, name…) |
+| `docker_delete_container` | **D** | Delete stopped containers (mounted folders keep their data) |
 
-### DSM administration: 12
+### DSM administration: 18
 
 All require an administrator account.
 
@@ -389,6 +397,11 @@ All require an administrator account.
 | `dsm_create_user` | E | Create a user with groups; without a password it generates one and shows it once |
 | `dsm_update_user` | **D** | Change description, groups or password, or disable/enable the account. Won't lock out the MCP's own account |
 | `dsm_delete_user` | **D** | Delete users and their home folder. Won't delete itself, `admin` or `guest` |
+| `dsm_create_group` / `dsm_delete_group` | E / **D** | Create a group with members / delete groups (not the built-in ones) |
+| `dsm_create_shared_folder` | E | Create a shared folder (then grant access with `dsm_set_share_access`) |
+| `dsm_delete_shared_folder` | **D** | Delete shared folders **and their contents**. Refuses non-empty ones unless told explicitly |
+| `dsm_set_services` | **D** | SMB minimum version (drop SMB1), FTP, Telnet, SSH and its port, HTTPS redirect |
+| `dsm_power` | **D** | Restart or shut down the NAS (asks to repeat the word; lists running tasks first) |
 
 ### Multiple NAS: 2 (only if more than one is configured)
 
@@ -527,4 +540,4 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 
 - **npm**: the package isn't published yet.
 - **Not tested in practice**: 2FA (tested only with the simulated NAS) and the installed Claude Desktop extension.
-- **Not included**: Hyper Backup (not installed on the test NAS, so its API couldn't be taken), Synology Photos people and face management, uploading to Photos, creating or deleting groups and shared folders, changing services, creating or editing containers, restarting or shutting down the NAS. See the [roadmap](docs/en/hoja-de-ruta.md).
+- **Not included**: Hyper Backup (not installed on the test NAS, so its API couldn't be taken), uploading through Photos, editing groups, quotas, encryption, firewall and network settings, Compose projects. See the [roadmap](docs/en/hoja-de-ruta.md).

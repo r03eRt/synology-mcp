@@ -6,6 +6,21 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-21
 
+### 0.15.0: higher-risk actions (all with confirmation) and more Photos
+- **Photos**:
+  - `photos_create_condition_album`: a self-filling album by place, dates and/or text. The place is looked up by name in the filter's place tree, which uses different ids from the place list;
+  - `photos_share_album`: public link with password and expiry;
+  - `photos_edit_person`: name, hide or merge.
+- **Administration**:
+  - `dsm_create_group` and `dsm_delete_group`;
+  - `dsm_create_shared_folder` and `dsm_delete_shared_folder`. The latter won't delete folders with content without `delete_contents`, nor `homes`;
+  - `dsm_set_services`: SMB minimum, FTP, Telnet, SSH and HTTPS redirect. It refuses to turn the redirect on if the MCP connects over HTTP;
+  - `dsm_power`: restart or shut down, with the word repeated and a running-tasks warning.
+- **Docker**: `docker_pull_image`, `docker_create_container`, `docker_update_container` (stopped only) and `docker_delete_container`.
+- `SynologyApiError` keeps `errors` as the NAS sends it.
+- Real tests: Photos yes (temporary album shared and deleted). Groups and folders, blocked by the assistant's permission system. Services, power and Docker, on purpose, only with the mock NAS.
+- 111 tools (52 in read-only mode). Tests: 178.
+
 ### 0.14.0: Synology Photos, starting and stopping packages, editing file requests and a second NAS from the plugin
 - **Synology Photos** (roadmap 4.1). Six tools:
   - `photos_albums`, `photos_browse` (places, people, tags) and `photos_list` (by album, person, place, tag, dates or text);
