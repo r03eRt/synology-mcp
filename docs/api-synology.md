@@ -261,7 +261,7 @@ Fuentes: `webman/modules/PkgManApp/PkgManApp.js` y, de Drive, `webman/3rdparty/S
   - `SYNO.Core.Package list` v2 acepta `additional` con `status`, `description`, `dsm_apps`, `startable` e `installed_info`, sueltos o en grupos pequeños. Con 11 campos a la vez da **120** (`{"name":"additional","reason":"condition"}`): no se buscó cuál sobraba, porque el MCP solo necesita tres.
   - `status` vale `running`, `stop` o un estado de avería. La web pinta en gris `start_failed`, `stopped_by_dep_limit`, `version_limit` y `volume_unmounted`, y en rojo `broken`, `license_error` y `broken_by_other`. `version_limit` es avería (`isBrokenStatus`; texto `broken_version_desc`): la versión instalada no funciona con este DSM.
   - En este NAS hay 42 paquetes: 38 en marcha, 2 parados (los dos de JDownloader) y 2 en `version_limit` (**WordPress 6.1 y PHP 8.0**: la web de WordPress no funciona). `startable: false` marca los paquetes del sistema (File Station, SMB…).
-- **Hyper Backup no está instalado** en este NAS. No anuncia `SYNO.Backup.Task` ni `SYNO.Backup.Target`, solo las APIs de copia de configuración de DSM (`SYNO.Backup.App*`, `SYNO.Backup.Config.*`), y no aparece en `Core.Package list`. Sin el paquete no se puede sacar su API de la web ni probarla, así que no hay herramientas de Hyper Backup: `get_packages` avisa de que falta. Hay Cloud Sync y USB Copy, pero solo sincronizan o copian, sin versiones.
+- **Hyper Backup no estaba instalado** en este NAS (se instaló el 2026-11-22: ver la sección de la 0.17.0). No anuncia `SYNO.Backup.Task` ni `SYNO.Backup.Target`, solo las APIs de copia de configuración de DSM (`SYNO.Backup.App*`, `SYNO.Backup.Config.*`), y no aparece en `Core.Package list`. Sin el paquete no se puede sacar su API de la web ni probarla, así que no hay herramientas de Hyper Backup: `get_packages` avisa de que falta. Hay Cloud Sync y USB Copy, pero solo sincronizan o copian, sin versiones.
 - **Compartir en Drive** (`SYNO.SynologyDrive.Sharing`):
   - `update` v1 con `path` y `permissions`: una lista de `{action: "update", member: {type: "user"|"group", name}, role}` o `{action: "delete", member}`. Los roles salen de `roleOptions` del diálogo: `previewer`, `preview_commenter`, `viewer`, `commenter`, `editor` y `organizer` (en pantalla, "Gestor").
   - El **enlace** es un miembro más, sin nombre: `{type: "internal"}` (usuarios del NAS) o `{type: "public"}`, con rol `viewer`, `commenter` o `editor`; sin descarga, `previewer` o `preview_commenter` (`getLinkRoleValue`). `create_link` v1 con `path` devuelve `{url}`.
@@ -353,6 +353,30 @@ Fuentes: `admin_center.js`, `ContainerManager/MainVue.js` y, para Surveillance S
 - **Subir a Photos**: no se usa la subida propia de Photos (`Upload.Item`), sino File Station hacia la carpeta del espacio, que Photos indexa sola.
   - Para encontrar la foto nueva, `Browse.RecentlyAdded list` va mejor que la búsqueda, cuyo índice va con retraso.
   - Una foto real de 2,3 MB apareció a los 7 s. Una imagen de 1×1 píxel no apareció en 2 minutos (Photos seguramente ignora imágenes tan pequeñas).
+
+## Instalar Hyper Backup y su API (2026-11-22, 0.17.0)
+
+Fuentes: `webman/modules/PkgManApp/PkgManApp.js` (cómo instala el Centro de paquetes) y el JS de Hyper Backup 4.2.2-4262 (`webman/3rdparty/HyperBackup/`: `config`, `backup.js`, `util.js`, `backupwidget.js`, `explore.js`).
+
+- **Instalar un paquete desde el catálogo**, como la web (`_ExecutePackageOperations` → `_onRequestDownload`):
+  1. `Core.Package.Eula check` v1 (`package`) → `{has_eula: false}` para Hyper Backup. Si lo tuviera, la web enseña la licencia y no sigue sin aceptarla.
+  2. `Core.Package feasibility_check` v1 (`type: "install_check"`, `packages`) → `{}`. Con avisos responde 4556 (`errors.check_type` `hard` = no se puede).
+  3. `Package.Installation get_queue` v1 (`pkgs=[{pkg, operation: "install", version, beta}]`) → cola con dependencias, conflictos y paquetes que habría que parar; aquí, solo HyperBackup.
+  4. `Package.Installation check` v2 (`id`, `ver`, `size`, `blupgrade`…) → volúmenes posibles: `/volume1` con 363 GB libres.
+  5. `Package.Installation install` v1 con `name`, `url` (`link` del catálogo), `checksum` (`md5`), `filesize`, `type`, `is_syno`, `beta`, `blqinst: true` y `operation: "install"` → `{taskid: "@SYNOPKG_DOWNLOAD_HyperBackup"}`.
+  6. `Package.Installation status` v1 (`task_id`) cada pocos segundos: `status: "installing"`, luego `last_stage` `prepare_install` y `postreplace`, y `finished: true` (unos 25 s en total).
+  - El catálogo es `Core.Package.Server list` v2 (`blforcereload`, `blloadothers`; sale a Internet): Hyper Backup 4.2.2-4262, 39 MB, sin dependencias, `qinst`/`qstart` a `true`.
+  - `Core.Package.Setting.Volume get` dio **4501** (`volume_status: "unknown"`): no hay volumen por defecto guardado. No hace falta, porque `check` v2 ya da la lista y con un solo volumen la web usa ese.
+  - **Sorpresa: la instalación rápida lo deja parado** (`status: "stop"`, aunque el catálogo dice `qstart: true`). La web lo arranca después por otro camino (`installrunpackage`); aquí se arrancó con `package_control`. El MCP no tiene herramienta de instalar paquetes.
+- **APIs de Hyper Backup** que aparecen al instalarlo: `SYNO.Backup.Task`, `Target`, `Repository` y `Version` (v1–2), además de las de copia de configuración que ya había. Llamadas de la web:
+  - `Task list` v1 con `additional` (la lista y el *widget* del escritorio la consultan cada 10 s): `task_list[]` con `task_id`, `name`, `state`, `status`, `last_bkp_result`, `last_bkp_time`, `next_bkp_time`, `transfer_type`, `is_modified`, y `is_restoring` y parecidos fuera. En este NAS: `{task_list: [], total: 0}`.
+  - `Task status` v1 (`task_id`, `blOnline`, `additional`) da también `progress` (`step` `prebackup`/`syncing`, `progress` 0–100) y `last_bkp_success_time`; `Task get` v1 da `repository`, `schedule`, `backup_params`…
+  - `Task backup` v1 (`task_id`) es «Hacer copia ahora»; `cancel` y `suspend` llevan `task_id` y `task_state` (el `state` de la tarea); `resume` solo `task_id`.
+  - `state`: `backupable` es lo normal; `exportable`, `importable`, `relinkable`, `broken`, `unauth` son casos especiales (destino de otra máquina, credenciales caducadas…). `status`: `none` (en reposo), `waiting`, `backup`, `suspending`, `canceling`, `discarding`, `docksum` (integridad), `version_deleting`…
+  - `last_bkp_result`, según `GetBkpResultStr` de `util.js`: `success`/`done`, `partial`, `cancel`, `suspend`, `discard`, `none` (nunca), `backingup`/`resuming`/`failed_checking` (interrumpida; la web dice «comprobando»), `version_delete_failed`, `dest_missing`, `cksum_failed` y, cualquier otro, error. El *widget* no marca como problema un `partial` si la tarea cambió después (`is_modified`); el MCP tampoco.
+  - Errores: tabla `ERR_*` de `explore.js` (4400 parámetro, **4401 error interno, que también es «la tarea no existe»** con `errors.description: "task_not_exist"`, 4403 sin espacio en el destino, 4430 destino desconectado, 4444 autenticación, 4467 destino dañado…). Comprobado: `status`, `get` y `backup` con un id inexistente dan 4401.
+  - `Target list` v1 sin parámetros dio **4400**: pide algo más (la web lo llama con el repositorio). No se investigó: con ninguna tarea no aporta nada.
+- Hipótesis descartadas: que la instalación rápida dejaría el paquete en marcha (no, ver arriba) y que `Setting.Volume get` sería necesario antes de instalar (no, da 4501 y no afecta).
 
 ## Códigos de error frecuentes
 

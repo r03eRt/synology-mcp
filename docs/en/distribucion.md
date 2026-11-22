@@ -72,6 +72,10 @@ claude plugin install synology@synology-mcp
 - `npm pack` produces 26 files (48 KB): `dist/`, `README.md`, `LICENSE` and `CHANGELOG.md`. `prepublishOnly` runs the typecheck, the tests and the build.
 - Test: the `.tgz` installed in an empty project. `npx synology-mcp` without variables exits with code 1 and the message listing the missing variables; with an unknown command, code 2 and the usage.
 
+## License (2026-11-22)
+
+GNU AGPL-3.0 (`AGPL-3.0-only`) since 0.17.0; MIT up to 0.16.0. The `license` field in `package.json`, `plugin/.claude-plugin/plugin.json` and `mcpb/manifest.json` says the same. The dependencies inside the bundle (`@modelcontextprotocol/sdk`, `undici`, `zod`: MIT; `noise-protocol`: ISC) are compatible with the AGPL, and their licenses stay at the end of `plugin/server/synology-mcp.cjs`. Why AGPL and not another: see the 0.17.0 CHANGELOG.
+
 ## Consistency between manifests
 
 `test/unit/release.test.ts` checks that:

@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-192 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+196 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -133,6 +133,13 @@ Nunca se lanzan aquí `dsm_set_services`, `dsm_power`, `package_control` sobre s
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-22, versión 0.17.0 (Hyper Backup)
+
+- Instalación de Hyper Backup 4.2.2-4262 en el NAS real con las llamadas de la web (ver [api-synology.md](api-synology.md)): unos 25 s; quedó parado y se arrancó con `package_control` → `running`. `get_packages` ya no avisa de que falta.
+- `npm test`: 196/196. Nueva: `test/mock/hyperbackup.test.ts` (lista con una tarea correcta y otra con el destino perdido, detalle sin credenciales, 4401 legible, lanzar con progreso, no lanzar dos veces, cancelar, aviso sin tareas).
+- NAS real, con el servidor compilado: `hyperbackup_tasks` → `total: 0` con el aviso; con `task_id: 1` y `hyperbackup_backup` → 4401 «task does not exist», sin lanzar nada.
+- Sin probar en el NAS real: lanzar y cancelar una copia, y el formato real de `repository` y `schedule` (no hay tareas; crear una es decisión del usuario).
 
 ### Resultado 2026-11-21, versión 0.16.0 (suite real ampliada y áreas nuevas)
 

@@ -182,6 +182,15 @@ All require an administrator account.
 | `surveillance_recordings` | L | Recent recordings, from every camera or one |
 | `surveillance_set_home_mode` | E | Turn Home Mode on or off |
 
+## Hyper Backup: 2
+
+| Tool | Type | What it does |
+|---|---|---|
+| `hyperbackup_tasks` | L | Backup tasks: running or not (with progress), last result, last good backup, next run and whether it needs attention; with `task_id`, destination and schedule. Warns if there are none |
+| `hyperbackup_backup` | **D** | Start a backup now or cancel the running one |
+
+Both need a DSM administrator account and the Hyper Backup package.
+
 ## Multiple NAS: 2 (only if more than one is configured)
 
 | Tool | Type | What it does |

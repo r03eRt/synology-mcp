@@ -182,6 +182,15 @@ Todas necesitan una cuenta administradora.
 | `surveillance_recordings` | L | Grabaciones recientes, de todas las cámaras o de una |
 | `surveillance_set_home_mode` | E | Activar o desactivar el modo en casa |
 
+## Hyper Backup: 2
+
+| Herramienta | Tipo | Qué hace |
+|---|---|---|
+| `hyperbackup_tasks` | L | Tareas de copia: en marcha o no (con progreso), resultado de la última, última buena, próxima y si necesita atención; con `task_id`, destino y programación. Avisa si no hay ninguna |
+| `hyperbackup_backup` | **D** | Lanzar una copia ya o cancelar la que está en marcha |
+
+Las dos necesitan una cuenta administradora y el paquete Hyper Backup.
+
 ## Varios NAS: 2 (solo si hay más de uno configurado)
 
 | Herramienta | Tipo | Qué hace |

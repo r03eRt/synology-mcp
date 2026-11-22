@@ -120,6 +120,40 @@ const CORE_USER: Record<number, string> = {
   3121: "The password does not meet the DSM password policy",
 };
 
+/** Hyper Backup (SYNO.Backup.*), from the ERR_* table in webman/3rdparty/HyperBackup/explore.js and util.js. */
+const BACKUP: Record<number, string> = {
+  4400: "Invalid parameter",
+  4401: "Hyper Backup internal error (also: the task does not exist)",
+  4402: "Not enough space on the NAS",
+  4403: "Not enough space on the backup destination",
+  4404: "Quota exceeded on the NAS",
+  4405: "Quota exceeded on the backup destination",
+  4407: "A snapshot is being restored",
+  4408: "A restore is in progress",
+  4409: "A backup or restore is in progress",
+  4410: "Permission denied on the NAS",
+  4411: "Permission denied on the backup destination",
+  4430: "The backup destination is offline",
+  4440: "The backup destination does not respond",
+  4441: "The connection to the backup destination is blocked",
+  4442: "The backup service is disabled on the destination",
+  4444: "Authentication failed on the backup destination",
+  4445: "Access denied by the backup destination",
+  4446: "Unstable network",
+  4455: "The backup repository does not exist",
+  4457: "The backup repository is busy",
+  4460: "The backup target does not exist",
+  4462: "The backup target is busy",
+  4464: "The backup target is busy backing up",
+  4465: "The backup target is busy restoring",
+  4466: "The backup target is busy checking integrity",
+  4467: "The backup target is damaged",
+  4472: "The backup version does not exist",
+  4476: "No backup version available",
+  4498: "The backup destination session expired",
+  4499: "The backup destination is not ready",
+};
+
 /** DSM packages behind each API family, to explain 102 (not installed) and 105 (no application privilege). */
 const PACKAGES: [RegExp, string][] = [
   [/^SYNO\.SynologyDrive\./, "Synology Drive Server"],
@@ -127,6 +161,7 @@ const PACKAGES: [RegExp, string][] = [
   [/^SYNO\.Foto(Team)?\./, "Synology Photos"],
   [/^SYNO\.SurveillanceStation\./, "Surveillance Station"],
   [/^SYNO\.Docker\./, "Container Manager"],
+  [/^SYNO\.Backup\./, "Hyper Backup"],
 ];
 
 export function packageOf(api: string): string | undefined {
@@ -150,6 +185,7 @@ export function describeError(code: number, api: string): string {
   if (api.startsWith("SYNO.SynologyDrive.") && DRIVE[code]) return DRIVE[code];
   if (/^SYNO\.DownloadStation2?\./.test(api) && DOWNLOAD_STATION[code]) return DOWNLOAD_STATION[code];
   if (api.startsWith("SYNO.Docker.") && DOCKER[code]) return DOCKER[code];
+  if (api.startsWith("SYNO.Backup.") && BACKUP[code]) return BACKUP[code];
   if (api === "SYNO.Core.RecycleBin" && RECYCLE_BIN[code]) return RECYCLE_BIN[code];
   if (api.startsWith("SYNO.Core.User") && CORE_USER[code]) return CORE_USER[code];
   // Other APIs (DSM, Drive, ...) have their own undocumented code tables.

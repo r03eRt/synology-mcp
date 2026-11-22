@@ -4,6 +4,22 @@
 
 Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué cambió y por qué.
 
+## 2026-11-22
+
+### 0.17.0: Hyper Backup y licencia AGPL-3.0
+- **Licencia: de MIT a GNU AGPL-3.0** (`AGPL-3.0-only`), a petición del usuario, que quería evitar que se copie y se venda sin seguir siendo open source.
+  - Se descartaron PolyForm Noncommercial y Strict (prohíben el uso comercial, pero dejan de ser open source: la definición de la OSI no admite limitar para qué se usa) y «todos los derechos reservados» (nadie podría instalar el plugin legalmente).
+  - La AGPL deja usar, modificar e incluso vender, pero obliga a publicar el código de cualquier versión modificada que se distribuya o se ofrezca como servicio por la red. Así nadie puede hacer un producto cerrado con él. El autor puede dar licencias comerciales aparte.
+  - Cambiado en `LICENSE` (texto oficial de la FSF), `package.json`, `plugin/.claude-plugin/plugin.json`, `mcpb/manifest.json` y los README (sección nueva «Licencia»). Las versiones hasta la 0.16.0 siguen con MIT.
+- **Hyper Backup instalado en el NAS real** (petición del usuario): versión 4.2.2-4262 desde el Centro de paquetes, en `/volume1`, y arrancado. No se ha configurado ninguna copia: elegir qué copiar y a dónde es decisión del usuario.
+  - Cómo instala la web (`PkgManApp.js`): `Core.Package.Eula check` (no tiene EULA) → `Core.Package feasibility_check` → `Package.Installation get_queue` y `check` v2 → `Installation install` v1 con la URL, el MD5 y el tamaño del catálogo (`Core.Package.Server list` v2) → `Installation status` hasta `finished`. La instalación rápida lo deja **parado**; se arrancó con `package_control`.
+- **2 herramientas nuevas** (`src/tools/hyperbackup.ts`), con la API sacada del JS de Hyper Backup (`backup.js`, `util.js`, `backupwidget.js`):
+  - `hyperbackup_tasks` (lectura): tareas, si están en marcha (con progreso), resultado de la última copia, última copia buena, próxima y `needs_attention`; con `task_id`, también destino y programación, sin credenciales. Sin tareas avisa de que no hay copia con versiones.
+  - `hyperbackup_backup` (destructiva, pide confirmación): lanzar una copia ya o cancelar la que está en marcha.
+  - Los códigos de error 44xx de Hyper Backup se traducen (tabla `ERR_*` del JS) y el 102 dice «is Hyper Backup installed?».
+- Probado: NAS simulado (`test/mock/hyperbackup.test.ts`, 4 pruebas) y NAS real en lectura (lista vacía con aviso, 4401 legible). Lanzar o cancelar una copia real queda pendiente: el NAS no tiene tareas.
+- 130 herramientas (61 en solo lectura). Pruebas: 196.
+
 ## 2026-11-21
 
 ### 0.16.0: suite real ampliada, README más corto y áreas nuevas

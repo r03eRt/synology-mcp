@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/r03eRt/synology-mcp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/r03eRt/synology-mcp?color=d97757"></a>
-  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
+  <a href="LICENSE"><img alt="Licencia AGPL-3.0" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
   <img alt="MCP" src="https://img.shields.io/badge/MCP-servidor-5f93d1">
   <img alt="DSM 7" src="https://img.shields.io/badge/Synology-DSM%207-0b1f3a">
   <img alt="Node 22.19+" src="https://img.shields.io/badge/node-%E2%89%A522.19-3c873a">
@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">128 herramientas</a> ·
+  <a href="#6-herramientas">130 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -56,6 +56,7 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
 | 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas, permisos, privilegios de aplicaciones y cuotas, tareas programadas · servicios inseguros (SMB1, FTP…) y desactivarlos · cortafuegos, bloqueo automático y bloquear IPs · reiniciar o apagar |
 | 📹 | **Surveillance Station** | Cámaras y su estado, grabaciones, modo en casa |
+| 💾 | **Hyper Backup** | Tareas de copia, si la última falló y cuándo toca la siguiente · lanzar una copia ya |
 | 🌍 | **En cualquier sitio** | QuickConnect (red local, directa o relé de Synology) · varios NAS |
 
 ## Instalación rápida
@@ -69,7 +70,7 @@ Después, en Claude Code: `/plugin configure synology@synology-mcp`. Pon la dire
 
 ¿Usas Claude Desktop? Descarga el `.mcpb` de [Releases](https://github.com/r03eRt/synology-mcp/releases) y ábrelo. Más opciones en [Instala](#3-instala).
 
-> Proyecto independiente, sin relación con Synology Inc. Licencia MIT. Probado en un DS218+ con DSM 7.4.1.
+> Proyecto independiente, sin relación con Synology Inc. Licencia AGPL-3.0. Probado en un DS218+ con DSM 7.4.1.
 
 ## Índice
 
@@ -91,7 +92,7 @@ Después, en Claude Code: `/plugin configure synology@synology-mcp`. Pon la dire
   - por su IP o nombre, en la misma red, por VPN o con un puerto abierto;
   - o por **QuickConnect** (`quickconnect:<tu ID>`), que funciona desde cualquier sitio sin abrir puertos.
 - **Node.js 22.19 o superior** en ese ordenador, para Claude Code o la instalación manual. Claude Desktop trae su propio Node.
-- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Synology Photos, Download Station, Container Manager o Surveillance Station. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
+- Para cada área, su paquete instalado en el NAS: Synology Drive Server, Synology Photos, Download Station, Container Manager, Surveillance Station o Hyper Backup. Las herramientas de un paquete que no esté instalado responden "is … installed?". `get_system_info` dice qué paquetes hay.
 
 ## 2. Prepara un usuario en DSM
 
@@ -107,7 +108,7 @@ Qué funciona con cada tipo de cuenta:
 
 | Con un usuario normal | Solo con un administrador |
 |---|---|
-| Ficheros, Drive (también compartir y *file requests*), Photos (las carpetas que el usuario puede ver), Download Station (sus propias descargas y la búsqueda de torrents), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), paquetes (`get_packages`, `package_control`), papeleras, límites y horario de Download Station, las descargas de todos los usuarios y la administración (`dsm_*`: usuarios, grupos, carpetas compartidas, servicios, reiniciar y apagar) |
+| Ficheros, Drive (también compartir y *file requests*), Photos (las carpetas que el usuario puede ver), Download Station (sus propias descargas y la búsqueda de torrents), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), paquetes (`get_packages`, `package_control`), Hyper Backup, papeleras, límites y horario de Download Station, las descargas de todos los usuarios y la administración (`dsm_*`: usuarios, grupos, carpetas compartidas, servicios, reiniciar y apagar) |
 
 Usar un administrador da a Claude acceso a todo el NAS. Si lo haces, considera dejar el modo solo lectura activado.
 
@@ -254,7 +255,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 ## 6. Herramientas
 
-128 herramientas, 60 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
+130 herramientas, 61 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
 
 | Área | Herramientas | Lo principal |
 |---|---|---|
@@ -267,6 +268,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | Docker (Container Manager) | 14 (6 L) | estado y registros, arrancar y parar, crear, editar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose |
 | Administración de DSM | 29 (10 L) | usuarios, grupos, carpetas y permisos, privilegios de aplicaciones, cuotas, carpetas cifradas, tareas programadas, servicios, red y cortafuegos (lectura), bloquear IPs, reiniciar y apagar |
 | Surveillance Station | 3 (2 L) | cámaras y su estado, grabaciones, modo en casa |
+| Hyper Backup | 2 (1 L) | tareas de copia, resultado de la última y próxima, lanzar o cancelar una copia |
 | Varios NAS | 2 (2 L) | qué NAS hay y cambiar de uno a otro (solo con más de uno) |
 
 **Rutas**: las de ficheros empiezan por una carpeta compartida (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` es la carpeta personal del usuario. Synology Drive usa `/mydrive/…` (la misma carpeta que `/home/Drive`), `/team-folders/<nombre>/…` o `id:<file_id>`.
@@ -391,4 +393,11 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 
 - **npm**: el paquete no está publicado todavía.
 - **Sin probar en la práctica**: 2FA y la extensión de Claude Desktop instalada. Además, a propósito, solo probados con el NAS simulado: cambiar servicios (`dsm_set_services`), reiniciar o apagar (`dsm_power`), editar personas en Photos y las carpetas cifradas (el NAS de pruebas no tiene) y las grabaciones (su única cámara está sin conexión). Los enlaces públicos y las *file requests* de Drive están desactivados en el NAS de pruebas, así que solo están probados con el simulado.
-- **No incluido**: Hyper Backup (no está instalado en el NAS de pruebas, así que no se pudo sacar su API), cambiar el cortafuegos o la red (solo lectura: un error te dejaría sin acceso), cifrar o descifrar del todo carpetas (solo montarlas), fotos y vídeo en directo de las cámaras, crear proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **Hyper Backup**: lanzar y cancelar una copia solo se ha probado con el NAS simulado (el NAS de pruebas aún no tiene tareas); crear tareas no está incluido.
+- **No incluido**: cambiar el cortafuegos o la red (solo lectura: un error te dejaría sin acceso), cifrar o descifrar del todo carpetas (solo montarlas), fotos y vídeo en directo de las cámaras, crear proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+
+## 12. Licencia
+
+[GNU AGPL-3.0](LICENSE) desde la 0.17.0 (hasta la 0.16.0, MIT). Es software libre: puedes usarlo, estudiarlo, modificarlo y compartirlo. Si distribuyes una versión modificada, o la ofreces como servicio por la red, tienes que publicar su código completo con la misma licencia. Para usarlo en un producto cerrado hace falta otra licencia: escribe al autor.
+
+© 2026 Roberto Morgado Luengo.

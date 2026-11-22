@@ -2,7 +2,7 @@
 
 # Herramientas
 
-128 herramientas en nueve grupos (130 con varios NAS, ver el final): File Station (22), estado y salud del NAS (9), papeleras (2), Synology Drive (22), Synology Photos (10), Download Station (17), Container Manager (14), administración de DSM (29) y Surveillance Station (3). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 3 + 6 + 6 + 10 + 2 = 60); con `SYNOLOGY_READ_ONLY=false` registra las 128. El [catálogo](catalogo.md) tiene el resumen con el tipo de cada una.
+130 herramientas en diez grupos (132 con varios NAS, ver el final): File Station (22), estado y salud del NAS (9), papeleras (2), Synology Drive (22), Synology Photos (10), Download Station (17), Container Manager (14), administración de DSM (29), Surveillance Station (3) e Hyper Backup (2). Por defecto (desde 0.6.0) el servidor está en solo lectura y registra solo las de lectura (12 + 8 + 1 + 12 + 3 + 6 + 6 + 10 + 2 + 1 = 61); con `SYNOLOGY_READ_ONLY=false` registra las 130. El [catálogo](catalogo.md) tiene el resumen con el tipo de cada una.
 
 # File Station
 
@@ -520,6 +520,17 @@ Código: [src/tools/surveillance.ts](../src/tools/surveillance.ts), desde 0.16.0
 | `surveillance_set_home_mode` | `HomeMode Switch` v1 (`on`) + `GetInfo` | `on` | Activa o desactiva el modo en casa. Probado en el NAS real: activado y vuelto a desactivar |
 
 No incluido: la foto de la cámara (`GetSnapshot` respondió 105 con la cámara sin conexión, así que no se pudo comprobar), vídeo en directo, PTZ, añadir o configurar cámaras y exportar grabaciones.
+
+# Hyper Backup
+
+Código: [src/tools/hyperbackup.ts](../src/tools/hyperbackup.ts), desde 0.17.0. `SYNO.Backup.Task` no tiene guía oficial: las llamadas salen del JS de Hyper Backup 4.2.2-4262 (`webman/3rdparty/HyperBackup/backup.js`, `util.js`, `backupwidget.js`). Las dos necesitan cuenta administradora (105 explicado como en las de salud) y el paquete (102 → «is Hyper Backup installed?»).
+
+| Herramienta | API | Parámetros | Qué hace |
+|---|---|---|---|
+| `hyperbackup_tasks` | `Task list` v1 (`additional=["last_bkp_time","next_bkp_time","last_bkp_result","is_modified","schedule"]`); con `task_id`, `Task status` v1 + `Task get` v1 (`additional=["repository","schedule"]`) | `task_id` | `total`, `needs_attention`, `running` y `tasks`: `id`, `name`, `status` (`idle`, `waiting to start`, `backing up`, `cancelling`, `checking integrity`…), `state` si no es `backupable`, `last_result` traducido como la web (`succeeded`, `partially succeeded`, `cancelled`, `destination missing`, `integrity check failed`…), `last_backup`, `last_success` (solo con `task_id`), `next_backup`, `destination_type` (`transfer_type`), `progress` (`step`, `percent`) si está en marcha, y `needs_attention`. Con `task_id`, también `repository` y `schedule` tal como los da DSM, **quitando cualquier clave con pinta de credencial** (`pass`, `pwd`, `secret`, `token`, `key`…). Sin tareas, `warning`: no hay copia con versiones |
+| `hyperbackup_backup` | `Task status` v1 + `Task backup` v1 (`task_id`) o `Task cancel` v1 (`task_id`, `task_state`) | `task_id`, `action` (`run` por defecto, `cancel`) | Lanza la copia («Hacer copia ahora») o cancela la que está en marcha. Si ya está en marcha (o no lo está, al cancelar) no llama y lo dice en `note`. Devuelve el estado después y `was`. Destructiva: carga el NAS y el destino, y con rotación de versiones puede borrar las más antiguas |
+
+No incluido (por ahora): crear o editar tareas y destinos, restaurar, explorar versiones y la comprobación de integridad. Crear una tarea hacia un disco USB se hará solo si el usuario lo pide.
 
 # Varios NAS
 

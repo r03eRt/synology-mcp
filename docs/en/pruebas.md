@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-192 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+196 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -133,6 +133,13 @@ Since 0.16.0, `test/real/real-nas-areas.test.ts` covers the later areas, with th
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-22, version 0.17.0 (Hyper Backup)
+
+- Installed Hyper Backup 4.2.2-4262 on the real NAS with the web UI's calls (see [api-synology.md](api-synology.md)): about 25 s; it was left stopped and was started with `package_control` → `running`. `get_packages` no longer warns that it is missing.
+- `npm test`: 196/196. New: `test/mock/hyperbackup.test.ts` (list with a good task and one with a missing destination, details without credentials, readable 4401, run with progress, not running twice, cancel, warning with no tasks).
+- Real NAS, with the built server: `hyperbackup_tasks` → `total: 0` with the warning; with `task_id: 1` and `hyperbackup_backup` → 4401 "task does not exist", without starting anything.
+- Not tested on the real NAS: running and cancelling a backup, and the real shape of `repository` and `schedule` (there are no tasks; creating one is the user's decision).
 
 ### Result 2026-11-21, version 0.16.0 (extended real suite and new areas)
 

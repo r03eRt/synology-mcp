@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/r03eRt/synology-mcp/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/r03eRt/synology-mcp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/r03eRt/synology-mcp?color=d97757"></a>
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
+  <a href="LICENSE"><img alt="AGPL-3.0 License" src="https://img.shields.io/github/license/r03eRt/synology-mcp"></a>
   <img alt="MCP" src="https://img.shields.io/badge/MCP-server-5f93d1">
   <img alt="DSM 7" src="https://img.shields.io/badge/Synology-DSM%207-0b1f3a">
   <img alt="Node 22.19+" src="https://img.shields.io/badge/node-%E2%89%A522.19-3c873a">
@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">128 tools</a> ·
+  <a href="#6-tools">130 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -56,6 +56,7 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
 | 🛠️ | **Administration** | Users and groups, shared folders, permissions, app privileges and quotas, scheduled tasks · insecure services (SMB1, FTP…) and turning them off · firewall, auto block and blocking IPs · restart or shut down |
 | 📹 | **Surveillance Station** | Cameras and their status, recordings, Home Mode |
+| 💾 | **Hyper Backup** | Backup tasks, whether the last one failed and when the next one runs · start a backup now |
 | 🌍 | **Anywhere** | QuickConnect (local network, direct or Synology relay) · multiple NAS |
 
 ## Quick install
@@ -69,7 +70,7 @@ Then, in Claude Code: `/plugin configure synology@synology-mcp`. Enter the NAS a
 
 Using Claude Desktop? Download the `.mcpb` from [Releases](https://github.com/r03eRt/synology-mcp/releases) and open it. More options in [Install](#3-install).
 
-> Independent project, not affiliated with Synology Inc. MIT License. Tested on a DS218+ with DSM 7.4.1.
+> Independent project, not affiliated with Synology Inc. AGPL-3.0 License. Tested on a DS218+ with DSM 7.4.1.
 
 ## Contents
 
@@ -91,7 +92,7 @@ Using Claude Desktop? Download the `.mcpb` from [Releases](https://github.com/r0
   - by its IP or name, on the same network, over VPN or through an open port;
   - or via **QuickConnect** (`quickconnect:<your ID>`), which works from anywhere without opening ports.
 - **Node.js 22.19 or later** on that computer, for Claude Code or the manual install. Claude Desktop ships its own Node.
-- For each area, its package installed on the NAS: Synology Drive Server, Synology Photos, Download Station, Container Manager or Surveillance Station. Tools for a package that isn't installed answer "is … installed?". `get_system_info` tells you which packages are present.
+- For each area, its package installed on the NAS: Synology Drive Server, Synology Photos, Download Station, Container Manager, Surveillance Station or Hyper Backup. Tools for a package that isn't installed answer "is … installed?". `get_system_info` tells you which packages are present.
 
 ## 2. Set up a DSM user
 
@@ -107,7 +108,7 @@ What works with each kind of account:
 
 | With a regular user | Only with an administrator |
 |---|---|
-| Files, Drive (including sharing and file requests), Photos (the folders the user can see), Download Station (its own downloads and torrent search), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), packages (`get_packages`, `package_control`), recycle bins, Download Station speed limits and schedule, every user's downloads and administration (`dsm_*`: users, groups, shared folders, services, restart and shutdown) |
+| Files, Drive (including sharing and file requests), Photos (the folders the user can see), Download Station (its own downloads and torrent search), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), packages (`get_packages`, `package_control`), Hyper Backup, recycle bins, Download Station speed limits and schedule, every user's downloads and administration (`dsm_*`: users, groups, shared folders, services, restart and shutdown) |
 
 Using an administrator gives Claude access to the whole NAS. If you do, consider keeping read-only mode on.
 
@@ -254,7 +255,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 ## 6. Tools
 
-128 tools, 60 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
+130 tools, 61 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
 
 | Area | Tools | Main things |
 |---|---|---|
@@ -267,6 +268,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | Docker (Container Manager) | 14 (6 L) | status and logs, start and stop, create, edit and delete containers, CPU and memory limits, images, networks, Compose projects |
 | DSM administration | 29 (10 L) | users, groups, folders and permissions, app privileges, quotas, encrypted folders, scheduled tasks, services, network and firewall (read), blocking IPs, restart and shutdown |
 | Surveillance Station | 3 (2 L) | cameras and their status, recordings, Home Mode |
+| Hyper Backup | 2 (1 L) | backup tasks, last result and next run, start or cancel a backup |
 | Multiple NAS | 2 (2 L) | which NAS there are and switching between them (only with more than one) |
 
 **Paths**: file paths start with a shared folder (`/photo/2024/foto.jpg`, `/home/Documentos`); `/home` is the user's personal folder. Synology Drive uses `/mydrive/…` (the same folder as `/home/Drive`), `/team-folders/<nombre>/…` or `id:<file_id>`.
@@ -391,4 +393,11 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 
 - **npm**: the package isn't published yet.
 - **Not tested in practice**: 2FA and the installed Claude Desktop extension. Also, on purpose, only tested with the simulated NAS: changing services (`dsm_set_services`), restarting or shutting down (`dsm_power`), editing people in Photos and encrypted folders (the test NAS has none) and recordings (its only camera is offline). Drive public links and file requests are disabled on the test NAS, so they are only tested with the simulated one.
-- **Not included**: Hyper Backup (not installed on the test NAS, so its API couldn't be taken), changing the firewall or network settings (read only: a mistake would lock you out), fully encrypting or decrypting folders (only mounting), camera snapshots and live video, creating Compose projects. See the [roadmap](docs/en/hoja-de-ruta.md).
+- **Hyper Backup**: running and cancelling a backup are only tested with the mock NAS (the test NAS has no tasks yet); creating tasks is not included.
+- **Not included**: changing the firewall or network settings (read only: a mistake would lock you out), fully encrypting or decrypting folders (only mounting), camera snapshots and live video, creating Compose projects. See the [roadmap](docs/en/hoja-de-ruta.md).
+
+## 12. License
+
+[GNU AGPL-3.0](LICENSE) since 0.17.0 (MIT up to 0.16.0). It is free software: you can use, study, modify and share it. If you distribute a modified version, or offer it as a service over a network, you must publish its complete source under the same license. Using it in a closed-source product needs a separate license: contact the author.
+
+© 2026 Roberto Morgado Luengo.
