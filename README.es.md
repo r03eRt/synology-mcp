@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">137 herramientas</a> ·
+  <a href="#6-herramientas">138 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -51,7 +51,7 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | 🖼️ | **Synology Photos** | Álbumes · lugares · buscar fotos por fecha, lugar o texto, cada una con su ruta para abrirla · subir a un álbum · álbumes normales y que se llenan solos · compartir álbumes con enlace |
 | ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
-| 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · crear, editar y borrar contenedores · descargar y limpiar imágenes |
+| 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · crear, editar, actualizar y borrar contenedores · descargar y limpiar imágenes |
 | 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · instalar y desinstalar paquetes · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
 | 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas, permisos, privilegios de aplicaciones y cuotas, tareas programadas · servicios inseguros (SMB1, FTP…) y desactivarlos · cortafuegos, bloqueo automático y bloquear IPs · reiniciar o apagar |
@@ -255,7 +255,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 ## 6. Herramientas
 
-137 herramientas, 62 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
+138 herramientas, 62 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
 
 | Área | Herramientas | Lo principal |
 |---|---|---|
@@ -265,7 +265,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | Synology Drive | 22 (12 L) | recientes, estrellas, etiquetas, búsqueda, compartir con personas, enlaces, *file requests*, convertir a Office |
 | Synology Photos | 10 (3 L) | álbumes, lugares y personas, buscar por fecha, lugar o texto (con la ruta de cada foto), subir, álbumes que se llenan solos, compartir |
 | Download Station | 17 (6 L) | descargas, torrents (elegir ficheros), RSS, búsqueda, límites y horario, descargas muertas |
-| Docker (Container Manager) | 18 (6 L) | estado y registros, arrancar y parar, crear, editar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose (crear, arrancar, parar, editar y borrar) |
+| Docker (Container Manager) | 19 (6 L) | estado y registros, arrancar y parar, crear, editar, actualizar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose (crear, arrancar, parar, editar y borrar) |
 | Administración de DSM | 29 (10 L) | usuarios, grupos, carpetas y permisos, privilegios de aplicaciones, cuotas, carpetas cifradas, tareas programadas, servicios, red y cortafuegos (lectura), bloquear IPs, reiniciar y apagar |
 | Surveillance Station | 3 (2 L) | cámaras y su estado, grabaciones, modo en casa |
 | Hyper Backup | 2 (1 L) | tareas de copia, resultado de la última y próxima, lanzar o cancelar una copia |

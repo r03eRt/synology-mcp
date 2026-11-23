@@ -6,6 +6,13 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-23
 
+### 0.20.0: updating containers
+- **`docker_update_image`** (destructive): updates a `latest` image to its newest version with Container Manager's Update feature (`Docker.Image upgrade_start` / `upgrade_status`), which recreates the containers using it with the same settings. It returns how each container was and is, and warns if one that was running is left stopped or still on the old image.
+- **Finding on the real NAS**: when recreating, each **anonymous** volume of the container (the image's `VOLUME`s not mapped to a NAS folder) is replaced by a new empty one; that's the "Container data might be cleared" in Container Manager's warning. So the tool checks the mounts of every affected container and **refuses if any has anonymous volumes**, unless `accept_data_loss`. Mounted NAS folders are untouched. None of the test NAS's containers uses anonymous volumes.
+- Refuses fixed-version images (not `latest`), as the web UI does.
+- Tested: mock NAS (`test/mock/docker-update.test.ts`, 3 tests) and real NAS, with the Radarr image (no containers) and a temporary stopped container: the image went from 2022 to the 2026-11-16 build in one minute, the container was recreated on it and Container Manager deleted the old image. The temporary container was deleted afterwards. Two almost empty anonymous volumes from that test remain, which Container Manager's API can't delete.
+- 138 tools (62 read-only). Tests: 209.
+
 ### 0.19.0: installing and uninstalling packages
 - **3 new tools** (`src/tools/packages.ts`), with the Package Center calls already used by hand to install Hyper Backup:
   - `package_catalog` (read): search Synology's catalog for this NAS, with what is already installed and its version.

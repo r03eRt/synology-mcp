@@ -6,6 +6,13 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-23
 
+### 0.20.0: actualizar contenedores
+- **`docker_update_image`** (destructiva): actualiza una imagen `latest` a su última versión con la función «Actualizar» de Container Manager (`Docker.Image upgrade_start` / `upgrade_status`), que recrea los contenedores que la usan con la misma configuración. Devuelve cómo estaba y cómo queda cada contenedor, y avisa si uno que estaba en marcha se queda parado o sigue con la imagen antigua.
+- **Hallazgo en el NAS real**: al recrear, cada volumen **anónimo** del contenedor (los `VOLUME` de la imagen que no van a una carpeta del NAS) se sustituye por uno nuevo y vacío; es el «Container data might be cleared» del aviso de Container Manager. Por eso la herramienta mira los montajes de cada contenedor afectado y **se niega si alguno tiene volúmenes anónimos**, salvo con `accept_data_loss`. Las carpetas del NAS montadas no se tocan. Ninguno de los contenedores del NAS de pruebas usa volúmenes anónimos.
+- Rechaza las imágenes con versión fija (no `latest`), como la web.
+- Probado: NAS simulado (`test/mock/docker-update.test.ts`, 3 pruebas) y NAS real, con la imagen de Radarr (sin contenedores) y un contenedor temporal parado: la imagen pasó de 2022 a la del 2026-11-16 en un minuto, el contenedor se recreó con ella y Container Manager borró la imagen antigua. Después se borró el contenedor temporal. Quedan dos volúmenes anónimos casi vacíos de esa prueba, que la API de Container Manager no permite borrar.
+- 138 herramientas (62 en solo lectura). Pruebas: 209.
+
 ### 0.19.0: instalar y desinstalar paquetes
 - **3 herramientas nuevas** (`src/tools/packages.ts`), con las llamadas del Centro de paquetes que ya se usaron a mano para instalar Hyper Backup:
   - `package_catalog` (lectura): buscar en el catálogo de Synology para este NAS, con lo que ya está instalado y su versión.

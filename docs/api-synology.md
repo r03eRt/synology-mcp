@@ -378,6 +378,21 @@ Fuentes: `webman/modules/PkgManApp/PkgManApp.js` (cómo instala el Centro de paq
   - `Target list` v1 sin parámetros dio **4400**: pide algo más (la web lo llama con el repositorio). No se investigó: con ninguna tarea no aporta nada.
 - Hipótesis descartadas: que la instalación rápida dejaría el paquete en marcha (no, ver arriba) y que `Setting.Volume get` sería necesario antes de instalar (no, da 4501 y no afecta).
 
+## Actualizar imágenes y sus contenedores (2026-11-23, 0.20.0)
+
+Fuente: `MainVue.js` (acción `upgrade` de la tienda de imágenes y `openUpgradeImageDialog`) y los textos `webman/3rdparty/ContainerManager/texts/enu/strings`. Probado en el NAS real con la imagen de Radarr, que no usaba ningún contenedor, y un contenedor temporal parado.
+
+- `Docker.Image upgrade_start` v1 (`repository`) → `{task_id}`; `upgrade_status` v1 (`task_id`) cada 5 s → `{state, current, total, finished}`, con `state` `PULLING_IMAGE` mientras descarga. La web solo ofrece «Update» si `upgradable` y la etiqueta es `latest`.
+- El diálogo avisa: «Container data might be cleared» y «Services of related containers might be stopped», y pide seguir las notas de la imagen en Docker Hub.
+- **Qué pasa de verdad**, comprobado:
+  - La imagen `linuxserver/radarr:latest` pasó de una versión de 2022 a la del 2026-11-16 en un minuto.
+  - El contenedor temporal (`created`, sin arrancar) se **recreó** con la imagen nueva y la misma configuración. Su estado no cambió.
+  - **Su volumen anónimo `/config` cambió**: antes `5f89e2…`, después `fe91ac…`. El contenedor nuevo no ve lo que hubiera en el viejo: eso es el «data might be cleared». Las carpetas del NAS montadas (`bind`) sí se conservan.
+  - Container Manager borró la imagen antigua: no quedó ninguna `<none>`.
+  - Al borrar el contenedor temporal, sus volúmenes anónimos se quedan en `/volume1/@docker/volumes/`. Container Manager no anuncia ninguna API de volúmenes (`SYNO.Docker.*`: Container, Container.Log, Container.PkgProfile, Container.Profile, Container.Resource, Image, Log, Migrate, Network, Project, Registry, Utils), así que no se pueden borrar desde el MCP; haría falta `docker volume prune` por SSH.
+- Volúmenes anónimos: en `Container get`, `details.Mounts[]` con `Type: "volume"` y `Name` de 64 caracteres hexadecimales. Los volúmenes con nombre conservan su nombre y no deberían cambiar (no se ha probado). En este NAS, ningún contenedor los usa: todos montan carpetas del NAS.
+- Hipótesis descartada: que la actualización solo descargaba la imagen y había que recrear los contenedores aparte (no, los recrea Container Manager).
+
 ## Instalar y desinstalar paquetes con el MCP (2026-11-23, 0.19.0)
 
 El flujo es el de la sección de la 0.17.0 (instalar Hyper Backup), ahora en `package_install`. Lo nuevo:

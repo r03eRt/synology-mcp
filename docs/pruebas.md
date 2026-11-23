@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-206 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+209 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -133,6 +133,13 @@ Nunca se lanzan aquí `dsm_set_services`, `dsm_power`, `package_control` sobre s
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-23, versión 0.20.0 (actualizar contenedores)
+
+- `npm test`: 209/209. Nueva: `test/mock/docker-update.test.ts` (actualizar y comparar contenedores antes y después, rechazo por volúmenes anónimos y `accept_data_loss`, imagen ya al día, contenedor que se queda parado, etiqueta fija, imagen inexistente).
+- NAS real, con el servidor compilado: contenedor temporal `mcp-upd-<aleatorio>` parado desde `linuxserver/radarr:latest`, `docker_update_image` (un minuto: `updated: true`, el contenedor recreado con la imagen nueva) y borrado del contenedor. La imagen de Radarr quedó actualizada (no la usa nadie). Quedan sus dos volúmenes anónimos, que la API no permite borrar.
+- Lectura de los montajes de los 12 contenedores del NAS: ninguno tiene volúmenes anónimos, así que la comprobación no frenaría ninguna actualización de las que hay pendientes.
+- La comprobación de volúmenes anónimos se añadió después de esa prueba (por lo que se vio en ella) y solo se ha probado con el simulado y en lectura.
 
 ### Resultado 2026-11-23, versión 0.19.0 (instalar y desinstalar paquetes)
 

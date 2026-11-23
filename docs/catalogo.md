@@ -124,7 +124,7 @@ Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
 
 Para limpiar las descargas muertas: pide «¿qué descargas están muertas?» (`downloads_list` con `stalled`) y luego «quítalas» (`downloads_delete`, con confirmación).
 
-## Docker (Container Manager): 18
+## Docker (Container Manager): 19
 
 Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a otros usuarios.
 
@@ -141,6 +141,7 @@ Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a 
 | `docker_pull_image` | E | Descargar una imagen de Docker Hub |
 | `docker_create_container` | E | Crear un contenedor: puertos, carpetas, variables, reinicio automático, red |
 | `docker_update_container` | **D** | Renombrar un contenedor parado o cambiar su reinicio automático y sus límites de CPU y memoria; variables, puertos o carpetas recreándolo (pregunta antes) |
+| `docker_update_image` | **D** | Actualizar una imagen `latest` y recrear sus contenedores con la misma configuración. Se niega si alguno guarda datos en volúmenes anónimos, que se perderían |
 | `docker_delete_container` | **D** | Borrar contenedores parados (las carpetas montadas conservan sus datos) |
 | `docker_project_create` | E | Crear un proyecto Compose desde un fichero YAML (o el que haya en la carpeta) y arrancarlo |
 | `docker_project_action` | **D** | `up`, `start`, `stop`, `restart` o `down` de un proyecto; devuelve la salida de `docker compose` |

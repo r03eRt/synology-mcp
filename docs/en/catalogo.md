@@ -124,7 +124,7 @@ A regular user sees and manages their own downloads; an administrator, everyone'
 
 To clean up dead downloads: ask "which downloads are dead?" (`downloads_list` with `stalled`) and then "remove them" (`downloads_delete`, with confirmation).
 
-## Docker (Container Manager): 18
+## Docker (Container Manager): 19
 
 All require an administrator account: DSM doesn't let other users use Container Manager.
 
@@ -146,6 +146,7 @@ All require an administrator account: DSM doesn't let other users use Container 
 | `docker_pull_image` | E | Download an image from Docker Hub |
 | `docker_create_container` | E | Create a container: ports, folders, variables, restart policy, network |
 | `docker_update_container` | **D** | Rename a stopped container or change its restart policy and its CPU and memory limits; variables, ports or folders by recreating it (asks first) |
+| `docker_update_image` | **D** | Update a `latest` image and recreate its containers with the same settings. Refuses if any keeps data in anonymous volumes, which would be lost |
 | `docker_delete_container` | **D** | Delete stopped containers (mounted folders keep their data) |
 
 ## DSM administration: 29

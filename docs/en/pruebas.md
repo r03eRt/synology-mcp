@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-206 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+209 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -133,6 +133,13 @@ Since 0.16.0, `test/real/real-nas-areas.test.ts` covers the later areas, with th
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-23, version 0.20.0 (updating containers)
+
+- `npm test`: 209/209. New: `test/mock/docker-update.test.ts` (update and compare containers before and after, refusal because of anonymous volumes and `accept_data_loss`, image already up to date, container left stopped, fixed tag, missing image).
+- Real NAS, with the built server: temporary stopped container `mcp-upd-<random>` from `linuxserver/radarr:latest`, `docker_update_image` (one minute: `updated: true`, the container recreated on the new image) and container deleted. The Radarr image is now updated (nobody uses it). Its two anonymous volumes remain, which the API can't delete.
+- Reading the mounts of the NAS's 12 containers: none has anonymous volumes, so the check wouldn't block any of the pending updates.
+- The anonymous-volume check was added after that test (because of what it showed) and has only been tested with the mock and read-only.
 
 ### Result 2026-11-23, version 0.19.0 (installing and uninstalling packages)
 

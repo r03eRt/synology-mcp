@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">137 tools</a> ·
+  <a href="#6-tools">138 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -51,7 +51,7 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | 🖼️ | **Synology Photos** | Albums · places · find photos by date, place or text, each with its path to open it · upload into an album · normal and self-filling albums · share albums by link |
 | ☁️ | **Synology Drive** | Recent, starred, labels, shared · share with people, links with password and expiry, file requests · convert to Synology Office |
 | ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
-| 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · create, edit and delete containers · pull and clean up images |
+| 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · create, edit, update and delete containers · pull and clean up images |
 | 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages (and start or stop them) · install and uninstall packages · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
 | 🛠️ | **Administration** | Users and groups, shared folders, permissions, app privileges and quotas, scheduled tasks · insecure services (SMB1, FTP…) and turning them off · firewall, auto block and blocking IPs · restart or shut down |
@@ -255,7 +255,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 ## 6. Tools
 
-137 tools, 62 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
+138 tools, 62 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
 
 | Area | Tools | Main things |
 |---|---|---|
@@ -265,7 +265,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | Synology Drive | 22 (12 L) | recent, starred, labels, search, sharing with people, links, file requests, convert to Office |
 | Synology Photos | 10 (3 L) | albums, places and people, search by date, place or text (with each photo's path), upload, self-filling albums, sharing |
 | Download Station | 17 (6 L) | downloads, torrents (pick files), RSS, search, speed limits and schedule, dead downloads |
-| Docker (Container Manager) | 18 (6 L) | status and logs, start and stop, create, edit and delete containers, CPU and memory limits, images, networks, Compose projects (create, start, stop, edit and delete) |
+| Docker (Container Manager) | 19 (6 L) | status and logs, start and stop, create, edit, update and delete containers, CPU and memory limits, images, networks, Compose projects (create, start, stop, edit and delete) |
 | DSM administration | 29 (10 L) | users, groups, folders and permissions, app privileges, quotas, encrypted folders, scheduled tasks, services, network and firewall (read), blocking IPs, restart and shutdown |
 | Surveillance Station | 3 (2 L) | cameras and their status, recordings, Home Mode |
 | Hyper Backup | 2 (1 L) | backup tasks, last result and next run, start or cancel a backup |

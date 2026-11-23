@@ -378,6 +378,21 @@ Sources: `webman/modules/PkgManApp/PkgManApp.js` (how Package Center installs) a
   - `Target list` v1 without parameters gave **4400**: it needs something more (the web UI calls it with the repository). Not investigated: with no tasks it adds nothing.
 - Discarded hypotheses: that the quick install would leave the package running (no, see above) and that `Setting.Volume get` was needed before installing (no, it gives 4501 and doesn't matter).
 
+## Updating images and their containers (2026-11-23, 0.20.0)
+
+Source: `MainVue.js` (the image store's `upgrade` action and `openUpgradeImageDialog`) and the texts in `webman/3rdparty/ContainerManager/texts/enu/strings`. Tested on the real NAS with the Radarr image, which no container used, and a temporary stopped container.
+
+- `Docker.Image upgrade_start` v1 (`repository`) → `{task_id}`; `upgrade_status` v1 (`task_id`) every 5 s → `{state, current, total, finished}`, with `state` `PULLING_IMAGE` while downloading. The web UI only offers "Update" if `upgradable` and the tag is `latest`.
+- The dialog warns: "Container data might be cleared" and "Services of related containers might be stopped", and asks to follow the image's notes on Docker Hub.
+- **What really happens**, checked:
+  - The `linuxserver/radarr:latest` image went from a 2022 build to the 2026-11-16 one in a minute.
+  - The temporary container (`created`, never started) was **recreated** on the new image with the same settings. Its status didn't change.
+  - **Its anonymous `/config` volume changed**: `5f89e2…` before, `fe91ac…` after. The new container doesn't see what was in the old one: that's the "data might be cleared". Mounted NAS folders (`bind`) are kept.
+  - Container Manager deleted the old image: no `<none>` was left.
+  - Deleting the temporary container leaves its anonymous volumes in `/volume1/@docker/volumes/`. Container Manager advertises no volume API (`SYNO.Docker.*`: Container, Container.Log, Container.PkgProfile, Container.Profile, Container.Resource, Image, Log, Migrate, Network, Project, Registry, Utils), so the MCP can't delete them; it would take `docker volume prune` over SSH.
+- Anonymous volumes: in `Container get`, `details.Mounts[]` with `Type: "volume"` and a 64-hex-character `Name`. Named volumes keep their name and shouldn't change (not tested). On this NAS no container uses them: all mount NAS folders.
+- Discarded hypothesis: that the update only pulled the image and the containers had to be recreated separately (no, Container Manager recreates them).
+
 ## Installing and uninstalling packages with the MCP (2026-11-23, 0.19.0)
 
 The flow is the one in the 0.17.0 section (installing Hyper Backup), now in `package_install`. What's new:

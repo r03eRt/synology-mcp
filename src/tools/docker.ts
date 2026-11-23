@@ -41,7 +41,7 @@ interface Details {
   RestartCount?: number;
   Config?: { Env?: string[]; Cmd?: string[] | null; Entrypoint?: string[] | null; Labels?: Record<string, string>; Image?: string; ExposedPorts?: Record<string, unknown> };
   HostConfig?: { RestartPolicy?: { Name?: string }; NetworkMode?: string; PortBindings?: Record<string, { HostIp?: string; HostPort?: string }[] | null> };
-  Mounts?: { Type?: string; Source?: string; Destination?: string; RW?: boolean }[];
+  Mounts?: { Type?: string; Name?: string; Source?: string; Destination?: string; RW?: boolean }[];
   NetworkSettings?: { Networks?: Record<string, { IPAddress?: string }> };
   State?: {
     Status?: string;
@@ -408,6 +408,78 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
       );
       if (!finished) return ok({ image: `${repository}:${tag}`, status: "still downloading", task_id, note: "Check later with docker_images." });
       return ok({ image: `${repository}:${tag}`, status: "downloaded", ...(result.error ? { error: result.error } : {}) });
+    }),
+  );
+
+  server.registerTool(
+    "docker_update_image",
+    {
+      title: "Container Manager: update an image and its containers",
+      description:
+        "Update an image to its newest version (Container Manager's Update button, only for the latest tag) and recreate the containers that use it with the same settings. Their services stop for a while. Data in NAS folders mounted into the container stays; data in anonymous Docker volumes (the image's own /config-style volumes, not mapped to a NAS folder) does NOT come back: the recreated container gets new empty ones. The tool refuses when it finds those unless accept_data_loss is true. Read the image's release notes for breaking changes, list the affected containers and wait for confirmation. docker_images shows which images have an update.",
+      inputSchema: {
+        image: z.string().min(1).describe("repository or repository:latest as docker_images shows it, e.g. \"jellyfin/jellyfin\""),
+        accept_data_loss: z
+          .boolean()
+          .optional()
+          .describe("Go ahead even though a container keeps data in anonymous Docker volumes, which the recreated container does not get back (default false: refuse and list them). Only after the user agrees"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    },
+    safe(async ({ image, accept_data_loss }) => {
+      const at = image.lastIndexOf(":");
+      const [repository, tag] = at > image.lastIndexOf("/") ? [image.slice(0, at), image.slice(at + 1)] : [image, "latest"];
+      // The web UI only offers Update for "latest" (getImageRow: upgradable && tag === "latest").
+      if (tag !== "latest") throw new Error(`Only images tagged latest can be updated this way; ${repository}:${tag} is a fixed version. Pull the new tag (docker_pull_image) and point the container to it.`);
+      const listImages = async () =>
+        (await client.request<{ images: { id: string; repository: string; tags: string[]; created: number; upgradable?: boolean }[] }>("SYNO.Docker.Image", "list", { limit: -1, offset: 0, show_dsm: false }, 1)).images;
+      const before = (await listImages()).find((i) => i.repository === repository && i.tags.includes("latest"));
+      if (!before) throw new Error(`No image ${repository}:latest on the NAS; see docker_images`);
+      const users = (await listAll()).filter((c) => (c as { ImageID?: string }).ImageID === before.id || c.image === `${repository}:latest` || c.image === repository);
+      const statusBefore = new Map(users.map((c) => [c.name, c.status]));
+      // Checked on the real NAS: the recreated container gets a new anonymous volume (new hash) for each
+      // VOLUME of the image, so whatever was in the old one is no longer there.
+      const anonymous: { container: string; path: string }[] = [];
+      for (const c of users) {
+        const { details } = await client.request<{ details: Details }>(CONTAINER, "get", { name: json(c.name) }, 1);
+        for (const m of details.Mounts ?? []) {
+          const name = m.Name ?? m.Source?.split("/").at(-2) ?? "";
+          if (m.Type === "volume" && /^[0-9a-f]{64}$/.test(name)) anonymous.push({ container: c.name, path: m.Destination ?? "?" });
+        }
+      }
+      if (anonymous.length && !accept_data_loss) {
+        throw new Error(
+          `These containers keep data in anonymous Docker volumes, which the updated containers will not get back (they start with new empty ones): ${anonymous.map((a) => `${a.container}:${a.path}`).join(", ")}. Map those paths to NAS folders first (docker_update_container with volumes and recreate), or pass accept_data_loss: true only if the user agrees to lose that data.`,
+        );
+      }
+
+      const { task_id } = await client.request<{ task_id: string }>("SYNO.Docker.Image", "upgrade_start", { repository: json(repository) }, 1);
+      const { result, finished } = await client.poll(
+        () => client.request<{ finished?: boolean; state?: string; error?: unknown }>("SYNO.Docker.Image", "upgrade_status", { task_id: json(task_id) }, 1),
+        (r) => Boolean(r.finished),
+        1_800_000,
+        5000,
+      );
+      if (!finished) return ok({ image: `${repository}:latest`, status: "still updating", state: result.state, task_id, note: "Check later with docker_images and docker_list." });
+      if (result.error) throw new Error(`Updating ${repository}:latest failed: ${JSON.stringify(result.error)}`);
+
+      const after = (await listImages()).find((i) => i.repository === repository && i.tags.includes("latest"));
+      const now = (await listAll()).filter((c) => statusBefore.has(c.name));
+      const containers = [...statusBefore].map(([name, was]) => {
+        const c = now.find((x) => x.name === name);
+        if (!c) return { name, was, status: "missing: it was not recreated, check Container Manager" };
+        const onNew = after ? (c as { ImageID?: string }).ImageID === after.id : undefined;
+        return { name, was, status: c.status, ...(onNew === false && { note: "still uses the old image" }) };
+      });
+      return ok({
+        image: `${repository}:latest`,
+        updated: Boolean(after && after.id !== before.id),
+        ...(after && { created: new Date(after.created * 1000).toISOString() }),
+        ...(after && after.id === before.id && { note: "Already the newest version: nothing changed" }),
+        containers,
+        ...(containers.some((c) => c.was === "running" && c.status !== "running") && { warning: "Some containers that were running are not running now: check them with docker_get and docker_logs" }),
+        ...(anonymous.length && { anonymous_volumes_replaced: anonymous }),
+      });
     }),
   );
 

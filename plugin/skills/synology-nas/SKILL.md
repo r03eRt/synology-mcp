@@ -63,6 +63,7 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Cameras | `surveillance_cameras`, `surveillance_recordings`, `surveillance_set_home_mode` |
 | Restart or shut down the NAS | `dsm_power` only when the user explicitly asks; it lists running tasks first |
 | Backups: are they working? | `hyperbackup_tasks` (last result, next run, `needs_attention`; no tasks = no versioned backup); `hyperbackup_backup` to back up now or cancel, after confirming |
+| Update a container to its newest image | `docker_images` shows `update_available`; `docker_update_image` after confirming (its containers restart; it refuses if they keep data in anonymous volumes: never pass `accept_data_loss` without an explicit yes) |
 | Compose stack (several containers) | `docker_project_create` with the compose YAML (show it and confirm first: ports and mounted folders), then `docker_project_action` up/stop/restart/down, `docker_project_update`, `docker_project_delete`; `docker_projects` to see them |
 | Uninstall a package | `package_uninstall` after an explicit yes; packages that ask about their data (Drive, Photos, Container Manager…) and system ones are refused: send the user to Package Center |
 | Install a package | `package_catalog` to find its id, then `package_install` after confirming; if it reports `needs` (other packages) or warnings, tell the user before passing `with_dependencies` / `accept_warnings` |
