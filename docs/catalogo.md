@@ -121,7 +121,7 @@ Un usuario normal ve y gestiona sus descargas; un administrador, las de todos.
 
 Para limpiar las descargas muertas: pide «¿qué descargas están muertas?» (`downloads_list` con `stalled`) y luego «quítalas» (`downloads_delete`, con confirmación).
 
-## Docker (Container Manager): 14
+## Docker (Container Manager): 18
 
 Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a otros usuarios.
 
@@ -132,13 +132,17 @@ Todas necesitan una cuenta administradora: DSM no deja usar Container Manager a 
 | `docker_logs` | L | Registro de un contenedor, con filtros por texto y fecha. Puede tardar 20–60 s |
 | `docker_images` | L | Imágenes con tamaño, si alguna las usa y si hay actualización |
 | `docker_networks` | L | Redes de Docker y qué contenedores usa cada una |
-| `docker_projects` | L | Proyectos Compose de Container Manager |
+| `docker_projects` | L | Proyectos Compose de Container Manager: estado, carpeta y contenedores; con `name`, su fichero Compose |
 | `docker_start` | E | Arrancar contenedores |
 | `docker_stop` / `docker_restart` | **D** | Parar o reiniciar. Su servicio se corta (DNS, gestor de contraseñas…) |
 | `docker_pull_image` | E | Descargar una imagen de Docker Hub |
 | `docker_create_container` | E | Crear un contenedor: puertos, carpetas, variables, reinicio automático, red |
 | `docker_update_container` | **D** | Renombrar un contenedor parado o cambiar su reinicio automático y sus límites de CPU y memoria; variables, puertos o carpetas recreándolo (pregunta antes) |
 | `docker_delete_container` | **D** | Borrar contenedores parados (las carpetas montadas conservan sus datos) |
+| `docker_project_create` | E | Crear un proyecto Compose desde un fichero YAML (o el que haya en la carpeta) y arrancarlo |
+| `docker_project_action` | **D** | `up`, `start`, `stop`, `restart` o `down` de un proyecto; devuelve la salida de `docker compose` |
+| `docker_project_update` | **D** | Cambiar el fichero Compose de un proyecto y, si se pide, aplicarlo |
+| `docker_project_delete` | **D** | Quitar los contenedores de un proyecto y borrarlo (la carpeta y su `compose.yaml` se quedan) |
 | `docker_remove_images` | **D** | Borrar imágenes que no use ningún contenedor (las que están en uso se rechazan) |
 
 ## Administración de DSM: 29

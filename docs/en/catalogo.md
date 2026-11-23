@@ -121,7 +121,7 @@ A regular user sees and manages their own downloads; an administrator, everyone'
 
 To clean up dead downloads: ask "which downloads are dead?" (`downloads_list` with `stalled`) and then "remove them" (`downloads_delete`, with confirmation).
 
-## Docker (Container Manager): 14
+## Docker (Container Manager): 18
 
 All require an administrator account: DSM doesn't let other users use Container Manager.
 
@@ -132,9 +132,13 @@ All require an administrator account: DSM doesn't let other users use Container 
 | `docker_logs` | L | A container's log, with text and date filters. May take 20–60 s |
 | `docker_images` | L | Images with size, whether any container uses them and whether there's an update |
 | `docker_networks` | L | Docker networks and which containers use each |
-| `docker_projects` | L | Container Manager Compose projects |
+| `docker_projects` | L | Container Manager Compose projects: status, folder and containers; with `name`, its compose file |
 | `docker_start` | E | Start containers |
 | `docker_stop` / `docker_restart` | **D** | Stop or restart. Their service goes down (DNS, password manager…) |
+| `docker_project_create` | E | Create a Compose project from a YAML file (or the one in the folder) and start it |
+| `docker_project_action` | **D** | `up`, `start`, `stop`, `restart` or `down` a project; returns the `docker compose` output |
+| `docker_project_update` | **D** | Change a project's compose file and, if asked, apply it |
+| `docker_project_delete` | **D** | Remove a project's containers and delete it (the folder and its `compose.yaml` stay) |
 | `docker_remove_images` | **D** | Delete images no container uses (images in use are rejected) |
 | `docker_pull_image` | E | Download an image from Docker Hub |
 | `docker_create_container` | E | Create a container: ports, folders, variables, restart policy, network |

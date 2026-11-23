@@ -182,7 +182,7 @@ describe("Docker networks, Compose projects and limits; Surveillance Station", (
     h = await withMockNas();
     const { nas } = h;
     nas.on("SYNO.Docker.Network", "list", () => ({ network: [{ name: "bridge", driver: "bridge", subnet: "172.17.0.0/16", gateway: "172.17.0.1", containers: ["app"] }, { name: "host", driver: "host", subnet: "", gateway: "", containers: [] }] }));
-    nas.on("SYNO.Docker.Project", "list", () => ({ "p-1": { name: "immich", path: "/docker/immich", status: "RUNNING", containers: [{ name: "immich_server" }, { name: "immich_redis" }] } }));
+    nas.on("SYNO.Docker.Project", "list", () => ({ "p-1": { id: "p-1", name: "immich", share_path: "/docker/immich", path: "/volume1/docker/immich", status: "RUNNING", containers: [{ Name: "/immich_server", State: { Status: "running" } }, { Name: "/immich_redis", State: { Status: "running" } }] } }));
     nas.on("SYNO.Docker.Container", "list", () => ({ containers: [{ name: "app", image: "nginx:alpine", status: "stopped" }] }));
     nas.on("SYNO.Docker.Container", "get", () => ({ profile }));
     nas.on("SYNO.Docker.Container", "set", (p) => {
@@ -207,7 +207,7 @@ describe("Docker networks, Compose projects and limits; Surveillance Station", (
     const n = await h.call("docker_networks");
     assert.deepEqual(n.json.networks[0], { name: "bridge", driver: "bridge", subnet: "172.17.0.0/16", gateway: "172.17.0.1", containers: ["app"] });
     const p = await h.call("docker_projects");
-    assert.deepEqual(p.json.projects, [{ id: "p-1", name: "immich", path: "/docker/immich", status: "RUNNING", containers: ["immich_server", "immich_redis"] }]);
+    assert.deepEqual(p.json.projects, [{ id: "p-1", name: "immich", status: "running", folder: "/docker/immich", containers: [{ name: "immich_server", state: "running" }, { name: "immich_redis", state: "running" }] }]);
   });
 
   test("CPU priority and memory limit change in place and are checked", async () => {

@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">130 tools</a> ·
+  <a href="#6-tools">134 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -255,7 +255,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 ## 6. Tools
 
-130 tools, 61 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
+134 tools, 61 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
 
 | Area | Tools | Main things |
 |---|---|---|
@@ -265,7 +265,7 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 | Synology Drive | 22 (12 L) | recent, starred, labels, search, sharing with people, links, file requests, convert to Office |
 | Synology Photos | 10 (3 L) | albums, places and people, search by date, place or text (with each photo's path), upload, self-filling albums, sharing |
 | Download Station | 17 (6 L) | downloads, torrents (pick files), RSS, search, speed limits and schedule, dead downloads |
-| Docker (Container Manager) | 14 (6 L) | status and logs, start and stop, create, edit and delete containers, CPU and memory limits, images, networks, Compose projects |
+| Docker (Container Manager) | 18 (6 L) | status and logs, start and stop, create, edit and delete containers, CPU and memory limits, images, networks, Compose projects (create, start, stop, edit and delete) |
 | DSM administration | 29 (10 L) | users, groups, folders and permissions, app privileges, quotas, encrypted folders, scheduled tasks, services, network and firewall (read), blocking IPs, restart and shutdown |
 | Surveillance Station | 3 (2 L) | cameras and their status, recordings, Home Mode |
 | Hyper Backup | 2 (1 L) | backup tasks, last result and next run, start or cancel a backup |
@@ -394,7 +394,7 @@ To add something: find the call in the DSM web UI (the NAS serves its JavaScript
 - **npm**: the package isn't published yet.
 - **Not tested in practice**: 2FA and the installed Claude Desktop extension. Also, on purpose, only tested with the simulated NAS: changing services (`dsm_set_services`), restarting or shutting down (`dsm_power`), editing people in Photos and encrypted folders (the test NAS has none) and recordings (its only camera is offline). Drive public links and file requests are disabled on the test NAS, so they are only tested with the simulated one.
 - **Hyper Backup**: running and cancelling a backup are only tested with the mock NAS (the test NAS has no tasks yet); creating tasks is not included.
-- **Not included**: changing the firewall or network settings (read only: a mistake would lock you out), fully encrypting or decrypting folders (only mounting), camera snapshots and live video, creating Compose projects. See the [roadmap](docs/en/hoja-de-ruta.md).
+- **Not included**: changing the firewall or network settings (read only: a mistake would lock you out), fully encrypting or decrypting folders (only mounting), camera snapshots and live video. See the [roadmap](docs/en/hoja-de-ruta.md).
 
 ## 12. License
 

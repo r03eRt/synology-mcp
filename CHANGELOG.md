@@ -4,6 +4,20 @@
 
 Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué cambió y por qué.
 
+## 2026-11-23
+
+### 0.18.0: proyectos Docker Compose
+- **4 herramientas nuevas** para los proyectos Compose de Container Manager (`src/tools/compose.ts`), con la API de la web de Container Manager (`SYNO.Docker.Project`):
+  - `docker_project_create`: crear un proyecto desde un fichero Compose (o el que ya haya en la carpeta) y, por defecto, descargar las imágenes y arrancarlo.
+  - `docker_project_action`: `up` (descarga y crea o recrea los contenedores), `start`, `stop`, `restart` y `down` (quita contenedores y redes). Devuelve la salida de `docker compose`, sin las barras de progreso.
+  - `docker_project_update`: cambiar el fichero Compose y, con `apply`, aplicarlo.
+  - `docker_project_delete`: `down` y borrar el proyecto; la carpeta y su `compose.yaml` se quedan.
+  - `docker_projects` pasa a `compose.ts` y, con `name`, enseña el fichero Compose. Su respuesta cambia: `folder` en vez de `path`, `status` en minúsculas y contenedores con su estado (o su número en la lista).
+- **Cliente**: `requestText`, para métodos que responden en texto en vez de JSON (las acciones `*_stream` de Container Manager).
+- **Hallazgo**: Container Manager no acepta el alias `/home` de File Station (1202); hay que darle `/homes/<usuario>/…`. Las herramientas lo traducen solas.
+- Probado en el NAS simulado (`test/mock/compose.test.ts`) y en el real, con un proyecto temporal de `hello-world` en `/home` que recorrió todas las acciones y se borró después, junto con la carpeta y la imagen.
+- 134 herramientas (61 en solo lectura). Pruebas: 201.
+
 ## 2026-11-22
 
 ### 0.17.0: Hyper Backup y licencia AGPL-3.0

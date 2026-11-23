@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">130 herramientas</a> ·
+  <a href="#6-herramientas">134 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -255,7 +255,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 ## 6. Herramientas
 
-130 herramientas, 61 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
+134 herramientas, 61 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
 
 | Área | Herramientas | Lo principal |
 |---|---|---|
@@ -265,7 +265,7 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 | Synology Drive | 22 (12 L) | recientes, estrellas, etiquetas, búsqueda, compartir con personas, enlaces, *file requests*, convertir a Office |
 | Synology Photos | 10 (3 L) | álbumes, lugares y personas, buscar por fecha, lugar o texto (con la ruta de cada foto), subir, álbumes que se llenan solos, compartir |
 | Download Station | 17 (6 L) | descargas, torrents (elegir ficheros), RSS, búsqueda, límites y horario, descargas muertas |
-| Docker (Container Manager) | 14 (6 L) | estado y registros, arrancar y parar, crear, editar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose |
+| Docker (Container Manager) | 18 (6 L) | estado y registros, arrancar y parar, crear, editar y borrar contenedores, límites de CPU y memoria, imágenes, redes, proyectos Compose (crear, arrancar, parar, editar y borrar) |
 | Administración de DSM | 29 (10 L) | usuarios, grupos, carpetas y permisos, privilegios de aplicaciones, cuotas, carpetas cifradas, tareas programadas, servicios, red y cortafuegos (lectura), bloquear IPs, reiniciar y apagar |
 | Surveillance Station | 3 (2 L) | cámaras y su estado, grabaciones, modo en casa |
 | Hyper Backup | 2 (1 L) | tareas de copia, resultado de la última y próxima, lanzar o cancelar una copia |
@@ -394,7 +394,7 @@ Para añadir algo: busca la llamada en la web de DSM (el NAS sirve su JavaScript
 - **npm**: el paquete no está publicado todavía.
 - **Sin probar en la práctica**: 2FA y la extensión de Claude Desktop instalada. Además, a propósito, solo probados con el NAS simulado: cambiar servicios (`dsm_set_services`), reiniciar o apagar (`dsm_power`), editar personas en Photos y las carpetas cifradas (el NAS de pruebas no tiene) y las grabaciones (su única cámara está sin conexión). Los enlaces públicos y las *file requests* de Drive están desactivados en el NAS de pruebas, así que solo están probados con el simulado.
 - **Hyper Backup**: lanzar y cancelar una copia solo se ha probado con el NAS simulado (el NAS de pruebas aún no tiene tareas); crear tareas no está incluido.
-- **No incluido**: cambiar el cortafuegos o la red (solo lectura: un error te dejaría sin acceso), cifrar o descifrar del todo carpetas (solo montarlas), fotos y vídeo en directo de las cámaras, crear proyectos Compose. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
+- **No incluido**: cambiar el cortafuegos o la red (solo lectura: un error te dejaría sin acceso), cifrar o descifrar del todo carpetas (solo montarlas), fotos y vídeo en directo de las cámaras. Ver la [hoja de ruta](docs/hoja-de-ruta.md).
 
 ## 12. Licencia
 

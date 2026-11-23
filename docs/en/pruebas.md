@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-196 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+201 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -133,6 +133,12 @@ Since 0.16.0, `test/real/real-nas-areas.test.ts` covers the later areas, with th
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-23, version 0.18.0 (Compose projects)
+
+- `npm test`: 201/201. New: `test/mock/compose.test.ts` (output trimming, creating in `/home` with the translated path, using the folder's compose file and refusing to replace it, actions, `update` without applying, a failed `up` with the output in the error, missing project, delete with `down` only when there are containers). The mock answers the actions with text (`RawBody`) and the list without `containers`, as DSM does.
+- Real NAS, first with raw calls and then with the built server: create `mcp-compose-<random>` in `/home` with `hello-world` (pull and start), list, details with the YAML, `stop`, `update` with `apply` (recreates), `restart`, delete (the folder stays with `compose.yaml`), create another one in the same folder without `compose` and delete it. At the end: no projects, no folder and no `hello-world` image, which the test had pulled.
+- Not tested on the real NAS: a failing `up` (mock only) and services with ports or mounted folders.
 
 ### Result 2026-11-22, version 0.17.0 (Hyper Backup)
 

@@ -63,6 +63,7 @@ If `list_nas` and `use_nas` exist, several NAS are configured and every other to
 | Cameras | `surveillance_cameras`, `surveillance_recordings`, `surveillance_set_home_mode` |
 | Restart or shut down the NAS | `dsm_power` only when the user explicitly asks; it lists running tasks first |
 | Backups: are they working? | `hyperbackup_tasks` (last result, next run, `needs_attention`; no tasks = no versioned backup); `hyperbackup_backup` to back up now or cancel, after confirming |
+| Compose stack (several containers) | `docker_project_create` with the compose YAML (show it and confirm first: ports and mounted folders), then `docker_project_action` up/stop/restart/down, `docker_project_update`, `docker_project_delete`; `docker_projects` to see them |
 | Start or stop a package | `package_control` after confirming (stopping takes its service down); `get_packages` first |
 | Find a torrent | `downloads_search` (the NAS's BT search engines), then `downloads_add` with the chosen result's `url` |
 | Download speed, only at night | `downloads_info` shows limits, queue and schedule; `downloads_set_limits`, `downloads_set_schedule` (rules per day and hour: full, limited, off) |

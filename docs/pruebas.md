@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-196 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+201 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -133,6 +133,12 @@ Nunca se lanzan aquí `dsm_set_services`, `dsm_power`, `package_control` sobre s
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-23, versión 0.18.0 (proyectos Compose)
+
+- `npm test`: 201/201. Nueva: `test/mock/compose.test.ts` (recorte de la salida, crear en `/home` con la ruta traducida, usar el Compose de la carpeta y negarse a sustituirlo, acciones, `update` sin aplicar, `up` fallido con la salida en el error, proyecto inexistente, borrar con `down` solo si hay contenedores). El simulado devuelve texto en las acciones (`RawBody`) y la lista sin `containers`, como DSM.
+- NAS real, primero con llamadas sueltas y después con el servidor compilado: crear `mcp-compose-<aleatorio>` en `/home` con `hello-world` (descarga y arranque), listar, detalle con el YAML, `stop`, `update` con `apply` (recrea), `restart`, borrar (la carpeta queda con `compose.yaml`), crear otro en la misma carpeta sin `compose` y borrarlo. Al final: sin proyectos, sin la carpeta y sin la imagen `hello-world`, que bajó la prueba.
+- Sin probar en el NAS real: un `up` que falle (solo con el simulado) y servicios con puertos o carpetas montadas.
 
 ### Resultado 2026-11-22, versión 0.17.0 (Hyper Backup)
 

@@ -261,22 +261,6 @@ export function registerDockerTools(server: McpServer, client: SynologyClient, o
     }),
   );
 
-  server.registerTool(
-    "docker_projects",
-    {
-      title: "Container Manager: Compose projects",
-      description:
-        "Docker Compose projects created in Container Manager: name, folder, status and containers. Projects started outside Container Manager (docker compose on SSH) are not listed; docker_list shows their project from the container labels.",
-      annotations: READ,
-    },
-    safe(async () => {
-      const r = await client.request<Record<string, { name?: string; path?: string; status?: string; containerIds?: string[]; containers?: { name?: string }[]; updated_at?: string }>>("SYNO.Docker.Project", "list", {}, 1);
-      // The list is an object keyed by project id.
-      const projects = Object.entries(r ?? {}).map(([id, p]) => ({ id, name: p.name, path: p.path, status: p.status, containers: (p.containers ?? []).map((c) => c.name).filter(Boolean) }));
-      return ok({ total: projects.length, projects, ...(!projects.length && { note: "No Compose projects in Container Manager." }) });
-    }),
-  );
-
   if (opts.readOnly) return;
 
   const action = (method: "start" | "stop" | "restart") => async ({ names: list }: { names: string[] }) => {

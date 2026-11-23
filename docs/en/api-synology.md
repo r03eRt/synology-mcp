@@ -378,6 +378,24 @@ Sources: `webman/modules/PkgManApp/PkgManApp.js` (how Package Center installs) a
   - `Target list` v1 without parameters gave **4400**: it needs something more (the web UI calls it with the repository). Not investigated: with no tasks it adds nothing.
 - Discarded hypotheses: that the quick install would leave the package running (no, see above) and that `Setting.Volume get` was needed before installing (no, it gives 4501 and doesn't matter).
 
+## Docker Compose projects (2026-11-23, 0.18.0)
+
+Source: `webman/3rdparty/ContainerManager/MainVue.js` (the project wizard, `ProjectBaseActionDialog.vue` and the `projects` store). Tested on the real NAS with a temporary `hello-world` project in `/home`, deleted at the end together with its folder and the image.
+
+- `SYNO.Docker.Project` v1: `list`, `get` (`id`), `create`, `update` (`id` and the fields that change, such as `content`), `delete` (`id`), `get_share_info` (`path`) and `log`.
+- `create` takes the wizard's form: `name`, `share_path` (NAS folder), `content` (the YAML) and `enable_service_portal` (plus `service_portal_*` if the Web Station portal is on). It returns the project: `id` (UUID), `status: "CREATED"`, `path` (`/volume1/…`), `share_path`, `content`, `containerIds`, `containers`, `version: 2`. Container Manager writes the file as `compose.yaml` in the folder.
+- **The actions answer with text, not JSON**: `build_stream`, `start_stream`, `stop_stream`, `restart_stream` and `clean_stream` (`id`). The web UI requests them with `responseFormat: "text"` and shows the `docker compose` output as it arrives (`onDownloadProgress`). It ends with `Exit Code: N`. If they fail before starting, they send the JSON error envelope. `client.requestText` was added for them.
+  - `build_stream` = pull images and `up` (what the web UI offers after creating, "run immediately"). `clean_stream` = `down`: removes the containers and the `<project>_default` network.
+  - Recreating after `update` also goes through `build_stream` ("Recreate").
+- `status`: `CREATED` (not built), `RUNNING`, `STOPPED`, `RESTARTING`, `ERROR`, `UNKNOWN`. With `hello-world`, which exits right away, it ends `STOPPED` even when it worked.
+- `list` is an object keyed by id with `containerIds` but **no `containers`**; `get` does carry the full containers (with `State`, `Config`, `com.docker.compose.*` labels…).
+- **`/home` doesn't work**: `get_share_info` with `/home` or `/home/Drive` gives **1202**, and with `/homes` or `/docker/…` it works. Container Manager uses real shared-folder paths and `/home` is a File Station alias. With `/homes/<user>/<folder>` the project was created fine (`path: /volume1/homes/<user>/…`). The tools translate `/home/…`.
+- `get_share_info` says whether the folder already has a compose file (`is_docker_compose_yml_exist`, `content`, `compose_path`); for a folder that doesn't exist it answers as for an empty one.
+- `get` with a missing id: **2104**.
+- Deleting the project (`delete`) leaves the folder and its `compose.yaml`. Creating another project in the same folder without `content` reuses that file (checked).
+- `FileStation.CreateFolder` with `force_parent: true` on an existing folder doesn't fail, so it is always called before creating.
+- Discarded hypotheses: that this NAS's project (immich) would show in `list` (no: it was created outside Container Manager), and that the File Station path would do (no, see `/home`).
+
 ## Common error codes
 
 | Code | Meaning |

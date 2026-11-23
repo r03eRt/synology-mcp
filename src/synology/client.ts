@@ -295,6 +295,30 @@ export class SynologyClient {
     });
   }
 
+  /**
+   * Call a WebAPI method that answers with plain text instead of the JSON envelope
+   * (Container Manager's `*_stream` project actions stream the `docker compose` output).
+   * A JSON error envelope, which these methods send when they fail before starting, is thrown.
+   */
+  async requestText(api: string, method: string, params: Params = {}, version?: number, opts: { timeoutMs?: number } = {}): Promise<string> {
+    return this.withSession(async (sid) => {
+      const resolved = await this.resolveApi(api, version);
+      const body = this.buildParams(api, method, resolved.version, params, sid);
+      const res = await this.httpPost(`${await this.baseUrl()}/webapi/${resolved.path}`, body, {}, opts.timeoutMs);
+      const text = await res.text();
+      let parsed: SynoResponse<unknown> | undefined;
+      try {
+        parsed = JSON.parse(text) as SynoResponse<unknown>;
+      } catch {
+        return text;
+      }
+      if (parsed && typeof parsed === "object" && parsed.success === false) {
+        throw new SynologyApiError(api, method, parsed.error?.code ?? 100, parsed.error?.errors ?? []);
+      }
+      return text;
+    });
+  }
+
   /** Download one or more paths (multiple paths come back as a ZIP). */
   async download(paths: string[]): Promise<DownloadResult> {
     const api = "SYNO.FileStation.Download";

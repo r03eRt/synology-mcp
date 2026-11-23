@@ -1,6 +1,6 @@
 {
   "name": "synology",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Use a Synology NAS (DSM 7) from Claude: files (File Station), Synology Drive, Synology Photos, Download Station, Container Manager (Docker) and NAS status. Read-only unless you turn writes on.",
   "author": {
     "name": "Roberto Morgado Luengo"
