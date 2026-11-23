@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Main suite (`npm test`)
 
-201 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
+206 tests, ~10 s. Does not need the NAS. It first regenerates the plugin bundle (`pretest`).
 
 | File | What it covers |
 |---|---|
@@ -133,6 +133,11 @@ Since 0.16.0, `test/real/real-nas-areas.test.ts` covers the later areas, with th
 - Against the real NAS, the bundle with `SYNOLOGY_NAS_FILE` and two entries for the same NAS: `local` (IP) and `qc` (`quickconnect:<ID>`, ID read from the NAS without writing it down). `get_system_info` through each one, `use_nas`, `list_files` and `list_nas` worked; QuickConnect chose the local network with a valid certificate.
 - Full login and calls through the Synology relay (`relay_dn:relay_port`): 3.3 s the first one and about 130 ms the following ones; Noise v7 without falling back to v6.
 - Not tested: actually being away from home. The choice of the relay when the local network does not respond is covered by the mock test.
+
+### Result 2026-11-23, version 0.19.0 (installing and uninstalling packages)
+
+- `npm test`: 206/206. New: `test/mock/package-install.test.ts` (uninstalling and its refusals: system, data wizard, dependencies with and without `accept_warnings`; catalog search with what's installed, install with waiting and start, "already installed", dependencies only with `with_dependencies`, license, paid, unknown, `hard` block, `soft` warning with and without `accept_warnings`, failed install).
+- Real NAS, with the built server: `package_catalog` (101 packages; search "editor"), `package_install` with Hyper Backup ("already installed") and an unknown id, and the **install of PDF Viewer** (43 s, running), checked with `get_packages`. Then uninstalled with `Package.Uninstallation uninstall`: 43 packages, as before. With `package_uninstall` built: refusals for Synology Drive (data wizard) and File Station (system), "not installed", and once more installing and uninstalling PDF Viewer with the tools; at the end, 43 packages.
 
 ### Result 2026-11-23, version 0.18.0 (Compose projects)
 

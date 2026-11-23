@@ -378,6 +378,18 @@ Fuentes: `webman/modules/PkgManApp/PkgManApp.js` (cómo instala el Centro de paq
   - `Target list` v1 sin parámetros dio **4400**: pide algo más (la web lo llama con el repositorio). No se investigó: con ninguna tarea no aporta nada.
 - Hipótesis descartadas: que la instalación rápida dejaría el paquete en marcha (no, ver arriba) y que `Setting.Volume get` sería necesario antes de instalar (no, da 4501 y no afecta).
 
+## Instalar y desinstalar paquetes con el MCP (2026-11-23, 0.19.0)
+
+El flujo es el de la sección de la 0.17.0 (instalar Hyper Backup), ahora en `package_install`. Lo nuevo:
+
+- **Prueba real**: PDF Viewer 1.3.1-1233 (0,8 MB, sin dependencias, solo un visor) se instaló en 43 s, de la llamada a `install` a `finished`. Como con Hyper Backup, quedó parado y la herramienta lo arrancó (`running`).
+- **Desinstalar** (`package_uninstall`): `Core.Package.Uninstallation uninstall` v1 con `id` y `dsm_apps` (el texto de `Core.Package list` con `additional=["dsm_apps"]`) → `{message: "", worker_message: []}`. Al momento ya no aparece en la lista (43 paquetes, como antes).
+  - Antes, la web (`_RunPackageUninstall`) pasa `feasibility_check` con `type: "uninstall_check"` (en este NAS, `{}` para todo lo probado) y mira `additional.is_uninstall_pages`: si es `true`, abre `UninstallWizardDialog`, que pregunta qué hacer con los datos y manda sus respuestas en `extra_values`. Lo tienen 15 de los 43 paquetes de este NAS (Drive, Photos, Container Manager, Download Station, MariaDB, Web Station, WordPress, Hyper Backup, Surveillance Station…). El MCP no adivina esas respuestas: los rechaza.
+  - `ctl_uninstall: false` marca los que no se pueden desinstalar (File Station, SMB, QuickConnect, Storage Manager…), todos con `install_type: "system"`. Algunos de sistema sí lo permiten (`OAuthService`, `DhcpServer`, `USBCopy`, `ActiveInsight`), pero el MCP los rechaza igualmente.
+- El catálogo de este NAS tiene **101 paquetes**. Los de Synology llevan `source: "syno"`; `price` es `null` en los gratuitos.
+- `feasibility_check` responde `{}` cuando no hay nada que objetar. Con avisos, **4556** y `errors: {check_type: "soft"|"hard", reasons: [...]}`; la web enseña las razones con `SYNO.SDS.Utils.GetFeasibilityCheckMsg` (sus textos dependen del tipo de razón y no se han visto en este NAS), así que el MCP las devuelve tal cual.
+- Sin probar en el NAS real: dependencias (`get_queue` con más de un paquete), avisos `soft`/`hard`, licencia (`has_eula: true`) y `volume_path` (un solo volumen). Están cubiertos con el NAS simulado.
+
 ## Proyectos Docker Compose (2026-11-23, 0.18.0)
 
 Fuente: `webman/3rdparty/ContainerManager/MainVue.js` (el asistente de proyectos, `ProjectBaseActionDialog.vue` y la tienda `projects`). Probado en el NAS real con un proyecto temporal de `hello-world` en `/home`, que se borró al final junto con su carpeta y la imagen.

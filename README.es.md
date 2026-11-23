@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#instalación-rápida">Instalación rápida</a> ·
-  <a href="#6-herramientas">134 herramientas</a> ·
+  <a href="#6-herramientas">137 herramientas</a> ·
   <a href="#5-seguridad">Seguridad</a> ·
   <a href="#7-ejemplos-de-peticiones">Ejemplos</a> ·
   <a href="docs/README.md">Documentación</a>
@@ -52,7 +52,7 @@ Cada respuesta sale de las herramientas de este servidor sobre tu NAS real. Las 
 | ☁️ | **Synology Drive** | Recientes, estrellas, etiquetas, compartidos · compartir con personas, enlaces con contraseña y caducidad, *file requests* · convertir a Synology Office |
 | ⬇️ | **Descargas** | Buscar torrents · URLs, magnets y `.torrent` · elegir ficheros · RSS · límites de velocidad y horario · detectar descargas muertas |
 | 🐳 | **Docker** | Estado, CPU/RAM y registros de contenedores · arrancar, parar y reiniciar · crear, editar y borrar contenedores · descargar y limpiar imágenes |
-| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · notificaciones y registros · volúmenes |
+| 🩺 | **Salud** | SMART de cada disco · actualizaciones pendientes · paquetes averiados o parados (y arrancarlos o pararlos) · instalar y desinstalar paquetes · notificaciones y registros · volúmenes |
 | 🧹 | **Espacio** | Papeleras, imágenes sin usar y carpetas que más ocupan |
 | 🛠️ | **Administración** | Usuarios y grupos, carpetas compartidas, permisos, privilegios de aplicaciones y cuotas, tareas programadas · servicios inseguros (SMB1, FTP…) y desactivarlos · cortafuegos, bloqueo automático y bloquear IPs · reiniciar o apagar |
 | 📹 | **Surveillance Station** | Cámaras y su estado, grabaciones, modo en casa |
@@ -108,7 +108,7 @@ Qué funciona con cada tipo de cuenta:
 
 | Con un usuario normal | Solo con un administrador |
 |---|---|
-| Ficheros, Drive (también compartir y *file requests*), Photos (las carpetas que el usuario puede ver), Download Station (sus propias descargas y la búsqueda de torrents), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), paquetes (`get_packages`, `package_control`), Hyper Backup, papeleras, límites y horario de Download Station, las descargas de todos los usuarios y la administración (`dsm_*`: usuarios, grupos, carpetas compartidas, servicios, reiniciar y apagar) |
+| Ficheros, Drive (también compartir y *file requests*), Photos (las carpetas que el usuario puede ver), Download Station (sus propias descargas y la búsqueda de torrents), `get_system_info` | Docker, salud del NAS (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), paquetes (`get_packages`, `package_control`, `package_catalog`, `package_install`, `package_uninstall`), Hyper Backup, papeleras, límites y horario de Download Station, las descargas de todos los usuarios y la administración (`dsm_*`: usuarios, grupos, carpetas compartidas, servicios, reiniciar y apagar) |
 
 Usar un administrador da a Claude acceso a todo el NAS. Si lo haces, considera dejar el modo solo lectura activado.
 
@@ -255,12 +255,12 @@ Detalles, y cómo está registrado en el equipo del autor, en [docs/configuracio
 
 ## 6. Herramientas
 
-134 herramientas, 61 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
+137 herramientas, 62 de ellas de solo lectura. **L** = lectura, **E** = escritura (solo con `SYNOLOGY_READ_ONLY=false`), **D** = destructiva (pide confirmación).
 
 | Área | Herramientas | Lo principal |
 |---|---|---|
 | Ficheros (File Station) | 22 (12 L) | listar, buscar, leer texto e imágenes, subir y bajar, copiar, mover, borrar, comprimir, enlaces públicos |
-| Estado y salud del NAS | 9 (8 L) | sistema, CPU y RAM, almacenamiento, SMART, actualizaciones, notificaciones, registros, paquetes |
+| Estado y salud del NAS | 12 (9 L) | sistema, CPU y RAM, almacenamiento, SMART, actualizaciones, notificaciones, registros, paquetes (también buscarlos en el catálogo, instalarlos y desinstalarlos) |
 | Liberar espacio | 2 (1 L) | papeleras: cuánto ocupan y vaciarlas |
 | Synology Drive | 22 (12 L) | recientes, estrellas, etiquetas, búsqueda, compartir con personas, enlaces, *file requests*, convertir a Office |
 | Synology Photos | 10 (3 L) | álbumes, lugares y personas, buscar por fecha, lugar o texto (con la ruta de cada foto), subir, álbumes que se llenan solos, compartir |

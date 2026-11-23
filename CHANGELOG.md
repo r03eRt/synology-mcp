@@ -6,6 +6,14 @@ Formato: una sección por fecha, lo más reciente arriba. Cada entrada dice qué
 
 ## 2026-11-23
 
+### 0.19.0: instalar y desinstalar paquetes
+- **3 herramientas nuevas** (`src/tools/packages.ts`), con las llamadas del Centro de paquetes que ya se usaron a mano para instalar Hyper Backup:
+  - `package_catalog` (lectura): buscar en el catálogo de Synology para este NAS, con lo que ya está instalado y su versión.
+  - `package_install`: instalar como la instalación rápida de la web, esperar a que acabe y arrancarlo (la instalación rápida lo deja parado). Si necesita otros paquetes, los enumera y no instala nada salvo con `with_dependencies`; con avisos del Centro de paquetes, se para salvo con `accept_warnings`; con bloqueo («hard»), se niega. Los paquetes con licencia que aceptar, los de pago y las actualizaciones quedan para el Centro de paquetes.
+  - `package_uninstall` (destructiva): desinstalar con `Package.Uninstallation uninstall`, como la web. Se niega con los paquetes del sistema (`ctl_uninstall: false` o `install_type: "system"`) y con los que tienen asistente de desinstalación (`is_uninstall_pages`: Drive, Photos, Container Manager, MariaDB…), que preguntan qué hacer con sus datos: esa decisión queda para el usuario en el Centro de paquetes. Si otros paquetes dependen de él, se para salvo con `accept_warnings`.
+- Probado: NAS simulado (`test/mock/package-install.test.ts`, 4 pruebas) y NAS real: catálogo (101 paquetes), Hyper Backup «ya instalado», paquete inexistente, e **instalación real de PDF Viewer** (43 s, quedó en marcha), desinstalado después; y otra vez instalado con `package_install` y desinstalado con `package_uninstall`, más los rechazos de Synology Drive y File Station.
+- 137 herramientas (62 en solo lectura). Pruebas: 206.
+
 ### 0.18.0: proyectos Docker Compose
 - **4 herramientas nuevas** para los proyectos Compose de Container Manager (`src/tools/compose.ts`), con la API de la web de Container Manager (`SYNO.Docker.Project`):
   - `docker_project_create`: crear un proyecto desde un fichero Compose (o el que ya haya en la carpeta) y, por defecto, descargar las imágenes y arrancarlo.

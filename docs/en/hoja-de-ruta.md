@@ -93,7 +93,7 @@ Needed before anyone else uses it.
   - SMART status per disk;
   - available DSM and package updates;
   - restart and shut down, with `destructiveHint` and admin only.
-- [x] **3.4 Installed packages** (S). Done in 0.13.0: `get_packages`, with broken packages first and a warning if Hyper Backup is missing. In 0.14.0, starting and stopping (`package_control`).
+- [x] **3.4 Installed packages** (S). Done in 0.13.0: `get_packages`, with broken packages first and a warning if Hyper Backup is missing. In 0.14.0, starting and stopping (`package_control`). In 0.19.0, searching the catalog, installing and uninstalling (`package_catalog`, `package_install`, `package_uninstall`).
 
 ## Phase 4: new areas
 

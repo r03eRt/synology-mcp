@@ -34,7 +34,7 @@ Todas las herramientas, agrupadas por área, con su tipo y para qué sirven. El 
 | `create_sharing_link` | E | Enlace público, con contraseña y caducidad opcionales |
 | `delete_sharing_links` | **D** | Borrar enlaces públicos |
 
-## Estado y salud del NAS: 9
+## Estado y salud del NAS: 12
 
 | Herramienta | Tipo | Admin | Qué hace |
 |---|---|---|---|
@@ -46,6 +46,9 @@ Todas las herramientas, agrupadas por área, con su tipo y para qué sirven. El 
 | `get_notifications` | L | sí | Notificaciones de la campana de DSM (errores, avisos, descargas terminadas…) |
 | `get_packages` | L | sí | Paquetes instalados y su estado; señala los que no funcionan (por ejemplo, incompatibles con este DSM) y avisa si falta Hyper Backup |
 | `package_control` | **D** | sí | Arrancar o parar un paquete. No para los del sistema ni arranca los averiados |
+| `package_catalog` | L | sí | Buscar paquetes en el catálogo del Centro de paquetes (nombre, versión, tamaño, si ya está instalado) |
+| `package_install` | E | sí | Instalar un paquete del catálogo y arrancarlo; enumera antes las dependencias y los avisos |
+| `package_uninstall` | **D** | sí | Desinstalar un paquete. No toca los del sistema ni los que preguntan qué hacer con sus datos (Drive, Photos…) |
 | `get_system_logs` | L | sí | Registro del sistema o de conexiones, filtrable por nivel, texto y fechas |
 
 ## Liberar espacio: 2 (más `docker_remove_images`)

@@ -34,7 +34,7 @@ Every tool, grouped by area, with its type and what it's for. The summary is in 
 | `create_sharing_link` | E | Public link, with optional password and expiry |
 | `delete_sharing_links` | **D** | Delete public links |
 
-## NAS status and health: 9
+## NAS status and health: 12
 
 | Tool | Type | Admin | What it does |
 |---|---|---|---|
@@ -47,6 +47,9 @@ Every tool, grouped by area, with its type and what it's for. The summary is in 
 | `get_packages` | L | yes | Installed packages and their status; flags the ones not working (e.g. incompatible with this DSM) and warns if Hyper Backup is missing |
 | `get_system_logs` | L | yes | System or connection log, filterable by level, text and dates |
 | `package_control` | **D** | yes | Start or stop a package. Won't stop system packages or start broken ones |
+| `package_catalog` | L | yes | Search the Package Center catalog (name, version, size, whether it is installed) |
+| `package_install` | E | yes | Install a package from the catalog and start it; lists dependencies and warnings first |
+| `package_uninstall` | **D** | yes | Uninstall a package. Leaves system packages and the ones that ask what to do with their data (Drive, Photos…) alone |
 
 ## Freeing up space: 2 (plus `docker_remove_images`)
 

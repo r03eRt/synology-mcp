@@ -16,7 +16,7 @@ SYNOLOGY_ENV_FILE=.env.admin npm run test:real  # opcional, contra el NAS real
 
 ## Suite principal (`npm test`)
 
-201 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
+206 pruebas, ~10 s. No necesita el NAS. Antes regenera el bundle del plugin (`pretest`).
 
 | Fichero | Qué cubre |
 |---|---|
@@ -133,6 +133,11 @@ Nunca se lanzan aquí `dsm_set_services`, `dsm_power`, `package_control` sobre s
 - Contra el NAS real, el bundle con `SYNOLOGY_NAS_FILE` y dos entradas para el mismo NAS: `local` (IP) y `qc` (`quickconnect:<ID>`, ID leído del NAS sin escribirlo). Funcionaron `get_system_info` por cada una, `use_nas`, `list_files` y `list_nas`; QuickConnect eligió la red local con certificado válido.
 - Login completo y llamadas por el relé de Synology (`relay_dn:relay_port`): 3,3 s la primera y unos 130 ms las siguientes; Noise v7 sin volver a v6.
 - No probado: estar de verdad fuera de casa. La elección del relé cuando la red local no responde está cubierta por la prueba simulada.
+
+### Resultado 2026-11-23, versión 0.19.0 (instalar y desinstalar paquetes)
+
+- `npm test`: 206/206. Nueva: `test/mock/package-install.test.ts` (desinstalar y sus rechazos: sistema, con asistente de datos, dependencias con y sin `accept_warnings`; búsqueda en el catálogo con lo instalado, instalar con espera y arranque, «ya instalado», dependencias solo con `with_dependencies`, licencia, pago, inexistente, bloqueo `hard`, aviso `soft` con y sin `accept_warnings`, instalación fallida).
+- NAS real, con el servidor compilado: `package_catalog` (101 paquetes; búsqueda «editor»), `package_install` con Hyper Backup («ya instalado») y con un id inexistente, y la **instalación de PDF Viewer** (43 s, en marcha), comprobada con `get_packages`. Después se desinstaló con `Package.Uninstallation uninstall`: 43 paquetes, como antes. Con `package_uninstall` ya hecha: rechazos de Synology Drive (asistente de datos) y File Station (sistema), «no instalado», y otra vez instalar y desinstalar PDF Viewer con las herramientas; al final, 43 paquetes.
 
 ### Resultado 2026-11-23, versión 0.18.0 (proyectos Compose)
 

@@ -93,7 +93,7 @@ Necesaria antes de que lo use nadie más.
   - estado SMART por disco;
   - actualizaciones de DSM y de paquetes disponibles;
   - reiniciar y apagar, con `destructiveHint` y solo con admin.
-- [x] **3.4 Paquetes instalados** (S). Hecho en 0.13.0: `get_packages`, con los paquetes averiados primero y aviso si falta Hyper Backup. En 0.14.0, arrancar y parar (`package_control`).
+- [x] **3.4 Paquetes instalados** (S). Hecho en 0.13.0: `get_packages`, con los paquetes averiados primero y aviso si falta Hyper Backup. En 0.14.0, arrancar y parar (`package_control`). En 0.19.0, buscar en el catálogo, instalar y desinstalar (`package_catalog`, `package_install`, `package_uninstall`).
 
 ## Fase 4: áreas nuevas
 

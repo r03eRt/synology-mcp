@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#quick-install">Quick install</a> ·
-  <a href="#6-tools">134 tools</a> ·
+  <a href="#6-tools">137 tools</a> ·
   <a href="#5-security">Security</a> ·
   <a href="#7-example-requests">Examples</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -52,7 +52,7 @@ Every answer comes from this server's tools running against your real NAS. Actio
 | ☁️ | **Synology Drive** | Recent, starred, labels, shared · share with people, links with password and expiry, file requests · convert to Synology Office |
 | ⬇️ | **Downloads** | Search torrents · URLs, magnets and `.torrent` · pick files · RSS · speed limits and schedule · detect dead downloads |
 | 🐳 | **Docker** | Container status, CPU/RAM and logs · start, stop and restart · create, edit and delete containers · pull and clean up images |
-| 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages (and start or stop them) · notifications and logs · volumes |
+| 🩺 | **Health** | SMART for each disk · pending updates · broken or stopped packages (and start or stop them) · install and uninstall packages · notifications and logs · volumes |
 | 🧹 | **Space** | Recycle bins, unused images and the largest folders |
 | 🛠️ | **Administration** | Users and groups, shared folders, permissions, app privileges and quotas, scheduled tasks · insecure services (SMB1, FTP…) and turning them off · firewall, auto block and blocking IPs · restart or shut down |
 | 📹 | **Surveillance Station** | Cameras and their status, recordings, Home Mode |
@@ -108,7 +108,7 @@ What works with each kind of account:
 
 | With a regular user | Only with an administrator |
 |---|---|
-| Files, Drive (including sharing and file requests), Photos (the folders the user can see), Download Station (its own downloads and torrent search), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), packages (`get_packages`, `package_control`), Hyper Backup, recycle bins, Download Station speed limits and schedule, every user's downloads and administration (`dsm_*`: users, groups, shared folders, services, restart and shutdown) |
+| Files, Drive (including sharing and file requests), Photos (the folders the user can see), Download Station (its own downloads and torrent search), `get_system_info` | Docker, NAS health (`get_system_utilization`, `get_storage_status`, `get_disk_health`, `check_updates`, `get_notifications`, `get_system_logs`), packages (`get_packages`, `package_control`, `package_catalog`, `package_install`, `package_uninstall`), Hyper Backup, recycle bins, Download Station speed limits and schedule, every user's downloads and administration (`dsm_*`: users, groups, shared folders, services, restart and shutdown) |
 
 Using an administrator gives Claude access to the whole NAS. If you do, consider keeping read-only mode on.
 
@@ -255,12 +255,12 @@ Details, and how it's registered on the author's machine, in [docs/en/configurac
 
 ## 6. Tools
 
-134 tools, 61 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
+137 tools, 62 of them read-only. **L** = read, **E** = write (only with `SYNOLOGY_READ_ONLY=false`), **D** = destructive (asks for confirmation).
 
 | Area | Tools | Main things |
 |---|---|---|
 | Files (File Station) | 22 (12 L) | list, search, read text and images, upload and download, copy, move, delete, compress, public links |
-| NAS status and health | 9 (8 L) | system, CPU and RAM, storage, SMART, updates, notifications, logs, packages |
+| NAS status and health | 12 (9 L) | system, CPU and RAM, storage, SMART, updates, notifications, logs, packages (also searching the catalog, installing and uninstalling them) |
 | Freeing up space | 2 (1 L) | recycle bins: how much they take and emptying them |
 | Synology Drive | 22 (12 L) | recent, starred, labels, search, sharing with people, links, file requests, convert to Office |
 | Synology Photos | 10 (3 L) | albums, places and people, search by date, place or text (with each photo's path), upload, self-filling albums, sharing |

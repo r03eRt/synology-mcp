@@ -6,6 +6,14 @@ Format: one section per date, most recent first. Each entry says what changed an
 
 ## 2026-11-23
 
+### 0.19.0: installing and uninstalling packages
+- **3 new tools** (`src/tools/packages.ts`), with the Package Center calls already used by hand to install Hyper Backup:
+  - `package_catalog` (read): search Synology's catalog for this NAS, with what is already installed and its version.
+  - `package_install`: install as the web UI's quick install does, wait for it to finish and start it (the quick install leaves it stopped). If it needs other packages it lists them and installs nothing unless `with_dependencies`; with Package Center warnings it stops unless `accept_warnings`; when blocked ("hard") it refuses. Packages with a license to accept, paid ones and updates are left to Package Center.
+  - `package_uninstall` (destructive): uninstall with `Package.Uninstallation uninstall`, as the web UI does. It refuses system packages (`ctl_uninstall: false` or `install_type: "system"`) and the ones with an uninstall wizard (`is_uninstall_pages`: Drive, Photos, Container Manager, MariaDB…), which ask what to do with their data: that decision is left to the user in Package Center. If other packages depend on it, it stops unless `accept_warnings`.
+- Tested: mock NAS (`test/mock/package-install.test.ts`, 4 tests) and real NAS: catalog (101 packages), Hyper Backup "already installed", unknown package, and a **real install of PDF Viewer** (43 s, left running), uninstalled afterwards; and once more installed with `package_install` and uninstalled with `package_uninstall`, plus the refusals for Synology Drive and File Station.
+- 137 tools (62 read-only). Tests: 206.
+
 ### 0.18.0: Docker Compose projects
 - **4 new tools** for Container Manager's Compose projects (`src/tools/compose.ts`), with the API from Container Manager's web UI (`SYNO.Docker.Project`):
   - `docker_project_create`: create a project from a compose file (or the one already in the folder) and, by default, pull the images and start it.
